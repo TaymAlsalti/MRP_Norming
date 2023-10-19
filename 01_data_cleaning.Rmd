@@ -1,0 +1,382 @@
+---
+title: "Data preprocessing code"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	error = FALSE
+)
+
+options(scipen = 999, digits = 7)
+
+library(tidyverse)
+library(kableExtra)
+```
+
+# TwinLife sample
+
+```{r}
+# Load dataset and define missing values as NA without losing the different types of missing values in the dataset
+tl_1 <- haven::read_dta("../data/raw/ZA6701_person_wid1_v6-0-0.dta") %>% 
+  # get variables specifying own, mother's, and father's birthplace, respectively, from an older version of the TL sample
+  left_join(haven::read_sav("../data/raw/ZA6701_de_person_v2-0-0.sav") %>% 
+                              select(pid, mig0100, mig0300, mig0400), by = "pid") %>% 
+  codebook::detect_missing(ninety_nine_problems = T) %>% 
+  # total sum scores of the sum scores of all 4 subtests
+  mutate(cft = igf0182 + igf0282 + igf0382 + igf0482,
+  # divide age in months variable by 12 for easier interpretablility
+         age = age0101/12,
+  # create logical sex variable
+         male = sex == 1)
+
+
+# create a migration variable whose categories correspond to the migration variable in the census
+tl_2 <- tl_1 %>%
+  # wrangle the birthplace variable in the current version of the dataset to get the birthplace of the father and mother of the twins in case mig0300 and mig0400 (which have a lot of NAs) fail
+  filter(ptyp == 300 | ptyp == 400) %>% 
+  pivot_wider(id_cols = fid, names_from = ptyp, values_from = mig2000) %>% 
+  right_join(tl_1, by = "fid") %>% 
+  rename(mig2000_dad = `400`, mig2000_mom = `300`) %>% 
+  # set mig2000 to NA if the person is themselves a mother or a father
+  mutate(mig2000_dad = as.numeric(ifelse(ptyp == 300 | ptyp == 400, NA_character_, mig2000_dad)),
+         mig2000_mom = as.numeric(ifelse(ptyp == 300 | ptyp == 400, NA_character_, mig2000_mom)),
+  # collapse the east germany into one germany category
+         mig0300 = recode(as.numeric(mig0300), `2` = 1),
+         mig0400 = recode(as.numeric(mig0400), `2` = 1),
+  # if no information on citzenship is available, assume the person is a citizen
+         mig0520 = coalesce(mig0520, 1),
+  # since the migration variable in the census encodes information about both one's own and the parent's migration background and experience ("Migrationshintergrund und -erfahrung"), we start with creating a variable indicating with the person and/or parents is/are born abroad
+         born_abroad = case_when(
+           # if the person themselves is not born in germany, then born_abroad = "self"
+            mig2000 != 1 ~ 'self',
+           # if the person and both their parents are born in germany, then born_abroad = "none"
+            mig2000 == 1 & ((coalesce(mig2000_dad, mig0400) == 1 & coalesce(mig2000_mom, mig0300) == 1)) ~ 'none',
+           # etc..
+            coalesce(mig2000_dad, mig0400) != 1 & coalesce(mig2000_mom, mig0300) != 1 ~ 'both_parents',
+            mig2000_mom != 1 ~ 'one_parent',
+            mig2000_dad != 1 ~ 'one_parent',  
+            mig0300 != 1 ~ 'one_parent',
+            mig0400 != 1 ~ 'one_parent',
+            mig2000 == 1 ~ 'none',
+           # if no information is available, assume both the person and their parents are born in germany
+            TRUE ~ "none"), 
+         mig = case_when(
+           # if the person is born abroad and is a citizen... 
+            born_abroad == "self" & mig0520 == 1 ~ "citizen, own mig background",
+            born_abroad == "self" & mig0520 != 1 ~ "foreigner, own mig background",
+            born_abroad != "self" & mig0520 != 1 ~ "foreigner, no own mig background",
+            born_abroad == "one_parent" & mig0520 == 1 ~ "citizen, mig background from one parent",
+            born_abroad == "both_parents" & mig0520 == 1 ~ "citizen, mig background from both parents",
+            born_abroad == "none" & mig0520 == 1 ~ "no mig background"))
+
+
+
+
+# create an education variable corresponding to the census tables
+tl <- tl_2 %>% 
+  mutate(eca0108 = str_sub(as.character(as_factor(eca0108)), 4, -1),
+         school_type = case_when(
+           # we had to collapse some categories unto one another in order to ensure correspondance to census categories while attempting to minimise data loss. school types in the comments on the right are what the numerical codes refer to
+            edu0400 == 1 ~ "at school: primary", # Grundschule
+            edu0400 == 2 ~ "at school: primary", # Orientierungsschule
+            edu0400 == 3 ~ "at school: lower secondary", # Hauptschule
+            edu0400 == 4 ~ "at school: intermediate secondary", # Realschule
+            edu0400 == 5 ~ "at school: comprehensive school", # Verbundene Haupt- und Realschule (auch Sekundar-, Real-, Regel-, Mittel-, Ober- und Wirtschaftsschule, regionale Schule, erweiterte Realschule)
+            edu0400 == 6 ~ "at school: comprehensive school", # Gesamtschule
+            edu0400 == 7 ~ "at school: comprehensive school", # Waldorfschule
+            edu0400 == 8 ~ "at school: upper secondary", # Gymnasium (auch Kolleg)
+            edu0400 == 9 ~ "at school: other school", # Sonderschule/Förderschule
+            edu0400 == 10 ~ "at school: other school", # Andere Schule
+            # "Entfällt, da kein/e Schüler/-innen" is a category in the census so we gave kids who don't have a school type category and who specified as an answer to another question that they no longer go to school this category
+            edu0100 == 3 ~ "no longer at school"),  # "ich gehe nicht mehr in die Schule"
+         isced = as.factor(case_when(
+           # isced is coded starting with age 15, if the person is still at school, assume they will have a primary school certificate to be conservative
+            eca0108 == "3] -83: in school or training/not in school yet" ~ "isced 1: primary",
+            eca0108 == "9] -89: not codable" ~ NA_character_,
+            eca0108 == "5] -95: doesn't apply (screened out)" ~ NA_character_,
+           # we don't change any coding here, only translation/explanation
+            eca0108 == "level 1" ~   "isced 1: primary",
+            eca0108 == "level 2a" ~  "isced 2a: lower secondary",
+            eca0108 == "level 3a" ~  "isced 3a: upper secondary, general",
+            eca0108 == "level 3b" ~  "isced 3b: upper secondary, vocational",
+            eca0108 == "level 3c" ~  "isced 3b: upper secondary, vocational",
+            eca0108 == "level 4a" ~  "isced 4a: post-secondary",
+            eca0108 == "level 5a" ~  "isced 5a: tertiary, college etc.",
+            eca0108 == " level 5b" ~ "isced 5b: tertiary, tech school etc.",
+            eca0108 == " level 6" ~  "isced 6: PhD")),
+           # the final education variable combines the variable school type (age <19) and isced (age > 18)
+         educ = as.factor(case_when(
+           age0100 <= 18 ~ school_type, 
+           age0100 >= 19 ~ isced)),
+           # set a large category (upper secondary, vocational) as the reference category of the educ factor
+         educ = relevel(educ, 10),
+           # same for isced
+         isced = relevel(isced, 4)) %>%
+ filter(!is.na(cft)
+        # unfortunately, 227 participants aged <19 don't have school type information and 42 aged >18 don't have isced information
+        & !is.na(educ) 
+        )
+
+# save dataset
+save(tl, file="../data/preprocessed/tl.Rda")
+```
+
+## synthetic TL sample for the sake of reproducing the tutorial code
+```{r}
+# reduced_tl <- tl %>% 
+#  filter(ptyp != 1) %>%  
+#  select(cft, age0100, age, male, mig, educ) %>% 
+#  mutate(age0100 = as.double(age0100))
+
+# synthetic_tl <- synthpop::syn(reduced_tl)
+# 
+# summary(synthetic_tl)
+# 
+# synthpop::compare(synthetic_tl, reduced_tl, stat = "counts")
+
+# synthetic_tl <- synthetic_tl$syn
+
+# save synthetic dataset
+# save(synthetic_tl, file="../data/preprocessed/synthetic_tl.Rda")
+```
+
+
+
+
+# CFT manual norms
+The raw means and SDs  manually extracted from the CFT-20R manual had to be redacted since Hogrefe (publisher of the manual) did not allow us to share them.
+```{r}
+# manual_norms <- tibble(
+#          age_group = c('11:1-11:6', '11:7-12', '12:1-12:6', '12:7-13', '13:1-13:6', '13:7-14', '14:1-14:6', '14:7-15', '15:1-16', '16:1-17', '17:1-19:11', '20-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59' ,'60-64'),
+#          n_manual =    c(               R E D A C T E D             ),
+#          mean_manual = c(               R E D A C T E D             ),
+#          sd_manual =   c(               R E D A C T E D             )) %>%
+#   filter(!is.na(age_group)) %>%
+#   mutate(age_group = case_when(
+#                          age_group == "10:1-10:6" | age_group == "10:7-11" ~ '10',
+#                          age_group == "11:1-11:6" | age_group == "11:7-12" ~ '11',
+#                          age_group == "12:1-12:6" | age_group == "12:7-13" ~ '12',
+#                          age_group == "13:1-13:6" | age_group == "13:7-14" ~ '13',
+#                          age_group == "14:1-14:6" | age_group == "14:7-15" ~ '14',
+#                          age_group == "15:1-16"                            ~ '15',
+#                          age_group == "16:1-17"                            ~ '16',
+#                          age_group == "17:1-19:11"                         ~ '17-19',
+#                          TRUE ~ age_group)) %>%
+#   group_by(age_group) %>%
+#   summarise(Manual_n = sum(n_manual),
+#             Manual_mean = mean(mean_manual),
+#             Manual_sd = sqrt(mean(sd_manual^2)),
+#             Manual_se_of_mean = Manual_sd/sqrt(Manual_n))
+
+#save(manual_norms, file="../data/preprocessed/manual_norms.Rda")
+#write.csv(manual_norms, file = "../data/preprocessed/manual_norms.csv")
+```
+
+
+
+# Census tables
+## main poststratification table
+```{r}
+census_school_type_raw <- readxl::read_excel("../data/raw/729305_Zensus2011_Bildung_Schulform.xlsx", 
+    sheet = "Migration und Schulform") 
+
+census_school_type <- census_school_type_raw %>% 
+  # remove redundant columns of higher order categories (e.g., Deutsche mit Migrationshintergrund)
+  select(1:2, 21:28, 45:60, 69:76, 85:100) %>%
+  # exclude sex and age columns
+  select(3:50) %>%
+  # before iteratively naming the 48 columns, 8 (school types) * 6 (migration background) 
+  set_names(map(c("no mig background", # Personen ohne Migrationshintergrund
+                  "foreigner, own mig background", # Ausländer/-innen mit eigener Migrationserfahrung
+                  "foreigner, no own mig background", # Ausländer/-innen ohne eigene Migrationserfahrung
+                  "citizen, own mig background", # Deutsche mit eigener Migrationserfahrung
+                  "citizen, mig background from both parents", # Deutsche mit beidseitigem Migrationshintergrund
+                  "citizen, mig background from one parent"), # Deutsche mit einseitigem Migrationshintergrund
+                ~ paste0(.x, "_", c("total", 
+                                    "no longer at school", # Entfällt, da kein/e Schüler/-innen
+                                    "at school: primary", # Grundschule
+                                    "at school: lower secondary", # Hauptschule
+                                    "at school: intermediate secondary", # Realschule
+                                    "at school: upper secondary", # Gymnasium
+                                    "at school: comprehensive school", # Gesamtschule
+                                    "at school: other school"))) %>% # Sonstige Schule
+            unlist()) %>%
+  # recover sex and age columns
+  mutate(age = as.numeric(parse_number(census_school_type_raw[[2]])),
+         male = census_school_type_raw[[1]],
+         ) %>% 
+  relocate(c(age,male)) %>% 
+  mutate(male = ifelse(row_number() >= 115 & row_number() <= 215, TRUE, FALSE)) %>% 
+  slice(-(1:113), -215) %>% 
+  # disentangle mig and educ variables from one another
+  pivot_longer(cols = 3:50,
+               names_to = c("mig", "school_type"),
+               names_sep = "_",
+               values_to = "census_n") %>%
+ # filter(census_n != "/") %>% 
+  # set censored cells to 0
+  mutate(census_n = ifelse(census_n == "/", 0, as.numeric(census_n)))
+
+
+
+census_ISCED_raw <- readxl::read_excel("../data/raw/729305_Zensus2011_Bildung_ISCED.xlsx", sheet = "Migration und ISCED")
+
+census_ISCED <- census_ISCED_raw %>% 
+  set_names(paste0("var", 1:133)) %>% 
+  select(-(
+    census_ISCED_raw %>% 
+    summarise(across(everything(), ~ any(str_detect(., "ISCED-Ebene")) & any(str_detect(., "Insgesamt")))) %>% 
+    unlist() %>% 
+    which()
+  )) %>% 
+  select(1:2, var24:var34, var57:var78, var90:var100, var112:var133) %>% 
+  select(3:56) %>%
+  set_names(map(c("no mig background", # Personen ohne Migrationshintergrund
+                  "foreigner, own mig background", # Ausländer/-innen mit eigener Migrationserfahrung
+                  "foreigner, no own mig background", # Ausländer/-innen ohne eigene Migrationserfahrung
+                  "citizen, own mig background", # Deutsche mit eigener Migrationserfahrung
+                  "citizen, mig background from both parents", # Deutsche mit beidseitigem Migrationshintergrun,
+                  "citizen, mig background from one parent"), # Deutsche mit einseitigem Migrationshintergrund
+         ~ paste0(.x, "_", c("total",
+                             "isced 1: primary", # ISCED-Ebene 1 = Primärbereich
+                             "isced 2a: lower secondary", # ISCED-Ebene 2 = Sekundarbereich I
+                             "isced 3a: upper secondary, general", # Sekundarbereich II A, allgemein bildend
+                             "isced 3b: upper secondary, vocational", # Sekundarbereich II B, beruflich
+                             "isced 4a: post-secondary", # ISCED-Ebene 4 = Postsekundäre nichttertiäre Bildung
+                             "isced 5a: tertiary, college etc.", # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich A
+                             "isced 5b: tertiary, tech school etc.", # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich B
+                             "isced 6: PhD" # ISCED-Ebene 6 = Zweite Stufe der tertiären Bildung
+                             ))) %>% 
+            unlist()) %>% 
+  mutate(age = as.numeric(parse_number(census_ISCED_raw[[2]])),
+         male = census_ISCED_raw[[1]]) %>% 
+  relocate(c(age,male)) %>% 
+  mutate(male = ifelse(row_number() >= 99 & row_number() <= 186, TRUE, FALSE)) %>% 
+  slice(-(1:99), -186) %>% 
+  pivot_longer(cols = 3:56,
+               names_to = c("mig", "isced"),
+               names_sep = "_",
+               values_to = "census_n") %>%
+ # filter(census_n != "/") %>% 
+  mutate(census_n = ifelse(census_n == "/", 0, as.numeric(census_n)))
+
+
+# 11 because that's the minimum age for the educ and mig variables we used in the TL sample
+census_school_type_11_18 <- census_school_type %>% 
+  filter((age >= 11 & age <= 18) & school_type != "total") %>% 
+  rename(educ = "school_type") %>% 
+  relocate(educ, .after = "mig")
+
+
+census_ISCED_19_79 <- census_ISCED %>% 
+  filter((age >= 19 & age <= 79) & isced != "total") %>% 
+  rename(educ = "isced")
+
+census <- census_school_type_11_18 %>% 
+  bind_rows(census_ISCED_19_79) 
+
+save(census, file="../data/preprocessed/census.Rda")
+
+# print random 14 rows/cells/subgroups/combinations out of the total 6528 in the poststratification table
+census %>% slice_sample(n = 14) %>% kable %>% kable_styling(full_width = FALSE)
+```
+
+
+## totals for the disparities plot
+```{r}
+age_marginals <- census_school_type_raw %>%
+  # total column, rows for ages 11 through 79
+  select(3) %>% 
+  slice(23:91) %>% 
+  mutate(n = as.numeric(`...3`),
+         category = as.character(11:79),
+         percentage = n/sum(n)*100,
+         source = "census",
+         variable = "age") %>% 
+  select(-1)
+
+sex_marginals <- census_school_type_raw %>%
+  # total column, rows for ages 11 through 79
+  select(3) %>% 
+  slice((125:193), (227:295)) %>% 
+  mutate(category = as.character(ifelse(row_number() < 70, T, F)),
+         n = as.numeric(`...3`)) %>% 
+  group_by(category) %>% 
+  summarize(n = sum(n)) %>% 
+  mutate(source = "census",
+         variable = "male",
+         percentage = n/sum(n)*100)
+
+school_type_marginals <- census_school_type_raw %>% 
+  select(14:20) %>% 
+  slice(23:30) %>% 
+  set_names(paste0(c("A7: no longer at school", # Entfällt, da kein/e Schüler/-innen
+                     "A1: primary", # Grundschule
+                     "A2: lower secondary", # Hauptschule
+                     "A3: intermediate secondary", # Realschule
+                     "A6: upper secondary", # Gymnasium
+                     "A5: comprehensive school", # Gesamtschule
+                     "A4: other school"))) %>% # Sonstige Schule  
+  mutate_all(as.numeric) %>% 
+  summarise(across(everything(), ~sum(., na.rm = TRUE))) %>% 
+  pivot_longer(cols = everything(), names_to = "category", values_to = "n")
+  
+  
+educ_marginals <- census_ISCED_raw %>% 
+  select(14, 15, 17:19, 21, 22, 23) %>% 
+    slice(17:77) %>% 
+  set_names(paste0(c("B1: primary",                 
+                     "B2: lower secondary",          
+                     "B4: upper secondary, general", 
+                     "B3: upper secondary, vocational",
+                     "B5: post-secondary",           
+                     "B7: tertiary, college etc.",   
+                     "B6: tertiary, tech school etc.",
+                     "B8: PhD"))) %>% 
+  mutate_all(as.numeric) %>% 
+  summarise(across(everything(), ~sum(., na.rm = TRUE))) %>% 
+  pivot_longer(cols = everything(), names_to = "category", values_to = "n") %>% 
+  full_join(school_type_marginals, by = "category") %>% 
+  mutate(n = ifelse((is.na(n.x) | is.na(n.y)), coalesce(n.x, n.y), n.x + n.y),
+         source = "census",
+         variable = "educ",
+         percentage = n/sum(n)*100) %>% 
+  select(-c(n.x,n.y))
+
+mig_marginals <- census_school_type_raw %>% 
+  select(4, 7, 8, 10, 12, 13) %>% 
+  slice(23:91) %>% 
+  set_names(paste0(c("Citizen: no mig background", 
+                     "Non-citizen: own mig experience", 
+                     "Non-citizen: no own mig experience", 
+                     "Citizen: own mig experience",
+                     "Citizen: mig background from both parents",
+                     "Citizen: mig background from one parent"))) %>% 
+  mutate_all(as.numeric) %>% 
+  summarise(across(everything(), ~sum(., na.rm = TRUE))) %>% 
+  pivot_longer(cols = everything(), names_to = "category", values_to = "n") %>% 
+  mutate(source = "census",
+         variable = "mig",
+         percentage = n/sum(n)*100)
+                     
+census_marginals <- bind_rows(age_marginals, educ_marginals, sex_marginals, mig_marginals)
+
+save(census_marginals, file="../data/preprocessed/census_marginals.Rda")
+
+```
+
+# Session info
+```{r}
+sessionInfo()
+```
+

@@ -1,0 +1,139 @@
+---
+title: "reprex pivot_longer"
+date: '2022-12-31'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kableExtra)
+```
+
+
+
+
+
+## Case 1
+
+```{r}
+wide_n <- tribble(
+  ~grade, ~male, ~population_n, ~sample_n,
+  "a",   TRUE,       110,         55,     
+  "b",   TRUE,       232,         55,     
+  "c",   FALSE,      333,         23,     
+  "a",   TRUE,       333,         23     
+)
+```
+
+- data frame we have: column for each categorical grouping variable (e.g., grade and gender), many columns containing sample sizes, with their names specifying the source of the sample sizes (population vs. sample).
+- target data frame: column containing the source of the numerical values (sample vs. population), column containing the grouping variable (e.g., grade), column containing the category (e.g., a), column containing the percentage of the category (e.g., proportion of category a). 
+
+Overly verbose and inefficient way of achieving this (commented by GPT):
+```{r}
+# this code is to calculate the percentage of population and sample in each grade
+
+grade <- wide_n  %>% 
+   # group the data by grade
+   group_by(grade) %>% 
+   # calculate the sum of population and sample in each grade
+   summarise(population_n = sum(population_n), sample_n = sum(sample_n)) %>% 
+   # calculate the percentage of population and sample in each grade
+   mutate(population_percentage = 100*population_n/sum(population_n), sample_percentage = 100*sample_n/sum(sample_n)) %>% 
+   # gather the data into two columns
+  gather(source, percentage, ends_with("percentage"))  %>% 
+  # select the columns we need
+  select(grade, source, percentage) %>%
+  # rename the source column
+  mutate(source = gsub("_.*", "", source))
+
+
+# this code is used to calculate the percentage of male and female in the population and sample
+
+# group the data by male and female
+male <- wide_n  %>% 
+   group_by(male) %>% 
+   # calculate the total number of male and female in the population and sample
+   summarise(population_n = sum(population_n), sample_n = sum(sample_n)) %>% 
+   # calculate the percentage of male and female in the population and sample
+   mutate(population_percentage = 100*population_n/sum(population_n), sample_percentage = 100*sample_n/sum(sample_n)) %>% 
+   # gather the data into two columns
+  gather(source, percentage, ends_with("percentage"))  %>% 
+  # select the columns that we want to keep
+  select(male, source, percentage) %>%
+  # rename the source column
+  mutate(source = gsub("_.*", "", source))
+
+
+
+# this code takes the data from the grade and male dataframes and binds them together
+# it then gathers the data into a long format
+# it then filters out any NA values
+long_n <- grade  %>% 
+  bind_rows(male) %>% 
+  gather(variable, category, -c(percentage,source)) %>% 
+  filter(!is.na(category))
+
+# this code takes the data from the wide_n_long dataframe and displays it in a table
+# it then formats the table
+long_n %>% kable
+
+```
+
+## proper solution
+```{r}
+long_n <- wide_n %>% 
+    pivot_longer(names_to = "source", values_to = "n", -c(grade, male)) %>%  # get source as a column 
+    mutate(male = as.character(male),           # make it so it can be in a column with grade
+           source = str_sub(source, 1, -3)) %>% # fine-tuning
+        pivot_longer(-c(n, source), names_to = "variable") %>% # get variable as a column
+        group_by(source, variable, value) %>% # aggregate across combinations of male-grade 
+        summarise(n = sum(n)) %>% 
+        group_by(source, variable) %>% # could also comment this out, but I prefer explicitness
+        mutate(percentage = n/sum(n)*100)
+long_n %>% kable
+```
+
+
+
+## Case 2:
+
+```{r}
+wide_many_numerical_vars <- tribble(
+  ~grade,~population_sd, ~population_mean, ~sample_sd, ~sample_mean,
+  "a",       110,              55,          55,          25,    
+  "b",       232,              55,          55,          89,    
+  "c",       333,              23,          23,          78
+)
+```
+
+- data frame we have: column containing all existing categories of a single categorical variable (here grade), many columns containing numerical values, with their names specifying the source of the values (population vs. sample) and what the numerical value is (e.g., mean).
+- target data frame: column for the grouping variable, column containing the source of the numerical values (sample vs. population), column containing the grouping variable (e.g.., grade), column for each type of numerical value (here mean and sd) listing the value for grade x source subcategory. 
+
+Overly verbose and inefficient way of getting there (again commented by GPT):
+```{r}
+mean <- wide_many_numerical_vars %>% gather(source, mean, ends_with("mean")) %>% select(grade, source, mean) %>% mutate(source = gsub("_.*", "", source)) #gathers all the mean columns and puts them into one column
+sd <- wide_many_numerical_vars %>% gather(source, sd, ends_with("sd")) %>% select(grade, source, sd) %>%   mutate(source = gsub("_.*", "", source)) #gathers all the sd columns and puts them into one column
+long_many_numerical_vars <- mean %>% #joins the mean and sd columns together
+  left_join(sd, by = c("grade", "source")) 
+
+long_many_numerical_vars |> kable()
+
+```
+
+
+# UPDATE AFTER GETTING HELP
+```{r}
+long_many_numerical_vars <- wide_many_numerical_vars |> pivot_longer(
+  -grade,
+  names_to = c("source", ".value"),
+  names_pattern = "(.*)_(.*)"
+)
+
+long_many_numerical_vars |> kable() |> kable_styling(full_width = FALSE)
+```
+
+
+
+
+

@@ -1,0 +1,815 @@
+---
+title: "MRP norming tutorial"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	error = TRUE
+)
+
+```
+
+# Load dependencies and preprocessed datasets
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(kableExtra)
+library(brms)
+library(tidybayes)
+library(marginaleffects)
+library(bayesplot)
+
+load("../data/preprocessed/tl.Rda")
+load("../data/preprocessed/manual_norms.Rda")
+load("../data/preprocessed/census.Rda")
+load("../data/preprocessed/census_marginals.Rda")
+# load("../data/preprocessed/synthetic_tl.Rda") # load this if you're working with the synthetic sample we provided
+
+
+options(mc.cores = 4, 
+        brms.backend = "cmdstanr",
+        scipen = 999,
+        digits = 4)
+
+# windowsFonts(Times = windowsFont("Times New Roman"))
+theme_set(theme_gray(base_size = 14, base_family = "Times"))
+
+# exclude first twins to avoid twin dependency issues
+tl_no_1st_twins <- tl %>% 
+ filter(ptyp != 1)
+```
+
+# Distributional disparities
+
+Before applying MRP to correct estimates (be it for norming or other purposes), it's worthwhile to check if there are any differences between the sample and the population (on which we have data from the census) with respect to the variables we wish to use for the correction. Here we first look at disparities at the level of marginal distributions (e.g., is the overall proportion of males to females similar in our sample to the population?), then at the joint distribution level (e.g., are female citizens with no migration background, aged 67, who have a general secondary school certificate as well represented in our sample as in the population?).
+
+## Marginal
+
+One plot for age and one for the three other variables.
+
+```{r, fig.height = 5, fig.width = 11}
+# get the marginal distributions from the census and the TL sample
+disparities_plot <- census %>% 
+  full_join(tl_no_1st_twins %>% 
+  group_by(age0100, male, educ, mig) %>% 
+  summarise(sample_n = n()) %>% 
+  rename(age = "age0100") %>% 
+  mutate(sample_n = as.numeric(sample_n)), by = c("age", "male", "educ", "mig")) %>% 
+  mutate(sample_n = replace_na(sample_n, 0),
+         educ = case_when(
+           educ ==  "at school: primary" ~ "A1: primary", 
+           educ ==  "at school: lower secondary" ~ "A2: lower secondary",
+           educ ==  "at school: intermediate secondary" ~ "A3: intermediate secondary",
+           educ ==  "at school: comprehensive school" ~ "A5: comprehensive school",
+           educ ==  "at school: upper secondary" ~ "A6: upper secondary",
+           educ ==  "at school: other school" ~ "A4: other school",
+           educ ==  "no longer at school" ~ "A7: no longer at school",
+           educ ==  "isced 1: primary" ~ "B1: primary",
+           educ ==  "isced 2a: lower secondary" ~ "B2: lower secondary",
+           educ ==  "isced 3a: upper secondary, general" ~ "B4: upper secondary, general",
+           educ ==  "isced 3b: upper secondary, vocational" ~ "B3: upper secondary, vocational",
+           educ ==  "isced 4a: post-secondary" ~ "B5: post-secondary",
+           educ ==  "isced 5a: tertiary, college etc." ~ "B7: tertiary, college etc.",
+           educ ==  "isced 5b: tertiary, tech school etc." ~ "B6: tertiary, tech school etc.",
+           educ ==  "isced 6: PhD" ~ "B8: PhD")) %>%
+  pivot_longer(cols = c(census_n:sample_n), names_to = "source", values_to = "n") %>% 
+  mutate(mig = as.character(case_when(
+    mig == "no mig background" ~ "Citizen: no mig background", 
+    mig == "foreigner, own mig background" ~ "Non-citizen: own mig experience", 
+    mig == "foreigner, no own mig background" ~ "Non-citizen: no own mig experience", 
+    mig == "citizen, own mig background" ~ "Citizen: own mig experience", 
+    mig == "citizen, mig background from both parents" ~ "Citizen: mig background from both parents", 
+    mig == "citizen, mig background from one parent" ~ "Citizen: mig background from one parent")),
+         age = as.character(age),
+         male = as.character(male),
+         source = str_sub(source, 1, -3)) %>% 
+pivot_longer(cols = -c(n, source), names_to = "variable", values_to = "category") %>% 
+  group_by(source, variable, category) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(percentage = n/sum(n)*100) %>% 
+  filter(source == "sample") %>% 
+  bind_rows(census_marginals) %>%
+  mutate(category = case_when(
+    category == "TRUE" ~ "Male",
+    category == "FALSE" ~ "Female",
+    TRUE ~ category))
+
+
+# plot age disparities
+disparities_plot %>%
+  filter(variable == "age") %>%
+  ggplot(aes(x = category, y = percentage, group = source, colour = source, label = round(percentage, digits = 1))) +
+  geom_line(linewidth = 1) +
+  theme_gray(base_size = 16) +
+  facet_grid(cols = vars(variable), scales = "free", space = 'free', as.table = FALSE,
+             labeller = labeller(variable = function(variable) {
+               case_when(
+                 variable == "age" ~ "Age",
+                 TRUE ~ as.character(variable)
+               )
+             })) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        text = element_text(family = "Times"),
+        legend.position = c(1, 1.1),  #
+        legend.justification = c(1, 1), 
+        legend.background = element_rect(fill = "transparent", color = NA),
+        legend.text = element_text(size = 16)) + 
+  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  scale_colour_manual(values = c("#0072b2", "#e69f00"), labels = function(x) str_to_title(x)) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2))
+```
+
+
+```{r, fig.height = 6, fig.width = 11}
+# Modify the ggplot code to use the modified 'category' variable
+disparities_plot %>%
+  filter(variable != "age") %>%
+  ggplot(aes(x = category, y = percentage, group = source, colour = source, label = round(percentage, digits = 1))) +
+  geom_line(linewidth = 1) +
+  theme_gray(base_size = 14) +
+  facet_grid(
+    cols = vars(variable),
+    scales = "free",
+    space = 'free',
+    as.table = FALSE,
+    labeller = labeller(variable = function(variable) {
+      case_when(
+        variable == "educ" ~ "School Type (A categories) / ISCED 1997 Code (B categories)",
+        variable == "male" ~ "Sex",
+        variable == "mig" ~ "Migration",
+        TRUE ~ as.character(variable)
+      )
+    })
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 55, hjust = 1),
+    text = element_text(family = "Times"),
+    legend.position = c(.64, 1.12),
+    legend.justification = c(1, 1),
+    legend.background = element_rect(fill = "transparent", color = NA),
+    legend.text = element_text(size = 14),
+    plot.margin = margin(0.8, 2, 0.8, 1.4, "cm")  
+  ) +
+  geom_text_repel(family = "Times", seed = 14) +
+  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  scale_colour_manual(values = c("#0072b2", "#e69f00"), labels = function(x) str_to_title(x))
+
+```
+Besides the obvious age disparities due to the cohort design adopted to collect the data for the TwinLife sample, we also see that our sample is "overeducated" in the sense that for example we have too many kids who were going to the Gymnasium (at school: upper secondary) and too few adults who have something similar to an Ausbildungsabschluss ("isced 3b: upper secondary, vocational"). Migrants and female are also overrepresented in the sample. 
+
+
+## Joint
+You can use this interactive table to browse disparities at the level of joint distributions, ordered after magnitude. Note that this table has 6528 rows (number of subgroups/combinations of the 4 variables we use). Most of these subgroups are empty in the sample.
+```{r}
+census %>% 
+  full_join(tl_no_1st_twins %>% 
+  group_by(age0100, male, educ, mig) %>% 
+  summarise(sample_n = n()) %>% 
+  rename(age = "age0100") %>% 
+  mutate(sample_n = as.numeric(sample_n)), by = c("age", "male", "educ", "mig")) %>% 
+  # set the subgroups which are empty in the sample to 0 instead of NA
+  mutate(sample_n = replace_na(sample_n, 0)) %>% 
+  group_by(age, male, educ, mig) %>% 
+  summarise(census_n = sum(census_n),
+            sample_n = sum(sample_n)) %>% 
+  group_by(age) %>% 
+  ungroup() %>% 
+  mutate(census_percentage = census_n*100/sum(census_n),
+         sample_percentage = sample_n*100/sum(sample_n),
+         dif_percentage = census_percentage-sample_percentage,
+         relative_dif = dif_percentage*census_n/100) %>% 
+  relocate(census_percentage, .after = "census_n") %>%
+  arrange(-relative_dif) %>% DT::datatable() %>% 
+  DT::formatRound(c('dif_percentage', 'relative_dif', 'census_percentage', 'sample_percentage'), digits = 1)
+```
+
+
+# Regularised prediction model
+
+This is the MR part of MRP. 
+
+## Fit the model
+
+Terms of this form `(1 | variable)` represent random intercepts, `(male)` was included as a fixed effect to avoid estimation problems due to the small number of categories, `s(age)` is a thin plate spline of age, and `s(age, by = educ)` fits a separate spline of age within each category of `educ`. We don't include this latter term in the $\sigma$ prediction part of the model because it is unnecessarily complex given the heterogeneity in the variance and it leads to a lot of divergent transitions.
+
+```{r}
+# run on the synthetic sample "synthetic_tl" we provide if you do not have access to the TL data
+# alternatively, load the .rds file for the model we ran on the synthetic data
+
+brm_age_by_educ <-
+  brm(bf(
+      cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
+      family = gaussian(),
+      chains = 4,
+      iter = 5000,
+      seed = 810,
+      control = list(adapt_delta = 0.99),
+      file = "../brms/brm_age_by_educ_18_delta_99_5000",
+      file_refit = "never",
+      data = tl_no_1st_twins) %>% 
+  add_criterion("loo")
+```
+
+## Some model exploration
+
+### Summary
+
+```{r, warning = T}
+brm_age_by_educ
+```
+
+Despite the boosted `adapt_delta`, we still had 2 divergent transitions. However, we reran this model multiple times with different `adapt_delta` and sometimes had up to 100 divergent transitions without affecting the fit of the model. We can conclude that the 4 chains converged since the `Rhat`s are consistently $<1.01$. We see that the sd `Estimate`s of the random intercepts for $\sigma$ are pretty small so we don't expect large variations in the residual variance depending on the predictors. Larger sds can be observed for predicting `\mu` (i.e., the actual CFT 20-R Scores). Males scored on average 0.96 on CFT 20-R than females. Spline related estimates are much harder to interpret so instead we'll at some plots.
+
+### check general model fit
+
+```{r}
+pp_check(brm_age_by_educ)
+```
+
+```{r}
+y <- tl_no_1st_twins$cft
+yrep <- posterior_predict(brm_age_by_educ, newdata = tl_no_1st_twins, ndraws = 1000)
+ppc_pit_ecdf(y, yrep, prob = 0.99, plot_diff = TRUE)
+ppc_pit_ecdf(y, yrep, prob = 0.99, plot_diff = FALSE)
+```
+
+### check fit within age groups
+
+```{r, fig.width = 20, fig.height=20}
+t <- tl_no_1st_twins %>% 
+  mutate(age_group = case_when(
+                         age0100 == 11 ~ '11',
+                         age0100 == 12 ~ '12',
+                         age0100 == 13 ~ '13',
+                         age0100 == 14 ~ '14',
+                         age0100 == 15 ~ '15',
+                         age0100 == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>% 
+  filter(!is.na(age_group))
+
+yrep <- posterior_predict(brm_age_by_educ, newdata = t, ndraws = 1000)
+
+
+p <- ppc_pit_ecdf_grouped(t$cft, yrep, group = as.factor(t$age_group), prob=0.99, plot_diff = F)
+
+p + theme_minimal(base_size = 30)
+```
+
+### R2
+```{r}
+loo_R2(brm_age_by_educ)
+```
+
+### Prediction plots for education and migration background
+
+```{r, fig.height = 7, fig.width = 11}
+plot_predictions(brm_age_by_educ,  condition = c("educ"), allow_new_levels = T)  +
+  theme_gray(base_size = 16) + 
+  labs(x = "Education", y = "CFT 20-R Score") +
+theme(axis.text.x = element_text(angle = 60, hjust = 1),
+    plot.margin = margin(0.8, 2, 0.8, 1.4, "cm"),
+    text = element_text(family = "Times"))
+```
+
+We see that means differ considerably across categories of `educ`. The large 95% CIs are for the school type categories, i.e., those which have no observations at ages older than 18.
+
+```{r, fig.height = 7, fig.width = 9}
+plot_predictions(brm_age_by_educ,  condition = c("mig"), allow_new_levels = T)  +
+  theme_gray(base_size = 16) + 
+  labs(x = "Migration Background", y = "CFT 20-R Score") +
+theme(axis.text.x = element_text(angle = 60, hjust = 1),
+    plot.margin = margin(0.8, 2, 0.8, 1.4, "cm"),
+    text = element_text(family = "Times"))
+```
+
+Less variation among migration categories.
+
+
+
+### Plots of the conditional age splines 
+
+
+```{r, fig.height = 15, fig.width = 24}
+fitted_tl <- tl_no_1st_twins %>%
+  select(age, educ, mig, male) %>%
+  mutate(male = FALSE, mig = "no mig background") %>%
+  distinct()
+
+x <- fitted(brm_age_by_educ, newdata = fitted_tl, summary = T, ndraws = 1000, probs = c(0.20, 0.80)) %>% as_tibble() %>%
+  bind_cols(fitted_tl) %>%
+  mutate(educ = case_when(
+           educ ==  "at school: primary" ~ "A1: primary", 
+           educ ==  "at school: lower secondary" ~ "A2: lower secondary",
+           educ ==  "at school: intermediate secondary" ~ "A3: intermediate secondary",
+           educ ==  "at school: comprehensive school" ~ "A5: comprehensive school",
+           educ ==  "at school: upper secondary" ~ "A6: upper secondary",
+           educ ==  "at school: other school" ~ "A4: other school",
+           educ ==  "no longer at school" ~ "A7: no longer at school",
+           educ ==  "isced 1: primary" ~ "B1: primary",
+           educ ==  "isced 2a: lower secondary" ~ "B2: lower secondary",
+           educ ==  "isced 3a: upper secondary, general" ~ "B4: upper secondary, general",
+           educ ==  "isced 3b: upper secondary, vocational" ~ "B3: upper secondary, vocational",
+           educ ==  "isced 4a: post-secondary" ~ "B5: post-secondary",
+           educ ==  "isced 5a: tertiary, college etc." ~ "B7: tertiary, college etc.",
+           educ ==  "isced 5b: tertiary, tech school etc." ~ "B6: tertiary, tech school etc.",
+           educ ==  "isced 6: PhD" ~ "B8: PhD"),
+    school_type = case_when(
+      str_detect(educ, "^A\\d+:") ~ educ,
+      TRUE ~ NA_character_
+    ),
+    isced = case_when(
+      str_detect(educ, "^A\\d+:") ~ NA_character_,
+      TRUE ~ educ
+    )
+  )  %>% 
+  filter(!(school_type == "primary" & floor(age) == 17))
+
+
+# colour palette from https://jacksonlab.agronomy.wisc.edu/2016/05/23/15-level-colorblind-friendly-palette/
+ggplot(data = x %>% filter(!is.na(school_type) & age <= 18), aes(x = age, y = Estimate, color = school_type)) +
+  geom_line(size = 3) +
+  geom_ribbon(aes(ymin = Q20, ymax = Q80), alpha = 0.05) +
+  labs(x = "age", y = "Estimate") +
+  theme_minimal() +
+  theme_gray(base_size = 40)  +
+  labs(x = "Age", y = "CFT 20-R Score", colour = "School Type")  +
+theme(text = element_text(family = "Times")) +
+  scale_color_manual(values = c("#000000","#004949","#009292","#ff6db6","#ffb6db", "#490092","#006ddb"))
+ggsave("s.png", height = 15, width = 24)
+```
+
+
+```{r, fig.height = 15, fig.width = 24}
+ggplot(data = x %>% filter(!is.na(isced) & (age >= 19 & age <= 65)), aes(x = age, y = Estimate, color = isced)) +
+  geom_line(size = 3) +
+  geom_ribbon(aes(ymin = Q20, ymax = Q80), alpha = 0.05) +
+  labs(x = "age", y = ".epred") +
+  theme_minimal() +
+  theme_gray(base_size = 40)  + 
+  labs(x = "Age", y = "CFT 20-R Score", colour = "ISCED 1997 code")  + 
+theme(text = element_text(family = "Times")) +
+  scale_color_manual(values = c("#b66dff","#6db6ff","#b6dbff", "#920000","#924900","#db6d00","#24ff24","#ffff6d"))
+ggsave("s.png", height = 15, width = 24)
+```
+
+
+
+```{r}
+plot(conditional_smooths(brm_age_by_educ), ask = FALSE, plot = FALSE)[[2]] +
+  theme_gray(base_size = 18) + 
+theme(text = element_text(family = "Times"))
+```
+
+As expected, not much happening in the $\sigma$ domain.
+
+
+# Poststratifcation
+
+This is the P part of MRP. 
+
+## Simulate a sample with the same joint distribution as the census
+
+```{r}
+set.seed(810)
+sim_pop_sample <- census %>% 
+  sample_n(size = 100000, # total census_n in the PS table is 6773812
+           weight = census_n, 
+           replace = TRUE)
+```
+
+This code achieves this by creating a fake sample (N = 100000) in which the subgroup sample sizes are proportional to the sizes of the subgroups in the poststratification table. For example if the subgroup consisting of the combination “age = 12, male = TRUE, educ = level 3, mig = none” represents 0.2% of the total population (sum of the ns of all subgroups in the poststratification table), then about 200 out of the 100000 fake participants in the simulated sample will have this specific combination of levels on the 4 predictors. 
+
+
+## Estimate CFT 20-R for those simulated participants
+
+Now that we have a post-stratified sample, we can use _tidybayes_’s `add_predicted_draws()` function to draw 1000 samples (i.e., CFT 20-R Scores) from the posterior for each one of the 10000 simulated participants in `sim_pop_sample`:
+
+```{r}
+sim_pop_sample_with_draws <- sim_pop_sample %>%
+  add_predicted_draws(brm_age_by_educ, 
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = round(case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction)))
+```
+
+This yields a dataframe in long format with 100000 (number of simulated participants) * 1000 (number of draws from the posterior) = 100 million rows. `allow_new_levels = TRUE` is necessary for estimating the outcome for combinations of the 4 predictors which do not occur in the actual TL sample. This is inevitable in detailed enough poststratification tables and was the case here as the poststratification table we used had 6528  subcategories/rows. It wasn't the product of the number of categories of the four predictors $69*2*15*6$ because a lot of combinations of the variables were impossible, e.g., a PhD at the age of 11. The `mutate()` call serves to set all predicted CFT 20-R 20-R score scores which go below or above the scale limits (0 and 56, respectively), to those scale limits.
+
+
+## Compute means and SDs + SEs of those means and SDs
+
+Finally, we aggregate the intelligence scores by age and compute the MRP corrected means and SDs (+ their SEs) for each age group:
+
+```{r}
+means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(MRP_mean = mean(mean_prediction), 
+            MRP_se_of_mean = sd(mean_prediction), 
+            MRP_sd = sqrt(mean(sd_prediction^2)), 
+            MRP_se_of_sd = sd(sd_prediction))
+means_sds_and_ses_MRP %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
+```
+
+This code chunk first aggregates by age and posterior draw (1000) to compute the mean and SD of CFT 20-R estimates across the 100000 simulated participants. Then it computes the means and SDs across the draws (which form the MRP means and SDs for each age group) and the SDs of the means and SDs calculated in the previous step, hence yielding the Bayesian SEs of the MRP means and SDs, respectively. Et voilà, an MRP corrected norm table! Here the 14 first rows are shown.
+
+
+# Does MRP do anything?
+
+## MRP predictions vs. raw means
+
+### Average difference in means
+```{r}
+means_sds_and_ses_tl <- tl %>% 
+  group_by(age0100) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %>% 
+  rename(age = age0100)
+
+
+means_ns_sds_and_ses <- census  %>% 
+  group_by(age) %>% 
+  summarise (census_n = sum(census_n)) %>% 
+  left_join(means_sds_and_ses_MRP, by = c("age")) %>% 
+  left_join(means_sds_and_ses_tl, by = "age") %>% 
+  mutate(abs_dif = abs(MRP_mean - Raw_mean))
+
+
+t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)
+
+
+```
+
+On average a difference of ~ quarter SD between raw and corrected means. 
+
+### Browsable table
+
+Here you can browse both MRP and raw ns, means, SDs, and SEs.
+
+```{r}
+means_ns_sds_and_ses %>% DT::datatable() %>% DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)
+```
+
+
+### Plot of means + 95% CIs
+
+```{r, fig.width=9}
+means_ns_sds_and_ses %>%
+  filter(age <= 65) %>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>%
+  filter(source != "census" & source != "abs") %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3)) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(source != "census" & source != "abs") %>% group_by(source) %>% filter(age == 11),
+    aes(label = source, x = as.factor(age), y = mean, color = source), family = "Times", seed = 810) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#0072b2", "#e69f00")) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+```
+
+
+### Plot of SDs
+
+```{r, fig.width=9}
+means_ns_sds_and_ses %>%
+  filter(age <= 65) %>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>%
+  filter(source != "census" & source != "abs") %>%
+  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3)) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(source != "census" & source != "abs") %>% group_by(source) %>% filter(age == 11),
+    aes(label = source, x = as.factor(age), y = sd, color = source), family = "Times", seed = 810) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#0072b2", "#e69f00")) +
+  labs(x = "Age", y = "CFT 20-R Score SD")
+```
+
+
+## MRP norms vs. manual norms vs. raw means
+
+Here we compare the MRP-based norms to the traditionally constructed norms reported in the CFT 20-R manual. We aggregate by the age groups as reported in the manual normal tables. Note that the manual means and SDs for ages 20 and older are based on the very same TwinLife sample we are using, they just use a different correction method that isn't described in enough detail to make it reproducible for us. 
+
+### Plots of means and SDs
+
+```{r, fig.width=9}
+means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% # the same one from above
+  mutate(age_group = case_when(
+                         age == 11 ~ '11',
+                         age == 12 ~ '12',
+                         age == 13 ~ '13',
+                         age == 14 ~ '14',
+                         age == 15 ~ '15',
+                         age == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>% 
+  group_by(age_group, .draw) %>%
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise(MRP_mean = mean(mean_prediction),
+              MRP_se_of_mean = sd(mean_prediction),
+              MRP_sd = sqrt(mean(sd_prediction^2)),
+              MRP_se_of_sd = sd(sd_prediction)) %>% 
+  filter(!is.na(age_group))
+
+
+means_sds_and_ses_tl <- tl_no_1st_twins %>% 
+  mutate(age_group = case_when(
+                         age0100 == 11 ~ '11',
+                         age0100 == 12 ~ '12',
+                         age0100 == 13 ~ '13',
+                         age0100 == 14 ~ '14',
+                         age0100 == 15 ~ '15',
+                         age0100 == 16 ~ '16',
+                         age0100 >= 17 & age0100 <= 19 ~ '17-19',
+                         age0100 >= 20 & age0100 <= 24 ~ '20-24',
+                         age0100 >= 25 & age0100 <= 29 ~ '25-29',
+                         age0100 >= 30 & age0100 <= 34 ~ '30-34',
+                         age0100 >= 35 & age0100 <= 39 ~ '35-39',
+                         age0100 >= 40 & age0100 <= 44 ~ '40-44',
+                         age0100 >= 45 & age0100 <= 49 ~ '45-49',
+                         age0100 >= 50 & age0100 <= 54 ~ '50-54',
+                         age0100 >= 55 & age0100 <= 59 ~ '55-59',
+                         age0100 >= 60 & age0100 <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>%
+  group_by(age_group) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %>% 
+  filter(!is.na(age_group))
+
+
+
+means_sds_and_ses <- means_sds_and_ses_MRP %>%
+  left_join(means_sds_and_ses_tl, by = "age_group") %>% 
+  left_join(manual_norms, by = "age_group")
+
+
+
+# means and CIs
+means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% 
+  filter(provenance != "census" 
+         ) %>%
+  ggplot(aes(x = age_group, y = mean, group = provenance, colour = provenance)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3))  +
+  scale_colour_manual(values = c("#009e73", "#0072b2", "#e69f00")) +
+  labs(x = "Age Group", y = "Mean CFT 20-R Score") +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "11"),
+    aes(label = c("MRP", "Raw", ""), x = age_group, y = mean, color = provenance), family = "Times", seed = 810) +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample"), x = age_group, y = mean, color = provenance), family = "Times", seed = 810, nudge_y = 2.5) +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample"), x = age_group, y = mean, color = provenance), family = "Times", seed = 810, nudge_y = -2.5) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) + 
+  geom_vline(xintercept = 7.5)
+```
+
+
+```{r, fig.width=9}
+# SDs
+means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% 
+  filter(provenance != "census" 
+         )   %>%
+  ggplot(aes(x = age_group, y = sd, group = provenance, colour = provenance)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3))  +
+  scale_colour_manual(values = c("#009e73", "#0072b2", "#e69f00")) +
+  labs(x = "Age Group", y = "CFT 20-R Score SD") +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "11"),
+    aes(label = c("MRP", "Raw", ""), x = age_group, y = sd, color = provenance), family = "Times", seed = 810) +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample"), x = age_group, y = sd, color = provenance), family = "Times", seed = 810, nudge_y = -.5) +
+  geom_label_repel(
+    data = means_sds_and_ses %>% 
+  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample"), x = age_group, y = sd, color = provenance), family = "Times", seed = 810, nudge_y = .5) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) + 
+  geom_vline(xintercept = 7.5)
+```
+
+
+### Example IQ calculations
+
+#### Linearly transformed IQs
+
+All possible combinations
+```{r}
+
+cft_score <- 0:56  # Possible CFT 20-R scores
+age_group <- unique(means_sds_and_ses$age_group)
+
+# Function to calculate IQ for a given CFT score and columns of means and SDs
+iq <- function(cft_score, mean, sd) {
+  iq_score <- ((cft_score - mean) / sd) * 15 + 100
+  return(iq_score)
+}
+
+# Extract means and standard deviations for Manual and MRP
+manual_means <- means_sds_and_ses$Manual_mean
+manual_sds <- means_sds_and_ses$Manual_sd
+mrp_means <- means_sds_and_ses$MRP_mean
+mrp_sds <- means_sds_and_ses$MRP_sd
+
+
+iqs_linear <- expand.grid("age_group" = age_group, "CFT 20-R score" = cft_score) %>% 
+  mutate(IQ_MRP = round(iq(combinations$`CFT 20-R score`, mrp_means, mrp_sds)),
+         IQ_Manual = round(iq(combinations$`CFT 20-R score`, manual_means, manual_sds)),
+         IQ_dif = IQ_MRP - IQ_Manual,
+         IQ_dif_abs = abs(IQ_MRP - IQ_Manual)) %>% 
+  left_join(select(means_sds_and_ses, c(Manual_mean, MRP_mean, Manual_sd, MRP_sd, age_group)), by = "age_group") %>% 
+  arrange(-IQ_dif_abs)
+
+```
+
+Max difference between MRP and Manual
+```{r}
+iqs_linear <- iqs_linear %>% 
+  mutate(IQ_dif = IQ_MRP - IQ_Manual)
+```
+
+
+
+Selection for the manuscript
+```{r}
+iq <- function(cft_score, mean, sd) {
+  iq_score <- ((cft_score - mean) / sd) * 15 + 100
+  return(iq_score)
+}
+
+ManM_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$Manual_mean
+ManSD_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$Manual_sd
+
+MRPM_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$MRP_mean
+MRPSD_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$MRP_sd
+
+
+ManM_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$Manual_mean
+ManSD_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$Manual_sd
+
+MRPM_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$MRP_mean
+MRPSD_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$MRP_sd
+
+
+ManM_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$Manual_mean
+ManSD_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$Manual_sd
+
+MRPM_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$MRP_mean
+MRPSD_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$MRP_sd
+
+tribble(
+  ~"Age group", ~"CFT 20-R score",        ~"IQ (MRP)",            ~"IQ (Manual)",
+  "15",                18,           iq(18, MRPM_1, MRPSD_1),  iq(18, ManM_1, ManSD_1),
+  "15",                36,           iq(36, MRPM_1, MRPSD_1),  iq(36, ManM_1, ManSD_1),
+  "15",                51,           iq(51, MRPM_1, MRPSD_1),  iq(51, ManM_1, ManSD_1),
+  "30-34",             19,           iq(19, MRPM_2, MRPSD_2),  iq(19, ManM_2, ManSD_2),
+  "30-34",             37,           iq(37, MRPM_2, MRPSD_2),  iq(37, ManM_2, ManSD_2),
+  "30-34",             52,           iq(52, MRPM_2, MRPSD_2),  iq(52, ManM_2, ManSD_2),
+  "60-64",             12,           iq(12, MRPM_3, MRPSD_3),  iq(12, ManM_3, ManSD_3),
+  "60-64",             30,           iq(30, MRPM_3, MRPSD_3),  iq(30, ManM_3, ManSD_3),
+  "60-64",             46,           iq(46, MRPM_3, MRPSD_3),  iq(46, ManM_3, ManSD_3)
+) %>% kable(digits = 0) %>% kable_styling(full_width = F)
+```
+
+
+
+#### Normalised (area transformed / normal rank transformed) IQs
+
+```{r}
+iq_norm_table <- sim_pop_sample_with_draws %>% 
+  mutate(raw_score = round(.prediction),
+         age_group = case_when(
+                         age == 11 ~ '11',
+                         age == 12 ~ '12',
+                         age == 13 ~ '13',
+                         age == 14 ~ '14',
+                         age == 15 ~ '15',
+                         age == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>% 
+  filter(!is.na(age_group)) %>% 
+  group_by(age_group, .draw) %>% 
+  mutate(percentile = ecdf(raw_score)(raw_score)) %>%
+  mutate(iq_score_tr_ag = qnorm(percentile) * 15 + 100) %>% 
+  group_by(age_group, raw_score) %>% 
+  summarise(percentile = mean(percentile),
+            iq_score_tr_ag = mean(iq_score_tr_ag)) %>% 
+  mutate(iq_score_tr_ag = ifelse(is.finite(iq_score_tr_ag), iq_score_tr_ag, NA),
+         iq_score_ag_tr = qnorm(percentile) * 15 + 100,
+         iq_score = round(coalesce(iq_score_tr_ag, iq_score_ag_tr))) %>% 
+  select(age_group, raw_score, iq_score)
+```
+
+
+
+
+# Session info
+```{r}
+sessionInfo()
+```
+
+
+
+

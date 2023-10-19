@@ -1,0 +1,581 @@
+---
+title: "Supplementary analyses"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	error = TRUE
+)
+
+```
+
+Load dependencies and preprocessed datasets
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(kableExtra)
+library(brms)
+library(tidybayes)
+library(marginaleffects)
+
+load("../data/preprocessed/tl.Rda")
+load("../data/preprocessed/census.Rda")
+
+
+options(mc.cores = 4, 
+        brms.backend = "cmdstanr",
+        scipen = 999,
+        digits = 4)
+
+# windowsFonts(Times = windowsFont("Times New Roman"))
+theme_set(theme_gray(base_size = 14, base_family = "Times"))
+
+# exclude first twins to avoid twin dependency issues
+tl_no_1st_twins <- tl %>% 
+ filter(ptyp != 1)
+
+
+
+```
+
+# Multilevel model predictions without poststratification
+
+In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), we superimposed another line for non-poststratified predictions on the plot seen in the Tutorial document. We did this using a function at an earlier stage of the project to facilitate comparing several models:
+
+## Function for plotting MRP results and comparing them with raw values and MR predictions
+
+```{r}
+mrp_age_norms <- function(ps_table, ps_variables, brm) {
+
+  
+if ("cft_total" %in% colnames(brm$data)) {
+  brm$data <- brm$data %>%
+    rename(cft = cft_total)
+}
+  norming_sample <- brm$data
+  
+
+  
+  sim_pop_sample <- ps_table %>%
+  filter(census_n != 0) %>%
+  ungroup() %>% 
+  sample_n(size = 100000, # 67738120 is total census_n in PS table
+           weight = census_n, 
+           replace = TRUE) %>% 
+    select(all_of(ps_variables))
+  
+  
+  sim_pop_sample_with_draws <- sim_pop_sample %>%
+  add_predicted_draws(brm, ndraws = 100, seed = 810,
+                      allow_new_levels = T) %>% 
+  mutate(.prediction = case_when(.prediction < 0 ~ 0, # censor predictions which go over scale limits
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction))
+
+  
+  means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
+    group_by(age, .draw) %>% 
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise(MRP_mean = mean(mean_prediction), 
+              MRP_seOfmean = sd(mean_prediction), 
+              MRP_sd = sqrt(mean(sd_prediction^2)), 
+              MRP_seOfsd = sd(sd_prediction))
+  
+  sim_norming_sample <- brm$data %>% 
+    select(all_of(ps_variables)) %>% 
+    mutate(age = floor(age)) %>% 
+    group_by_all() %>%
+    summarise(Raw_n = n()) %>% 
+    ungroup() %>% 
+    sample_n(size = 100000, weight = Raw_n, replace = TRUE) 
+  
+  sim_norming_sample_with_draws <- sim_norming_sample %>% 
+    select(all_of(ps_variables))  %>%
+  add_predicted_draws(brm, ndraws = 100, seed = 810,
+                      allow_new_levels = T) %>% 
+  mutate(.prediction = case_when(.prediction < 0 ~ 0, # censor predictions which go over scale limits
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction))
+  
+  means_sds_and_ses_MR <- sim_norming_sample_with_draws %>%
+    mutate(age = floor(age)) %>%
+    group_by(age, .draw) %>% 
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise(MR_mean = mean(mean_prediction), 
+              MR_seOfmean = sd(mean_prediction), 
+              MR_sd = sqrt(mean(sd_prediction^2)), 
+              MR_seOfsd = sd(sd_prediction))
+  
+  means_sds_and_ses_raw <- norming_sample  %>%
+    mutate(age = floor(age)) %>%
+    group_by(age) %>% 
+    summarise(Raw_n = n(), 
+              Raw_mean = mean(cft, na.rm = TRUE), 
+              Raw_sd = sd(cft, na.rm = TRUE), 
+              Raw_seOfmean = Raw_sd/sqrt(Raw_n))
+  
+  means_ns_sds_and_ses <- means_sds_and_ses_MRP  %>%
+    left_join(means_sds_and_ses_MR, by = c("age")) %>% 
+    left_join(means_sds_and_ses_raw, by = "age") 
+  
+  means_ns_sds_and_ses %>% 
+    filter(age <= 65) %>% 
+    pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)") 
+  
+  means_plot <- means_ns_sds_and_ses %>%
+  filter(age <= 65) %>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)")  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*seOfmean, ymax = mean + 1.96*seOfmean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3)) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)")  %>% group_by(source) %>% filter(age == 11),
+    aes(label = source, x = as.factor(age), y = mean, color = source), family = "Times", seed = 810) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none") +
+  scale_colour_manual(values = c("#cc79a7", "#0072b2", "#e69f00")) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+  
+  SDs_plot <- means_ns_sds_and_ses %>%
+  filter(age <= 65) %>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)") %>%
+  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*seOfsd, ymax = sd + 1.96*seOfsd), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3)) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)") %>% group_by(source) %>% filter(age == 11),
+    aes(label = source, x = as.factor(age), y = sd, color = source), family = "Times", seed = 810) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#cc79a7", "#0072b2", "#e69f00")) +
+  labs(x = "Age", y = "CFT 20-R Score SD")
+  
+  SEs_plot <- means_ns_sds_and_ses %>%
+  filter(age <= 65) %>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)") %>%
+  filter(source != "census") %>%
+  ggplot(aes(x = as.factor(age), y = seOfmean, group = source, colour = source)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3, shape = 18) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "(.*)_(.*)") %>% group_by(source) %>% filter(age == 11),
+    aes(label = source, x = as.factor(age), y = seOfmean, color = source), family = "Times", seed = 810)  +
+    scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+    theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#cc79a7", "#0072b2", "#e69f00")) +
+  labs(x = "Age", y = "SE of Mean")
+  
+  
+  mrp_overall_estimates <- sim_pop_sample_with_draws %>%
+    filter(age <= 65) %>% 
+    group_by(.draw) %>%
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise("MRP Mean" = mean(mean_prediction),
+              "MRP SE of Mean" = sd(mean_prediction),
+              "MRP SD" = sqrt(mean(sd_prediction^2)),
+              "MRP SE of SD" = sd(sd_prediction))
+  
+  mr_overall_estimates <- sim_norming_sample_with_draws %>%
+    filter(age <= 65) %>% 
+    group_by(.draw) %>%
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise("MR Mean" = mean(mean_prediction),
+              "MR SE of Mean" = sd(mean_prediction),
+              "MR SD" = sqrt(mean(sd_prediction^2)),
+              "MR SE of SD" = sd(sd_prediction))
+  
+    
+  return(list(
+    means_plot = means_plot,
+    SDs_plot = SDs_plot,
+    SEs_plot = SEs_plot,
+    mrp_overall_estimates = mrp_overall_estimates,
+    mr_overall_estimates = mr_overall_estimates))
+}
+```
+
+## Fit/load the prediction model
+```{r}
+brm_age_by_educ <-
+  brm(bf(
+      cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
+      chains = 4,
+      iter = 5000,
+      family = gaussian(),
+      seed = 810,
+      control = list(adapt_delta = 0.99),
+      file = "../brms/brm_age_by_educ_18_delta_99_5000",
+      file_refit = "never",
+      data = tl_no_1st_twins)
+
+```
+
+
+## Use the mrp_age_norms function
+```{r, fig.width = 9}
+
+# debug(mrp_age_norms)
+mrp_age_norms(ps_table = census, 
+              ps_variables = c("age", "educ", "mig", "male"),
+              brm = brm_age_by_educ)
+```
+Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
+
+```{r}
+browseURL("https://youtu.be/U_ugnhUFBE8?t=16")
+```
+
+
+
+
+
+
+
+
+# One person per family
+
+Since the TwinLife sample is composed of families, one could argue that the dependence among estimates of family members violates the i.i.d assumption and leads to underestimation of SEs. To check the robustness of our results against this violation, we ran the same MRP but with only one person chosen randomly out of each family, thus eliminating the dependency. 
+
+## Fit/load the prediction model
+```{r}
+tl_no_1st_twins_1_per_fid <- tl_no_1st_twins %>%
+  group_by(fid) %>%
+  sample_n(1)
+
+brm_age_by_educ_1_per_fid <-
+  brm(bf(
+      cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
+      chains = 4,
+      iter = 6000,
+      family = gaussian(),
+      seed = 810,
+      control = list(adapt_delta = 0.99),
+      file = "../brms/brm_age_by_educ_1_per_fid",
+      file_refit = "never",
+      data = tl_no_1st_twins_1_per_fid) %>%
+  add_criterion("loo")
+```
+
+
+## Compare with raw and regular MRP
+```{r, fig.width = 9}
+sim_pop_sample1 <- census %>% 
+  sample_n(size = 100000, # total census_n in the PS table is 67738120
+           weight = census_n, 
+           replace = TRUE)
+
+sim_pop_sample_with_draws1 <- sim_pop_sample1 %>%
+  add_predicted_draws(brm_age_by_educ, 
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = round(case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction)))
+
+
+means_sds_and_ses_MRP1 <- sim_pop_sample_with_draws1 %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(MRP1_mean = mean(mean_prediction), 
+            MRP1_se_of_mean = sd(mean_prediction), 
+            MRP1_sd = sqrt(mean(sd_prediction^2)), 
+            MRP1_se_of_sd = sd(sd_prediction))
+
+
+sim_pop_sample2 <- census %>% 
+  sample_n(size = 100000, # total census_n in the PS table is 67738120
+           weight = census_n, 
+           replace = TRUE)
+
+sim_pop_sample_with_draws2 <- sim_pop_sample2 %>%
+  add_predicted_draws(brm_age_by_educ_1_per_fid, 
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = round(case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction)))
+
+
+means_sds_and_ses_MRP2 <- sim_pop_sample_with_draws2 %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(MRP2_mean = mean(mean_prediction), 
+            MRP2_se_of_mean = sd(mean_prediction), 
+            MRP2_sd = sqrt(mean(sd_prediction^2)), 
+            MRP2_se_of_sd = sd(sd_prediction))
+
+means_sds_and_ses_tl <- tl %>% 
+  group_by(age0100) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %>% 
+  rename(age = age0100)
+
+means_ns_sds_and_ses <- means_sds_and_ses_MRP1 %>% 
+  left_join(means_sds_and_ses_MRP2, by = c("age")) %>% 
+  left_join(means_sds_and_ses_tl, by = "age") 
+
+
+means_ns_sds_and_ses%>%
+  filter(age <= 65) %>% 
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>%
+  filter(source != "census" & source != "abs") %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3)) +
+  geom_label_repel(
+    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(source != "census" & source != "abs") %>% group_by(source) %>% filter(age == 11),
+    aes(label = c("MRP, full sample", "MRP, 1 person per family", "Raw"), x = as.factor(age), y = mean, color = source), family = "Times", seed = 810) +
+  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+    panel.grid.minor.x = element_blank(),
+    text = element_text(family = "Times"),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#0072b2", "#56b4e9", "#e69f00")) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+means_ns_sds_and_ses <- means_ns_sds_and_ses %>% 
+  mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
+         dif_mrp_raw = MRP1_mean - Raw_mean,
+         dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
+
+mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)
+mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)
+mean(means_ns_sds_and_ses$dif_mrps_abs)
+```
+
+Despite shrinking the sample size from N = 10059 to 4044, the results seem to be largely unchanged. Only the SEs increased as would be expected.
+
+
+
+# Distribution of the simulated norm sample
+
+## 100000 simulated N, 1000 draws, no aggregation
+```{r}
+set.seed(810)
+sim_pop_sample <- census %>%
+  filter(census_n != 0) %>%
+  ungroup() %>% 
+  sample_n(size = 100000, # 67738120 is total census_n in PS table
+           weight = census_n, 
+           replace = TRUE) %>% 
+  select(-census_n)
+
+sim_pop_sample_with_draws <- sim_pop_sample %>%
+  add_predicted_draws(brm_age_by_educ, 
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction))
+
+
+sim_pop_sample_with_draws %>% ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency")
+```
+
+
+```{r, fig.height=100}
+sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black")+ 
+  facet_wrap(~ age, ncol = 3)
+```
+
+## 100000 simulated N, 1 draw
+```{r}
+set.seed(810)
+sim_pop_sample <- census %>%
+  filter(census_n != 0) %>%
+  ungroup() %>% 
+  sample_n(size = 100000, # 67738120 is total census_n in PS table
+           weight = census_n, 
+           replace = TRUE) %>% 
+  select(-census_n)
+
+sim_pop_sample_with_draws <- sim_pop_sample %>%
+  add_predicted_draws(brm_age_by_educ, 
+                      ndraws = 1, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction))
+
+
+sim_pop_sample_with_draws %>% ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency")
+```
+
+
+```{r, fig.height=100}
+sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black") + 
+  facet_wrap(~ age, ncol = 3)
+```
+
+
+
+
+
+## 100000 simulated N, 1000 draws, group_by(.row)
+```{r}
+set.seed(810)
+sim_pop_sample <- census %>%
+  filter(census_n != 0) %>%
+  ungroup() %>% 
+  sample_n(size = 100000, # 67738120 is total census_n in PS table
+           weight = census_n, 
+           replace = TRUE) %>% 
+  select(-census_n) 
+
+sim_pop_sample_with_draws <- sim_pop_sample %>%
+  add_predicted_draws(brm_age_by_educ, 
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %>% 
+  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
+                                 .prediction > 56 ~ 56,
+                                 TRUE ~ .prediction))
+
+sim_pop_sample_with_draws %>%
+  mutate(age_group = case_when(
+    age >= 11 & age <= 20 ~ "11-20",
+    age >= 21 & age <= 50 ~ "21-50",
+    age > 50  ~ ">50")) %>%
+  group_by(.row, age_group) %>%
+  summarise(.prediction = mean(.prediction)) %>%
+  ggplot(aes(x = .prediction, fill = factor(age_group))) +
+  geom_histogram(binwidth = 1, color = "black", position = "stack") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency")
+
+
+
+
+
+```
+
+```{r}
+sim_pop_sample_with_draws  %>%
+  group_by(.row, educ) %>%
+  summarise(.prediction = mean(.prediction)) %>%  
+  ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency") + 
+  facet_wrap(~ educ, ncol = 3, scale = "free_y")
+```
+
+
+
+
+```{r}
+sim_pop_sample_with_draws  %>%
+  group_by(.row) %>%
+  summarise(.prediction = mean(.prediction)) %>% 
+  ggplot(aes(x = .prediction, fill = factor(educ))) +
+  geom_histogram(binwidth = 1, color = "black", position = "stack") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency")
+```
+
+
+
+
+
+```{r}
+sim_pop_sample_with_draws  %>% 
+  group_by(.row) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            se_pred = sd(.prediction)) %>% 
+  mutate(d = mean_prediction/se_pred) %>% ggplot(aes(x = d)) +
+  geom_histogram(binwidth = .2, color = "black", fill = "lightblue") +
+  labs(x = "CFT 20-R Score",
+       y = "Frequency")
+```
+
+
+
+```{r, fig.height=100}
+sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
+  geom_histogram(binwidth = 1, color = "black")+ 
+  facet_wrap(~ age, ncol = 3)
+```
+
+
+
+
+# Session info
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

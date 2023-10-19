@@ -1,0 +1,37 @@
+name: MRP_Norming
+output_dir: docs
+navbar:
+  left:
+  - text: Home
+    href: "index.html"
+    
+  - text: Data preprocessing
+    href: "01_data_cleaning.html"  
+    
+  - text: Tutorial
+    href: "02_tutorial.html"
+    
+  - text: Supplementary analyses
+    href: "03_supplements.html"
+    
+
+  right:
+  - text: ''
+    icon: fa-github
+    href: https://github.com/TaymAlsalti/MRP_norming
+output:
+  html_document:
+    css: styles.css
+    theme: cosmo
+    highlight: textmate 
+exclude:
+- '*.rda'
+- '*.pdf'
+- '*.dta'
+- '*.csv'
+- '*.csl'
+- '*.bibtex'
+- 'styles.css'
+- "renv.lock"
+- '*.rds'
+- archive
