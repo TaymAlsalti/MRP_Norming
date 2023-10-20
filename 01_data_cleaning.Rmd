@@ -25,11 +25,12 @@ library(kableExtra)
 
 # TwinLife sample
 
+## preprocessing
 ```{r}
 # Load dataset and define missing values as NA without losing the different types of missing values in the dataset
-tl_1 <- haven::read_dta("../data/raw/ZA6701_person_wid1_v6-0-0.dta") %>% 
+tl_1 <- haven::read_dta("../unshareable_data/raw/ZA6701_person_wid1_v6-0-0.dta") %>% 
   # get variables specifying own, mother's, and father's birthplace, respectively, from an older version of the TL sample
-  left_join(haven::read_sav("../data/raw/ZA6701_de_person_v2-0-0.sav") %>% 
+  left_join(haven::read_sav("../unshareable_data/raw/ZA6701_de_person_v2-0-0.sav") %>% 
                               select(pid, mig0100, mig0300, mig0400), by = "pid") %>% 
   codebook::detect_missing(ninety_nine_problems = T) %>% 
   # total sum scores of the sum scores of all 4 subtests
@@ -128,7 +129,7 @@ tl <- tl_2 %>%
         )
 
 # save dataset
-save(tl, file="../data/preprocessed/tl.Rda")
+save(tl, file="../unshareable_data/preprocessed/tl.Rda")
 ```
 
 ## synthetic TL sample for the sake of reproducing the tutorial code
@@ -147,7 +148,7 @@ save(tl, file="../data/preprocessed/tl.Rda")
 # synthetic_tl <- synthetic_tl$syn
 
 # save synthetic dataset
-# save(synthetic_tl, file="../data/preprocessed/synthetic_tl.Rda")
+# save(synthetic_tl, file="data/simulated/synthetic_tl.Rda")
 ```
 
 
@@ -178,8 +179,8 @@ The raw means and SDs  manually extracted from the CFT-20R manual had to be reda
 #             Manual_sd = sqrt(mean(sd_manual^2)),
 #             Manual_se_of_mean = Manual_sd/sqrt(Manual_n))
 
-#save(manual_norms, file="../data/preprocessed/manual_norms.Rda")
-#write.csv(manual_norms, file = "../data/preprocessed/manual_norms.csv")
+#save(manual_norms, file="../unshareable_data/preprocessed/manual_norms.Rda")
+#write.csv(manual_norms, file = "../unshareable_data/preprocessed/manual_norms.csv")
 ```
 
 
@@ -187,7 +188,7 @@ The raw means and SDs  manually extracted from the CFT-20R manual had to be reda
 # Census tables
 ## main poststratification table
 ```{r}
-census_school_type_raw <- readxl::read_excel("../data/raw/729305_Zensus2011_Bildung_Schulform.xlsx", 
+census_school_type_raw <- readxl::read_excel("data/raw/729305_Zensus2011_Bildung_Schulform.xlsx", 
     sheet = "Migration und Schulform") 
 
 census_school_type <- census_school_type_raw %>% 
@@ -229,7 +230,7 @@ census_school_type <- census_school_type_raw %>%
 
 
 
-census_ISCED_raw <- readxl::read_excel("../data/raw/729305_Zensus2011_Bildung_ISCED.xlsx", sheet = "Migration und ISCED")
+census_ISCED_raw <- readxl::read_excel("data/raw/729305_Zensus2011_Bildung_ISCED.xlsx", sheet = "Migration und ISCED")
 
 census_ISCED <- census_ISCED_raw %>% 
   set_names(paste0("var", 1:133)) %>% 
@@ -285,7 +286,7 @@ census_ISCED_19_79 <- census_ISCED %>%
 census <- census_school_type_11_18 %>% 
   bind_rows(census_ISCED_19_79) 
 
-save(census, file="../data/preprocessed/census.Rda")
+save(census, file="data/preprocessed/census.Rda")
 
 # print random 14 rows/cells/subgroups/combinations out of the total 6528 in the poststratification table
 census %>% slice_sample(n = 14) %>% kable %>% kable_styling(full_width = FALSE)
@@ -371,7 +372,7 @@ mig_marginals <- census_school_type_raw %>%
                      
 census_marginals <- bind_rows(age_marginals, educ_marginals, sex_marginals, mig_marginals)
 
-save(census_marginals, file="../data/preprocessed/census_marginals.Rda")
+save(census_marginals, file="data/preprocessed/census_marginals.Rda")
 
 ```
 

@@ -29,11 +29,11 @@ library(tidybayes)
 library(marginaleffects)
 library(bayesplot)
 
-load("../data/preprocessed/tl.Rda")
-load("../data/preprocessed/manual_norms.Rda")
-load("../data/preprocessed/census.Rda")
-load("../data/preprocessed/census_marginals.Rda")
-# load("../data/preprocessed/synthetic_tl.Rda") # load this if you're working with the synthetic sample we provided
+load("../unshareable_data/preprocessed/tl.Rda")
+load("../unshareable_data/preprocessed/manual_norms.Rda")
+load("data/preprocessed/census.Rda")
+load("data/preprocessed/census_marginals.Rda")
+
 
 
 options(mc.cores = 4, 
@@ -44,9 +44,30 @@ options(mc.cores = 4,
 # windowsFonts(Times = windowsFont("Times New Roman"))
 theme_set(theme_gray(base_size = 14, base_family = "Times"))
 
-# exclude first twins to avoid twin dependency issues
+# exclude first twins to avoid twin dependency issues and add variable containing the age groups from the manual
 tl_no_1st_twins <- tl %>% 
- filter(ptyp != 1)
+ filter(ptyp != 1) %>% 
+ mutate(age_group = case_when(
+                         age0100 == 11 ~ '11',
+                         age0100 == 12 ~ '12',
+                         age0100 == 13 ~ '13',
+                         age0100 == 14 ~ '14',
+                         age0100 == 15 ~ '15',
+                         age0100 == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_))
+
+# alternatively, import the synthetic dataset
+# load("data/simulated/synthetic_tl.Rda")
 ```
 
 # Distributional disparities
@@ -204,7 +225,7 @@ Terms of this form `(1 | variable)` represent random intercepts, `(male)` was in
 
 ```{r}
 # run on the synthetic sample "synthetic_tl" we provide if you do not have access to the TL data
-# alternatively, load the .rds file for the model we ran on the synthetic data
+
 
 brm_age_by_educ <-
   brm(bf(
@@ -215,10 +236,13 @@ brm_age_by_educ <-
       iter = 5000,
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = "../brms/brm_age_by_educ_18_delta_99_5000",
+      file = "../unshareable_data/brms/brm_age_by_educ_18_delta_99_5000",
       file_refit = "never",
       data = tl_no_1st_twins) %>% 
   add_criterion("loo")
+
+# alternatively, load the .rds file for the model we ran on the synthetic data
+# brm_age_by_educ <- readRDS("data/brms/brm_age_by_educ_18_delta_99_5000_synth.rds")
 ```
 
 ## Some model exploration
@@ -248,25 +272,7 @@ ppc_pit_ecdf(y, yrep, prob = 0.99, plot_diff = FALSE)
 
 ```{r, fig.width = 20, fig.height=20}
 t <- tl_no_1st_twins %>% 
-  mutate(age_group = case_when(
-                         age0100 == 11 ~ '11',
-                         age0100 == 12 ~ '12',
-                         age0100 == 13 ~ '13',
-                         age0100 == 14 ~ '14',
-                         age0100 == 15 ~ '15',
-                         age0100 == 16 ~ '16',
-                         age >= 17 & age <= 19 ~ '17-19',
-                         age >= 20 & age <= 24 ~ '20-24',
-                         age >= 25 & age <= 29 ~ '25-29',
-                         age >= 30 & age <= 34 ~ '30-34',
-                         age >= 35 & age <= 39 ~ '35-39',
-                         age >= 40 & age <= 44 ~ '40-44',
-                         age >= 45 & age <= 49 ~ '45-49',
-                         age >= 50 & age <= 54 ~ '50-54',
-                         age >= 55 & age <= 59 ~ '55-59',
-                         age >= 60 & age <= 64 ~ '60-64',
-                         TRUE ~ NA_character_)) %>% 
-  filter(!is.na(age_group))
+ filter(!is.na(age_group))
 
 yrep <- posterior_predict(brm_age_by_educ, newdata = t, ndraws = 1000)
 
@@ -356,7 +362,6 @@ ggplot(data = x %>% filter(!is.na(school_type) & age <= 18), aes(x = age, y = Es
   labs(x = "Age", y = "CFT 20-R Score", colour = "School Type")  +
 theme(text = element_text(family = "Times")) +
   scale_color_manual(values = c("#000000","#004949","#009292","#ff6db6","#ffb6db", "#490092","#006ddb"))
-ggsave("s.png", height = 15, width = 24)
 ```
 
 
@@ -414,6 +419,9 @@ sim_pop_sample_with_draws <- sim_pop_sample %>%
   mutate(.prediction = round(case_when(.prediction < 0 ~ 0, 
                                  .prediction > 56 ~ 56,
                                  TRUE ~ .prediction)))
+
+# alternatively, import the version simulated using the brm we ran on the actual TL data
+# sim_pop_sample_with_draws <- read_rds("data/simulated/sim_pop_sample_with_draws.rds")
 ```
 
 This yields a dataframe in long format with 100000 (number of simulated participants) * 1000 (number of draws from the posterior) = 100 million rows. `allow_new_levels = TRUE` is necessary for estimating the outcome for combinations of the 4 predictors which do not occur in the actual TL sample. This is inevitable in detailed enough poststratification tables and was the case here as the poststratification table we used had 6528  subcategories/rows. It wasn't the product of the number of categories of the four predictors $69*2*15*6$ because a lot of combinations of the variables were impossible, e.g., a PhD at the age of 11. The `mutate()` call serves to set all predicted CFT 20-R 20-R score scores which go below or above the scale limits (0 and 56, respectively), to those scale limits.
@@ -574,30 +582,12 @@ means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% # the same one from abov
 
 
 means_sds_and_ses_tl <- tl_no_1st_twins %>% 
-  mutate(age_group = case_when(
-                         age0100 == 11 ~ '11',
-                         age0100 == 12 ~ '12',
-                         age0100 == 13 ~ '13',
-                         age0100 == 14 ~ '14',
-                         age0100 == 15 ~ '15',
-                         age0100 == 16 ~ '16',
-                         age0100 >= 17 & age0100 <= 19 ~ '17-19',
-                         age0100 >= 20 & age0100 <= 24 ~ '20-24',
-                         age0100 >= 25 & age0100 <= 29 ~ '25-29',
-                         age0100 >= 30 & age0100 <= 34 ~ '30-34',
-                         age0100 >= 35 & age0100 <= 39 ~ '35-39',
-                         age0100 >= 40 & age0100 <= 44 ~ '40-44',
-                         age0100 >= 45 & age0100 <= 49 ~ '45-49',
-                         age0100 >= 50 & age0100 <= 54 ~ '50-54',
-                         age0100 >= 55 & age0100 <= 59 ~ '55-59',
-                         age0100 >= 60 & age0100 <= 64 ~ '60-64',
-                         TRUE ~ NA_character_)) %>%
+  filter(!is.na(age_group)) %>%
   group_by(age_group) %>% 
   summarise(Raw_n = n(), 
             Raw_mean = mean(cft, na.rm = T), 
             Raw_sd = sd(cft, na.rm = T), 
-            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %>% 
-  filter(!is.na(age_group))
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) 
 
 
 
@@ -682,94 +672,36 @@ means_sds_and_ses %>%
 ```
 
 
-### Example IQ calculations
+### IQ calculations
+
+Rather than calculating IQs for all possible CFT 20-R scores (0-56), we restrict our calculations to those which occur in our data.
 
 #### Linearly transformed IQs
 
-All possible combinations
 ```{r}
-
-cft_score <- 0:56  # Possible CFT 20-R scores
-age_group <- unique(means_sds_and_ses$age_group)
-
-# Function to calculate IQ for a given CFT score and columns of means and SDs
 iq <- function(cft_score, mean, sd) {
   iq_score <- ((cft_score - mean) / sd) * 15 + 100
   return(iq_score)
 }
 
-# Extract means and standard deviations for Manual and MRP
-manual_means <- means_sds_and_ses$Manual_mean
-manual_sds <- means_sds_and_ses$Manual_sd
-mrp_means <- means_sds_and_ses$MRP_mean
-mrp_sds <- means_sds_and_ses$MRP_sd
 
-
-iqs_linear <- expand.grid("age_group" = age_group, "CFT 20-R score" = cft_score) %>% 
-  mutate(IQ_MRP = round(iq(combinations$`CFT 20-R score`, mrp_means, mrp_sds)),
-         IQ_Manual = round(iq(combinations$`CFT 20-R score`, manual_means, manual_sds)),
-         IQ_dif = IQ_MRP - IQ_Manual,
-         IQ_dif_abs = abs(IQ_MRP - IQ_Manual)) %>% 
+iqs_linear <- tl_no_1st_twins %>% 
+  filter(!is.na(age_group)) %>% 
+  group_by(age_group, cft) %>% 
+  summarise(n()) %>% 
+  select(age_group, cft) %>% 
   left_join(select(means_sds_and_ses, c(Manual_mean, MRP_mean, Manual_sd, MRP_sd, age_group)), by = "age_group") %>% 
-  arrange(-IQ_dif_abs)
+  mutate(MRP_IQ_linear = round(iq(cft, MRP_mean, MRP_sd)),
+         Manual_IQ_linear = round(iq(cft, Manual_mean, Manual_sd)),
+         IQ_linear_dif = MRP_IQ_linear - Manual_IQ_linear,
+         IQ_linear_dif_abs = abs(MRP_IQ_linear - Manual_IQ_linear))
 
 ```
-
-Max difference between MRP and Manual
-```{r}
-iqs_linear <- iqs_linear %>% 
-  mutate(IQ_dif = IQ_MRP - IQ_Manual)
-```
-
-
-
-Selection for the manuscript
-```{r}
-iq <- function(cft_score, mean, sd) {
-  iq_score <- ((cft_score - mean) / sd) * 15 + 100
-  return(iq_score)
-}
-
-ManM_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$Manual_mean
-ManSD_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$Manual_sd
-
-MRPM_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$MRP_mean
-MRPSD_1 <- (means_sds_and_ses %>% filter(age_group == "15"))$MRP_sd
-
-
-ManM_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$Manual_mean
-ManSD_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$Manual_sd
-
-MRPM_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$MRP_mean
-MRPSD_2 <- (means_sds_and_ses %>% filter(age_group == "30-34"))$MRP_sd
-
-
-ManM_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$Manual_mean
-ManSD_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$Manual_sd
-
-MRPM_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$MRP_mean
-MRPSD_3 <- (means_sds_and_ses %>% filter(age_group == "60-64"))$MRP_sd
-
-tribble(
-  ~"Age group", ~"CFT 20-R score",        ~"IQ (MRP)",            ~"IQ (Manual)",
-  "15",                18,           iq(18, MRPM_1, MRPSD_1),  iq(18, ManM_1, ManSD_1),
-  "15",                36,           iq(36, MRPM_1, MRPSD_1),  iq(36, ManM_1, ManSD_1),
-  "15",                51,           iq(51, MRPM_1, MRPSD_1),  iq(51, ManM_1, ManSD_1),
-  "30-34",             19,           iq(19, MRPM_2, MRPSD_2),  iq(19, ManM_2, ManSD_2),
-  "30-34",             37,           iq(37, MRPM_2, MRPSD_2),  iq(37, ManM_2, ManSD_2),
-  "30-34",             52,           iq(52, MRPM_2, MRPSD_2),  iq(52, ManM_2, ManSD_2),
-  "60-64",             12,           iq(12, MRPM_3, MRPSD_3),  iq(12, ManM_3, ManSD_3),
-  "60-64",             30,           iq(30, MRPM_3, MRPSD_3),  iq(30, ManM_3, ManSD_3),
-  "60-64",             46,           iq(46, MRPM_3, MRPSD_3),  iq(46, ManM_3, ManSD_3)
-) %>% kable(digits = 0) %>% kable_styling(full_width = F)
-```
-
-
 
 #### Normalised (area transformed / normal rank transformed) IQs
 
 ```{r}
-iq_norm_table <- sim_pop_sample_with_draws %>% 
+iqs_normalised <- sim_pop_sample_with_draws %>% 
   mutate(raw_score = round(.prediction),
          age_group = case_when(
                          age == 11 ~ '11',
@@ -798,9 +730,27 @@ iq_norm_table <- sim_pop_sample_with_draws %>%
             iq_score_tr_ag = mean(iq_score_tr_ag)) %>% 
   mutate(iq_score_tr_ag = ifelse(is.finite(iq_score_tr_ag), iq_score_tr_ag, NA),
          iq_score_ag_tr = qnorm(percentile) * 15 + 100,
-         iq_score = round(coalesce(iq_score_tr_ag, iq_score_ag_tr))) %>% 
-  select(age_group, raw_score, iq_score)
+         MRP_IQ_normalised = round(coalesce(iq_score_tr_ag, iq_score_ag_tr))) %>% 
+  select(age_group, raw_score, MRP_IQ_normalised) %>% 
+  rename("cft" = raw_score)
 ```
+
+#### joined
+```{r}
+iq_table <- iqs_linear %>% 
+  left_join(iqs_normalised, by = c("age_group", "cft")) %>% 
+  mutate(IQ_MRP_abs_dif = abs(MRP_IQ_linear - MRP_IQ_normalised),
+         Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) %>%
+  arrange(-IQ_linear_dif_abs)
+
+
+mean(iq_table$IQ_linear_dif_abs)
+mean(iq_table$IQ_MRP_abs_dif)
+
+
+iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif_abs))
+```
+
 
 
 

@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-09-21" />
+<meta name="date" content="2023-10-20" />
 
 <title>Data preprocessing code</title>
 
@@ -339,7 +339,7 @@ div.tocify {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/TaymAlsalti/MRP_norming">
+  <a href="https://github.com/TaymAlsalti/MRP_Norming">
     <span class="fa fa-github"></span>
      
     
@@ -355,7 +355,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Data preprocessing code</h1>
-<h4 class="date">2023-09-21</h4>
+<h4 class="date">2023-10-20</h4>
 
 </div>
 
@@ -373,10 +373,12 @@ library(tidyverse)
 library(kableExtra)</code></pre>
 <div id="twinlife-sample" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> TwinLife sample</h1>
+<div id="preprocessing" class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> preprocessing</h2>
 <pre class="r"><code># Load dataset and define missing values as NA without losing the different types of missing values in the dataset
-tl_1 &lt;- haven::read_dta(&quot;../data/raw/ZA6701_person_wid1_v6-0-0.dta&quot;) %&gt;% 
+tl_1 &lt;- haven::read_dta(&quot;../unshareable_data/raw/ZA6701_person_wid1_v6-0-0.dta&quot;) %&gt;% 
   # get variables specifying own, mother&#39;s, and father&#39;s birthplace, respectively, from an older version of the TL sample
-  left_join(haven::read_sav(&quot;../data/raw/ZA6701_de_person_v2-0-0.sav&quot;) %&gt;% 
+  left_join(haven::read_sav(&quot;../unshareable_data/raw/ZA6701_de_person_v2-0-0.sav&quot;) %&gt;% 
                               select(pid, mig0100, mig0300, mig0400), by = &quot;pid&quot;) %&gt;% 
   codebook::detect_missing(ninety_nine_problems = T) %&gt;% 
   # total sum scores of the sum scores of all 4 subtests
@@ -475,11 +477,12 @@ tl &lt;- tl_2 %&gt;%
         )
 
 # save dataset
-save(tl, file=&quot;../data/preprocessed/tl.Rda&quot;)</code></pre>
+save(tl, file=&quot;../unshareable_data/preprocessed/tl.Rda&quot;)</code></pre>
+</div>
 <div
 id="synthetic-tl-sample-for-the-sake-of-reproducing-the-tutorial-code"
-class="section level2" number="1.1">
-<h2><span class="header-section-number">1.1</span> synthetic TL sample
+class="section level2" number="1.2">
+<h2><span class="header-section-number">1.2</span> synthetic TL sample
 for the sake of reproducing the tutorial code</h2>
 <pre class="r"><code># reduced_tl &lt;- tl %&gt;% 
 #  filter(ptyp != 1) %&gt;%  
@@ -495,7 +498,7 @@ for the sake of reproducing the tutorial code</h2>
 # synthetic_tl &lt;- synthetic_tl$syn
 
 # save synthetic dataset
-# save(synthetic_tl, file=&quot;../data/preprocessed/synthetic_tl.Rda&quot;)</code></pre>
+# save(synthetic_tl, file=&quot;data/simulated/synthetic_tl.Rda&quot;)</code></pre>
 </div>
 </div>
 <div id="cft-manual-norms" class="section level1" number="2">
@@ -525,8 +528,8 @@ to share them.</p>
 #             Manual_sd = sqrt(mean(sd_manual^2)),
 #             Manual_se_of_mean = Manual_sd/sqrt(Manual_n))
 
-#save(manual_norms, file=&quot;../data/preprocessed/manual_norms.Rda&quot;)
-#write.csv(manual_norms, file = &quot;../data/preprocessed/manual_norms.csv&quot;)</code></pre>
+#save(manual_norms, file=&quot;../unshareable_data/preprocessed/manual_norms.Rda&quot;)
+#write.csv(manual_norms, file = &quot;../unshareable_data/preprocessed/manual_norms.csv&quot;)</code></pre>
 </div>
 <div id="census-tables" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Census tables</h1>
@@ -534,7 +537,7 @@ to share them.</p>
 number="3.1">
 <h2><span class="header-section-number">3.1</span> main
 poststratification table</h2>
-<pre class="r"><code>census_school_type_raw &lt;- readxl::read_excel(&quot;../data/raw/729305_Zensus2011_Bildung_Schulform.xlsx&quot;, 
+<pre class="r"><code>census_school_type_raw &lt;- readxl::read_excel(&quot;data/raw/729305_Zensus2011_Bildung_Schulform.xlsx&quot;, 
     sheet = &quot;Migration und Schulform&quot;) 
 
 census_school_type &lt;- census_school_type_raw %&gt;% 
@@ -576,7 +579,7 @@ census_school_type &lt;- census_school_type_raw %&gt;%
 
 
 
-census_ISCED_raw &lt;- readxl::read_excel(&quot;../data/raw/729305_Zensus2011_Bildung_ISCED.xlsx&quot;, sheet = &quot;Migration und ISCED&quot;)
+census_ISCED_raw &lt;- readxl::read_excel(&quot;data/raw/729305_Zensus2011_Bildung_ISCED.xlsx&quot;, sheet = &quot;Migration und ISCED&quot;)
 
 census_ISCED &lt;- census_ISCED_raw %&gt;% 
   set_names(paste0(&quot;var&quot;, 1:133)) %&gt;% 
@@ -632,7 +635,7 @@ census_ISCED_19_79 &lt;- census_ISCED %&gt;%
 census &lt;- census_school_type_11_18 %&gt;% 
   bind_rows(census_ISCED_19_79) 
 
-save(census, file=&quot;../data/preprocessed/census.Rda&quot;)
+save(census, file=&quot;data/preprocessed/census.Rda&quot;)
 
 # print random 14 rows/cells/subgroups/combinations out of the total 6528 in the poststratification table
 census %&gt;% slice_sample(n = 14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
@@ -659,177 +662,24 @@ census_n
 <tbody>
 <tr>
 <td style="text-align:right;">
-40
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-citizen, mig background from one parent
-</td>
-<td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-4240
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-58
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-no mig background
-</td>
-<td style="text-align:left;">
-isced 4a: post-secondary
-</td>
-<td style="text-align:right;">
-10060
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-43
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, no own mig background
-</td>
-<td style="text-align:left;">
-isced 3a: upper secondary, general
-</td>
-<td style="text-align:right;">
-0
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-70
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-citizen, mig background from both parents
-</td>
-<td style="text-align:left;">
-isced 2a: lower secondary
-</td>
-<td style="text-align:right;">
-0
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-41
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-foreigner, no own mig background
-</td>
-<td style="text-align:left;">
-isced 2a: lower secondary
-</td>
-<td style="text-align:right;">
-1790
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-43
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, no own mig background
-</td>
-<td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-2960
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-41
+64
 </td>
 <td style="text-align:left;">
 TRUE
 </td>
 <td style="text-align:left;">
 citizen, mig background from both parents
-</td>
-<td style="text-align:left;">
-isced 5a: tertiary, college etc.
-</td>
-<td style="text-align:right;">
-1030
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-49
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 4a: post-secondary
-</td>
-<td style="text-align:right;">
-1780
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-58
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, mig background from one parent
-</td>
-<td style="text-align:left;">
-isced 4a: post-secondary
-</td>
-<td style="text-align:right;">
-0
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-35
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-no mig background
 </td>
 <td style="text-align:left;">
 isced 6: PhD
 </td>
 <td style="text-align:right;">
-7900
+0
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-45
+59
 </td>
 <td style="text-align:left;">
 TRUE
@@ -841,46 +691,165 @@ citizen, own mig background
 isced 5b: tertiary, tech school etc.
 </td>
 <td style="text-align:right;">
-5100
+5030
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-43
+59
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-citizen, mig background from both parents
+citizen, own mig background
 </td>
 <td style="text-align:left;">
 isced 1: primary
 </td>
 <td style="text-align:right;">
-0
+3740
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-34
+59
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+no mig background
+</td>
+<td style="text-align:left;">
+isced 5a: tertiary, college etc.
+</td>
+<td style="text-align:right;">
+87020
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+no mig background
+</td>
+<td style="text-align:left;">
+isced 4a: post-secondary
+</td>
+<td style="text-align:right;">
+37130
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+no mig background
+</td>
+<td style="text-align:left;">
+isced 3a: upper secondary, general
+</td>
+<td style="text-align:right;">
+98820
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+24
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-citizen, mig background from both parents
+foreigner, own mig background
+</td>
+<td style="text-align:left;">
+isced 3a: upper secondary, general
+</td>
+<td style="text-align:right;">
+7190
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+15
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+citizen, own mig background
+</td>
+<td style="text-align:left;">
+at school: lower secondary
+</td>
+<td style="text-align:right;">
+3230
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+44
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+foreigner, own mig background
+</td>
+<td style="text-align:left;">
+isced 3b: upper secondary, vocational
+</td>
+<td style="text-align:right;">
+14250
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+48
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+no mig background
 </td>
 <td style="text-align:left;">
 isced 5b: tertiary, tech school etc.
 </td>
 <td style="text-align:right;">
-1270
+82390
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-57
+25
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+foreigner, no own mig background
+</td>
+<td style="text-align:left;">
+isced 4a: post-secondary
+</td>
+<td style="text-align:right;">
+960
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+23
 </td>
 <td style="text-align:left;">
 TRUE
@@ -892,7 +861,41 @@ foreigner, no own mig background
 isced 5b: tertiary, tech school etc.
 </td>
 <td style="text-align:right;">
+410
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+77
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+citizen, mig background from both parents
+</td>
+<td style="text-align:left;">
+isced 5b: tertiary, tech school etc.
+</td>
+<td style="text-align:right;">
 0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+17
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+citizen, own mig background
+</td>
+<td style="text-align:left;">
+no longer at school
+</td>
+<td style="text-align:right;">
+2590
 </td>
 </tr>
 </tbody>
@@ -979,27 +982,28 @@ mig_marginals &lt;- census_school_type_raw %&gt;%
                      
 census_marginals &lt;- bind_rows(age_marginals, educ_marginals, sex_marginals, mig_marginals)
 
-save(census_marginals, file=&quot;../data/preprocessed/census_marginals.Rda&quot;)</code></pre>
+save(census_marginals, file=&quot;data/preprocessed/census_marginals.Rda&quot;)</code></pre>
 </div>
 </div>
 <div id="session-info" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Session info</h1>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.2.3 (2023-03-15)
-## Platform: x86_64-pc-linux-gnu (64-bit)
-## Running under: Debian GNU/Linux 11 (bullseye)
+<pre><code>## R version 4.3.0 (2023-04-21 ucrt)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 19045)
 ## 
 ## Matrix products: default
-## BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
-## LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.13.so
+## 
 ## 
 ## locale:
-##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
-##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
-##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
-##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
-##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+## [1] LC_COLLATE=English_United Kingdom.utf8 
+## [2] LC_CTYPE=English_United Kingdom.utf8   
+## [3] LC_MONETARY=English_United Kingdom.utf8
+## [4] LC_NUMERIC=C                           
+## [5] LC_TIME=English_United Kingdom.utf8    
+## 
+## time zone: Europe/Berlin
+## tzcode source: internal
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
@@ -1010,29 +1014,29 @@ save(census_marginals, file=&quot;../data/preprocessed/census_marginals.Rda&quot
 ##  [9] ggplot2_3.4.2    tidyverse_1.3.2 
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] svglite_2.1.1       lubridate_1.9.0     assertthat_0.2.1   
-##  [4] digest_0.6.31       utf8_1.2.3          R6_2.5.1           
-##  [7] cellranger_1.1.0    backports_1.4.1     labelled_2.10.0    
-## [10] reprex_2.0.2        evaluate_0.21       highr_0.10         
-## [13] httr_1.4.5          pillar_1.9.0        rlang_1.1.1        
-## [16] googlesheets4_1.0.1 readxl_1.4.1        rstudioapi_0.14    
-## [19] jquerylib_0.1.4     rmarkdown_2.21      webshot_0.5.4      
-## [22] googledrive_2.0.0   munsell_0.5.0       broom_1.0.4        
-## [25] compiler_4.2.3      modelr_0.1.11       xfun_0.39          
-## [28] pkgconfig_2.0.3     systemfonts_1.0.4   codebook_0.9.2     
-## [31] htmltools_0.5.5     tidyselect_1.2.0    viridisLite_0.4.2  
-## [34] fansi_1.0.4         crayon_1.5.2        tzdb_0.3.0         
-## [37] dbplyr_2.3.0        withr_2.5.0         grid_4.2.3         
-## [40] jsonlite_1.8.4      gtable_0.3.3        lifecycle_1.0.3    
-## [43] DBI_1.1.3           magrittr_2.0.3      scales_1.2.1       
-## [46] cli_3.6.1           stringi_1.7.12      cachem_1.0.8       
-## [49] renv_0.17.3         fs_1.6.2            xml2_1.3.3         
-## [52] bslib_0.4.2         ellipsis_0.3.2      generics_0.1.3     
-## [55] vctrs_0.6.2         tools_4.2.3         glue_1.6.2         
-## [58] hms_1.1.2           fastmap_1.1.1       yaml_2.3.7         
-## [61] timechange_0.2.0    colorspace_2.1-0    gargle_1.4.0       
-## [64] rvest_1.0.3         knitr_1.42          haven_2.5.1        
-## [67] sass_0.4.6</code></pre>
+##  [1] gtable_0.3.3        xfun_0.39           bslib_0.4.2        
+##  [4] codebook_0.9.2      gargle_1.4.0        tzdb_0.3.0         
+##  [7] vctrs_0.6.2         tools_4.3.0         generics_0.1.3     
+## [10] fansi_1.0.4         highr_0.10          pkgconfig_2.0.3    
+## [13] dbplyr_2.3.0        webshot_0.5.4       readxl_1.4.1       
+## [16] assertthat_0.2.1    lifecycle_1.0.3     compiler_4.3.0     
+## [19] munsell_0.5.0       htmltools_0.5.5     sass_0.4.6         
+## [22] yaml_2.3.7          pillar_1.9.0        crayon_1.5.2       
+## [25] jquerylib_0.1.4     ellipsis_0.3.2      googlesheets4_1.0.1
+## [28] cachem_1.0.8        tidyselect_1.2.0    rvest_1.0.3        
+## [31] digest_0.6.31       stringi_1.7.12      labelled_2.10.0    
+## [34] fastmap_1.1.1       grid_4.3.0          colorspace_2.1-0   
+## [37] cli_3.6.1           magrittr_2.0.3      utf8_1.2.3         
+## [40] broom_1.0.4         withr_2.5.0         scales_1.2.1       
+## [43] backports_1.4.1     lubridate_1.9.0     googledrive_2.0.0  
+## [46] timechange_0.2.0    rmarkdown_2.21      modelr_0.1.11      
+## [49] httr_1.4.5          cellranger_1.1.0    hms_1.1.2          
+## [52] evaluate_0.21       knitr_1.42          haven_2.5.1        
+## [55] viridisLite_0.4.2   rlang_1.1.1         glue_1.6.2         
+## [58] DBI_1.1.3           xml2_1.3.3          renv_0.17.3        
+## [61] reprex_2.0.2        svglite_2.1.1       rstudioapi_0.14    
+## [64] jsonlite_1.8.4      R6_2.5.1            systemfonts_1.0.4  
+## [67] fs_1.6.2</code></pre>
 </div>
 
 

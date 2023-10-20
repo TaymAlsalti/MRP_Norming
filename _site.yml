@@ -1,4 +1,4 @@
-name: MRP_Norming
+name: MRP Norming Project Website
 output_dir: docs
 navbar:
   left:
@@ -18,7 +18,7 @@ navbar:
   right:
   - text: ''
     icon: fa-github
-    href: https://github.com/TaymAlsalti/MRP_norming
+    href: https://github.com/TaymAlsalti/MRP_Norming
 output:
   html_document:
     css: styles.css

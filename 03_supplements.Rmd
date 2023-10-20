@@ -28,8 +28,8 @@ library(brms)
 library(tidybayes)
 library(marginaleffects)
 
-load("../data/preprocessed/tl.Rda")
-load("../data/preprocessed/census.Rda")
+load("../unshareable_data/preprocessed/tl.Rda")
+load("data/preprocessed/census.Rda")
 
 
 options(mc.cores = 4, 
@@ -241,7 +241,7 @@ brm_age_by_educ <-
       family = gaussian(),
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = "../brms/brm_age_by_educ_18_delta_99_5000",
+      file = "../unshareable_data/brms/brm_age_by_educ_18_delta_99_5000",
       file_refit = "never",
       data = tl_no_1st_twins)
 
@@ -257,12 +257,6 @@ mrp_age_norms(ps_table = census,
               brm = brm_age_by_educ)
 ```
 Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
-
-```{r}
-browseURL("https://youtu.be/U_ugnhUFBE8?t=16")
-```
-
-
 
 
 
@@ -288,7 +282,7 @@ brm_age_by_educ_1_per_fid <-
       family = gaussian(),
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = "../brms/brm_age_by_educ_1_per_fid",
+      file = "../unshareable_data/brms/brm_age_by_educ_1_per_fid",
       file_refit = "never",
       data = tl_no_1st_twins_1_per_fid) %>%
   add_criterion("loo")

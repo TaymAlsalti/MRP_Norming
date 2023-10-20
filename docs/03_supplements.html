@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-08-28" />
+<meta name="date" content="2023-10-20" />
 
 <title>Supplementary analyses</title>
 
@@ -337,7 +337,7 @@ div.tocify {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/TaymAlsalti/MRP_norming">
+  <a href="https://github.com/TaymAlsalti/MRP_Norming">
     <span class="fa fa-github"></span>
      
     
@@ -353,7 +353,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2023-08-28</h4>
+<h4 class="date">2023-10-20</h4>
 
 </div>
 
@@ -372,8 +372,8 @@ library(brms)
 library(tidybayes)
 library(marginaleffects)
 
-load(&quot;../data/preprocessed/tl.Rda&quot;)
-load(&quot;../data/preprocessed/census.Rda&quot;)
+load(&quot;../unshareable_data/preprocessed/tl.Rda&quot;)
+load(&quot;data/preprocessed/census.Rda&quot;)
 
 
 options(mc.cores = 4, 
@@ -589,7 +589,7 @@ prediction model</h2>
       family = gaussian(),
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = &quot;../brms/brm_age_by_educ_18_delta_99_5000&quot;,
+      file = &quot;../unshareable_data/brms/brm_age_by_educ_18_delta_99_5000&quot;,
       file_refit = &quot;never&quot;,
       data = tl_no_1st_twins)</code></pre>
 </div>
@@ -614,17 +614,16 @@ mrp_age_norms(ps_table = census,
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.6            0.116     8.57         0.0903
+## 1       35.7            0.112     8.54         0.0888
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0741    8.15        0.0547</code></pre>
+## 1      37.4          0.0697    8.16        0.0554</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
-<pre class="r"><code>browseURL(&quot;https://youtu.be/U_ugnhUFBE8?t=16&quot;)</code></pre>
 </div>
 </div>
 <div id="one-person-per-family" class="section level1" number="2">
@@ -653,7 +652,7 @@ brm_age_by_educ_1_per_fid &lt;-
       family = gaussian(),
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = &quot;../brms/brm_age_by_educ_1_per_fid&quot;,
+      file = &quot;../unshareable_data/brms/brm_age_by_educ_1_per_fid&quot;,
       file_refit = &quot;never&quot;,
       data = tl_no_1st_twins_1_per_fid) %&gt;%
   add_criterion(&quot;loo&quot;)</code></pre>
@@ -750,18 +749,18 @@ means_ns_sds_and_ses%&gt;%
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#56b4e9&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-7-1.png" width="864" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-6-1.png" width="864" /></p>
 <pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
   mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
          dif_mrp_raw = MRP1_mean - Raw_mean,
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.52</code></pre>
+<pre><code>## [1] -1.543</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 2.085</code></pre>
+<pre><code>## [1] 2.108</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.4742</code></pre>
+<pre><code>## [1] 0.5314</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
 seem to be largely unchanged. Only the SEs increased as would be
 expected.</p>
@@ -798,11 +797,15 @@ sim_pop_sample_with_draws %&gt;% ggplot(aes(x = .prediction)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;, fill = &quot;lightblue&quot;) +
   labs(x = &quot;CFT 20-R Score&quot;,
        y = &quot;Frequency&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre><code>## Error in `geom_histogram()`:
+## ! Problem while computing stat.
+## ℹ Error occurred in the 1st layer.
+## Caused by error in `rowSums()`:
+## ! &#39;R_Calloc&#39; could not allocate memory (100000000 of 16 bytes)</code></pre>
 <pre class="r"><code>sim_pop_sample_with_draws %&gt;% filter (age &lt;65) %&gt;% ggplot(aes(x = .prediction)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;)+ 
   facet_wrap(~ age, ncol = 3)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre><code>## Error: cannot allocate vector of size 625.7 Mb</code></pre>
 </div>
 <div id="simulated-n-1-draw" class="section level2" number="3.2">
 <h2><span class="header-section-number">3.2</span> 100000 simulated N, 1
@@ -830,11 +833,11 @@ sim_pop_sample_with_draws %&gt;% ggplot(aes(x = .prediction)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;, fill = &quot;lightblue&quot;) +
   labs(x = &quot;CFT 20-R Score&quot;,
        y = &quot;Frequency&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <pre class="r"><code>sim_pop_sample_with_draws %&gt;% filter (age &lt;65) %&gt;% ggplot(aes(x = .prediction)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;) + 
   facet_wrap(~ age, ncol = 3)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
 </div>
 <div id="simulated-n-1000-draws-group_by.row" class="section level2"
 number="3.3">
@@ -869,7 +872,7 @@ sim_pop_sample_with_draws %&gt;%
   geom_histogram(binwidth = 1, color = &quot;black&quot;, position = &quot;stack&quot;) +
   labs(x = &quot;CFT 20-R Score&quot;,
        y = &quot;Frequency&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <pre class="r"><code>sim_pop_sample_with_draws  %&gt;%
   group_by(.row, educ) %&gt;%
   summarise(.prediction = mean(.prediction)) %&gt;%  
@@ -878,7 +881,7 @@ sim_pop_sample_with_draws %&gt;%
   labs(x = &quot;CFT 20-R Score&quot;,
        y = &quot;Frequency&quot;) + 
   facet_wrap(~ educ, ncol = 3, scale = &quot;free_y&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
 <pre class="r"><code>sim_pop_sample_with_draws  %&gt;%
   group_by(.row) %&gt;%
   summarise(.prediction = mean(.prediction)) %&gt;% 
@@ -889,7 +892,7 @@ sim_pop_sample_with_draws %&gt;%
 <pre><code>## Error in `geom_histogram()`:
 ## ! Problem while computing aesthetics.
 ## ℹ Error occurred in the 1st layer.
-## Caused by error in `factor()`:
+## Caused by error:
 ## ! object &#39;educ&#39; not found</code></pre>
 <pre class="r"><code>sim_pop_sample_with_draws  %&gt;% 
   group_by(.row) %&gt;% 
@@ -899,12 +902,88 @@ sim_pop_sample_with_draws %&gt;%
   geom_histogram(binwidth = .2, color = &quot;black&quot;, fill = &quot;lightblue&quot;) +
   labs(x = &quot;CFT 20-R Score&quot;,
        y = &quot;Frequency&quot;)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p><img src="03_supplements_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
 <pre class="r"><code>sim_pop_sample_with_draws %&gt;% filter (age &lt;65) %&gt;% ggplot(aes(x = .prediction)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;)+ 
   facet_wrap(~ age, ncol = 3)</code></pre>
-<p><img src="03_supplements_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<pre><code>## Error: cannot allocate vector of size 625.7 Mb</code></pre>
 </div>
+</div>
+<div id="session-info" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Session info</h1>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.3.0 (2023-04-21 ucrt)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 19045)
+## 
+## Matrix products: default
+## 
+## 
+## locale:
+## [1] LC_COLLATE=English_United Kingdom.utf8 
+## [2] LC_CTYPE=English_United Kingdom.utf8   
+## [3] LC_MONETARY=English_United Kingdom.utf8
+## [4] LC_NUMERIC=C                           
+## [5] LC_TIME=English_United Kingdom.utf8    
+## 
+## time zone: Europe/Berlin
+## tzcode source: internal
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices datasets  utils     methods   base     
+## 
+## other attached packages:
+##  [1] marginaleffects_0.12.0 tidybayes_3.0.4        brms_2.20.4           
+##  [4] Rcpp_1.0.10            kableExtra_1.3.4       ggrepel_0.9.3         
+##  [7] forcats_0.5.2          stringr_1.5.0          dplyr_1.1.2           
+## [10] purrr_1.0.1            readr_2.1.3            tidyr_1.2.1           
+## [13] tibble_3.2.1           ggplot2_3.4.2          tidyverse_1.3.2       
+## 
+## loaded via a namespace (and not attached):
+##   [1] tensorA_0.36.2       rstudioapi_0.14      jsonlite_1.8.4      
+##   [4] magrittr_2.0.3       estimability_1.4.1   farver_2.1.1        
+##   [7] rmarkdown_2.21       fs_1.6.2             vctrs_0.6.2         
+##  [10] base64enc_0.1-3      webshot_0.5.4        htmltools_0.5.5     
+##  [13] distributional_0.3.2 curl_5.0.0           haven_2.5.1         
+##  [16] broom_1.0.4          cellranger_1.1.0     googlesheets4_1.0.1 
+##  [19] sass_0.4.6           StanHeaders_2.26.26  bslib_0.4.2         
+##  [22] htmlwidgets_1.6.2    plyr_1.8.8           emmeans_1.8.7       
+##  [25] zoo_1.8-12           lubridate_1.9.0      cachem_1.0.8        
+##  [28] igraph_1.4.2         mime_0.12            lifecycle_1.0.3     
+##  [31] pkgconfig_2.0.3      colourpicker_1.2.0   Matrix_1.5-4        
+##  [34] R6_2.5.1             fastmap_1.1.1        shiny_1.7.4         
+##  [37] digest_0.6.31        colorspace_2.1-0     ps_1.7.5            
+##  [40] crosstalk_1.2.0      labeling_0.4.2       fansi_1.0.4         
+##  [43] timechange_0.2.0     mgcv_1.8-42          httr_1.4.5          
+##  [46] abind_1.4-5          compiler_4.3.0       gargle_1.4.0        
+##  [49] withr_2.5.0          backports_1.4.1      inline_0.3.19       
+##  [52] shinystan_2.6.0      DBI_1.1.3            highr_0.10          
+##  [55] pkgbuild_1.4.0       gtools_3.9.4         loo_2.6.0           
+##  [58] tools_4.3.0          googledrive_2.0.0    httpuv_1.6.11       
+##  [61] threejs_0.3.3        glue_1.6.2           callr_3.7.3         
+##  [64] nlme_3.1-162         promises_1.2.0.1     grid_4.3.0          
+##  [67] checkmate_2.2.0      reshape2_1.4.4       generics_0.1.3      
+##  [70] gtable_0.3.3         tzdb_0.3.0           data.table_1.14.6   
+##  [73] hms_1.1.2            xml2_1.3.3           utf8_1.2.3          
+##  [76] ggdist_3.2.1         pillar_1.9.0         markdown_1.6        
+##  [79] posterior_1.4.1      later_1.3.1          splines_4.3.0       
+##  [82] lattice_0.20-45      renv_0.17.3          tidyselect_1.2.0    
+##  [85] miniUI_0.1.1.1       knitr_1.42           arrayhelpers_1.1-0  
+##  [88] gridExtra_2.3        V8_4.3.0             svglite_2.1.1       
+##  [91] stats4_4.3.0         xfun_0.39            bridgesampling_1.1-2
+##  [94] matrixStats_0.63.0   DT_0.28              rstan_2.26.22       
+##  [97] stringi_1.7.12       yaml_2.3.7           evaluate_0.21       
+## [100] codetools_0.2-19     cli_3.6.1            RcppParallel_5.1.7  
+## [103] shinythemes_1.2.0    xtable_1.8-4         systemfonts_1.0.4   
+## [106] munsell_0.5.0        processx_3.8.2       jquerylib_0.1.4     
+## [109] modelr_0.1.11        readxl_1.4.1         dbplyr_2.3.0        
+## [112] coda_0.19-4          svUnit_1.0.6         parallel_4.3.0      
+## [115] rstantools_2.3.1     ellipsis_0.3.2       assertthat_0.2.1    
+## [118] prettyunits_1.1.1    dygraphs_1.1.1.6     bayesplot_1.10.0    
+## [121] reprex_2.0.2         Brobdingnag_1.2-9    viridisLite_0.4.2   
+## [124] mvtnorm_1.1-3        scales_1.2.1         xts_0.13.1          
+## [127] crayon_1.5.2         rlang_1.1.1          rvest_1.0.3         
+## [130] shinyjs_2.1.0</code></pre>
 </div>
 
 

@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.2.3",
+    "Version": "4.3.0",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -150,7 +150,7 @@
     },
     "StanHeaders": {
       "Package": "StanHeaders",
-      "Version": "2.26.22",
+      "Version": "2.26.26",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -158,7 +158,7 @@
         "RcppEigen",
         "RcppParallel"
       ],
-      "Hash": "a9fdfdaf733b949c7605db492ff122c5"
+      "Hash": "6b7d971cfe619a1e9fd111bf3b438cd1"
     },
     "V8": {
       "Package": "V8",
@@ -315,14 +315,9 @@
     },
     "brms": {
       "Package": "brms",
-      "Version": "2.19.3",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "brms",
-      "RemoteUsername": "paul-buerkner",
-      "RemoteRef": "issue-1465",
-      "RemoteSha": "54da4f7c484aa1dd581e2180b0c997f4f1c7c24c",
+      "Version": "2.20.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
       "Requirements": [
         "Matrix",
         "R",
@@ -351,7 +346,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "cee527e60324a603da0d073b6fb010d0"
+      "Hash": "157836c18abea8b51ef394f557309af8"
     },
     "broom": {
       "Package": "broom",
@@ -1230,7 +1225,7 @@
     },
     "insight": {
       "Package": "insight",
-      "Version": "0.19.1",
+      "Version": "0.19.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1239,7 +1234,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "b7a721ab3228268ed3a4ac3d585a09bf"
+      "Hash": "e5389ad6bc8445203e2bbbe3f42fc96f"
     },
     "isoband": {
       "Package": "isoband",
@@ -1459,7 +1454,7 @@
     },
     "marginaleffects": {
       "Package": "marginaleffects",
-      "Version": "0.11.1",
+      "Version": "0.12.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1472,7 +1467,7 @@
         "insight",
         "methods"
       ],
-      "Hash": "80fa4daf57b8d5c6e48186269e7f68e7"
+      "Hash": "25d221eb1b57fe8913715c645921f79f"
     },
     "markdown": {
       "Package": "markdown",
@@ -1739,7 +1734,7 @@
     },
     "processx": {
       "Package": "processx",
-      "Version": "3.8.1",
+      "Version": "3.8.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1748,7 +1743,7 @@
         "ps",
         "utils"
       ],
-      "Hash": "d75b4059d781336efba24021915902b4"
+      "Hash": "3efbd8ac1be0296a46c55387aeace0f3"
     },
     "progress": {
       "Package": "progress",
