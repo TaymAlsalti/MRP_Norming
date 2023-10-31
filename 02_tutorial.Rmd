@@ -375,10 +375,10 @@ ggplot(data = x %>% filter(!is.na(isced) & (age >= 19 & age <= 65)), aes(x = age
   labs(x = "Age", y = "CFT 20-R Score", colour = "ISCED 1997 code")  + 
 theme(text = element_text(family = "Times")) +
   scale_color_manual(values = c("#b66dff","#6db6ff","#b6dbff", "#920000","#924900","#db6d00","#24ff24","#ffff6d"))
-ggsave("s.png", height = 15, width = 24)
 ```
 
 
+### Sigma spline
 
 ```{r}
 plot(conditional_smooths(brm_age_by_educ), ask = FALSE, plot = FALSE)[[2]] +
