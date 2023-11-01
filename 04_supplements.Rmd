@@ -32,12 +32,11 @@ load("../unshareable_data/preprocessed/tl.Rda")
 load("data/preprocessed/census.Rda")
 
 
-options(mc.cores = 4, 
-        brms.backend = "cmdstanr",
-        scipen = 999,
+
+options(scipen = 999,
         digits = 4)
 
-# windowsFonts(Times = windowsFont("Times New Roman"))
+windowsFonts(Times = windowsFont("Times New Roman"))
 theme_set(theme_gray(base_size = 14, base_family = "Times"))
 
 # exclude first twins to avoid twin dependency issues
@@ -391,168 +390,6 @@ mean(means_ns_sds_and_ses$dif_mrps_abs)
 ```
 
 Despite shrinking the sample size from N = 10059 to 4044, the results seem to be largely unchanged. Only the SEs increased as would be expected.
-
-
-
-# Distribution of the simulated norm sample
-
-## 100000 simulated N, 1000 draws, no aggregation
-```{r}
-set.seed(810)
-sim_pop_sample <- census %>%
-  filter(census_n != 0) %>%
-  ungroup() %>% 
-  sample_n(size = 100000, # 67738120 is total census_n in PS table
-           weight = census_n, 
-           replace = TRUE) %>% 
-  select(-census_n)
-
-sim_pop_sample_with_draws <- sim_pop_sample %>%
-  add_predicted_draws(brm_age_by_educ, 
-                      ndraws = 1000, 
-                      seed = 810, 
-                      allow_new_levels = TRUE) %>% 
-  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
-                                 .prediction > 56 ~ 56,
-                                 TRUE ~ .prediction))
-
-
-sim_pop_sample_with_draws %>% ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency")
-```
-
-
-```{r, fig.height=100}
-sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black")+ 
-  facet_wrap(~ age, ncol = 3)
-```
-
-## 100000 simulated N, 1 draw
-```{r}
-set.seed(810)
-sim_pop_sample <- census %>%
-  filter(census_n != 0) %>%
-  ungroup() %>% 
-  sample_n(size = 100000, # 67738120 is total census_n in PS table
-           weight = census_n, 
-           replace = TRUE) %>% 
-  select(-census_n)
-
-sim_pop_sample_with_draws <- sim_pop_sample %>%
-  add_predicted_draws(brm_age_by_educ, 
-                      ndraws = 1, 
-                      seed = 810, 
-                      allow_new_levels = TRUE) %>% 
-  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
-                                 .prediction > 56 ~ 56,
-                                 TRUE ~ .prediction))
-
-
-sim_pop_sample_with_draws %>% ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency")
-```
-
-
-```{r, fig.height=100}
-sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black") + 
-  facet_wrap(~ age, ncol = 3)
-```
-
-
-
-
-
-## 100000 simulated N, 1000 draws, group_by(.row)
-```{r}
-set.seed(810)
-sim_pop_sample <- census %>%
-  filter(census_n != 0) %>%
-  ungroup() %>% 
-  sample_n(size = 100000, # 67738120 is total census_n in PS table
-           weight = census_n, 
-           replace = TRUE) %>% 
-  select(-census_n) 
-
-sim_pop_sample_with_draws <- sim_pop_sample %>%
-  add_predicted_draws(brm_age_by_educ, 
-                      ndraws = 1000, 
-                      seed = 810, 
-                      allow_new_levels = TRUE) %>% 
-  mutate(.prediction = case_when(.prediction < 0 ~ 0, 
-                                 .prediction > 56 ~ 56,
-                                 TRUE ~ .prediction))
-
-sim_pop_sample_with_draws %>%
-  mutate(age_group = case_when(
-    age >= 11 & age <= 20 ~ "11-20",
-    age >= 21 & age <= 50 ~ "21-50",
-    age > 50  ~ ">50")) %>%
-  group_by(.row, age_group) %>%
-  summarise(.prediction = mean(.prediction)) %>%
-  ggplot(aes(x = .prediction, fill = factor(age_group))) +
-  geom_histogram(binwidth = 1, color = "black", position = "stack") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency")
-
-
-
-
-
-```
-
-```{r}
-sim_pop_sample_with_draws  %>%
-  group_by(.row, educ) %>%
-  summarise(.prediction = mean(.prediction)) %>%  
-  ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black", fill = "lightblue") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency") + 
-  facet_wrap(~ educ, ncol = 3, scale = "free_y")
-```
-
-
-
-
-```{r}
-sim_pop_sample_with_draws  %>%
-  group_by(.row) %>%
-  summarise(.prediction = mean(.prediction)) %>% 
-  ggplot(aes(x = .prediction, fill = factor(educ))) +
-  geom_histogram(binwidth = 1, color = "black", position = "stack") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency")
-```
-
-
-
-
-
-```{r}
-sim_pop_sample_with_draws  %>% 
-  group_by(.row) %>% 
-  summarise(mean_prediction = mean(.prediction), 
-            se_pred = sd(.prediction)) %>% 
-  mutate(d = mean_prediction/se_pred) %>% ggplot(aes(x = d)) +
-  geom_histogram(binwidth = .2, color = "black", fill = "lightblue") +
-  labs(x = "CFT 20-R Score",
-       y = "Frequency")
-```
-
-
-
-```{r, fig.height=100}
-sim_pop_sample_with_draws %>% filter (age <65) %>% ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, color = "black")+ 
-  facet_wrap(~ age, ncol = 3)
-```
-
 
 
 
