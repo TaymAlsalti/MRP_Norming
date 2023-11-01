@@ -41,7 +41,7 @@ options(mc.cores = 4,
         scipen = 999,
         digits = 4)
 
-# windowsFonts(Times = windowsFont("Times New Roman"))
+windowsFonts(Times = windowsFont("Times New Roman"))
 theme_set(theme_gray(base_size = 14, base_family = "Times"))
 
 # exclude first twins to avoid twin dependency issues and add variable containing the age groups from the manual
