@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-11-01" />
+<meta name="date" content="2023-11-02" />
 
 <title>Data preprocessing code</title>
 
@@ -358,7 +358,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Data preprocessing code</h1>
-<h4 class="date">2023-11-01</h4>
+<h4 class="date">2023-11-02</h4>
 
 </div>
 
@@ -376,6 +376,15 @@ library(tidyverse)
 library(kableExtra)</code></pre>
 <div id="twinlife-sample" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> TwinLife sample</h1>
+<p>Note that you cannot run the code here unless you have requested and
+obtained the TwinLife data. You do not need to do this however, to
+repdouce the tutorial code in the RMarkdown document 02_tutorial.Rmd.
+The synthetic dataset we produce here is available on our OSF project
+and can be used for that purpose. The comparisons to the Raw estimates
+(Figures 5 and 6 in the manuscript, see document 03_norm_comparisons)
+can also be reproduced based on the synthetic dataset. The comparisons
+to the Manual norms cannot be reproduced as we did not have permission
+to share those norms.</p>
 <div id="preprocessing" class="section level2" number="1.1">
 <h2><span class="header-section-number">1.1</span> preprocessing</h2>
 <pre class="r"><code># Load dataset and define missing values as NA without losing the different types of missing values in the dataset
@@ -665,19 +674,70 @@ census_n
 <tbody>
 <tr>
 <td style="text-align:right;">
-16
+47
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
+foreigner, no own mig background
+</td>
+<td style="text-align:left;">
+isced 3b: upper secondary, vocational
+</td>
+<td style="text-align:right;">
+1190
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+61
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+citizen, own mig background
+</td>
+<td style="text-align:left;">
+isced 4a: post-secondary
+</td>
+<td style="text-align:right;">
+1620
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+68
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+citizen, mig background from both parents
+</td>
+<td style="text-align:left;">
+isced 3a: upper secondary, general
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+52
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
 foreigner, own mig background
 </td>
 <td style="text-align:left;">
-at school: other school
+isced 4a: post-secondary
 </td>
 <td style="text-align:right;">
-1050
+1700
 </td>
 </tr>
 <tr>
@@ -688,10 +748,10 @@ at school: other school
 FALSE
 </td>
 <td style="text-align:left;">
-citizen, mig background from one parent
+foreigner, no own mig background
 </td>
 <td style="text-align:left;">
-no longer at school
+at school: primary
 </td>
 <td style="text-align:right;">
 0
@@ -699,58 +759,7 @@ no longer at school
 </tr>
 <tr>
 <td style="text-align:right;">
-42
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-no mig background
-</td>
-<td style="text-align:left;">
-isced 1: primary
-</td>
-<td style="text-align:right;">
-6250
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-25
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, own mig background
-</td>
-<td style="text-align:left;">
-isced 5a: tertiary, college etc.
-</td>
-<td style="text-align:right;">
-2830
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-49
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, own mig background
-</td>
-<td style="text-align:left;">
-isced 1: primary
-</td>
-<td style="text-align:right;">
-3090
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-51
+58
 </td>
 <td style="text-align:left;">
 TRUE
@@ -759,95 +768,27 @@ TRUE
 foreigner, no own mig background
 </td>
 <td style="text-align:left;">
-isced 2a: lower secondary
+isced 6: PhD
 </td>
 <td style="text-align:right;">
-740
+0
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-49
+60
 </td>
 <td style="text-align:left;">
-FALSE
+TRUE
 </td>
 <td style="text-align:left;">
 citizen, mig background from both parents
 </td>
 <td style="text-align:left;">
-isced 4a: post-secondary
+isced 5a: tertiary, college etc.
 </td>
 <td style="text-align:right;">
 0
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-76
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, no own mig background
-</td>
-<td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-570
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-64
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 5b: tertiary, tech school etc.
-</td>
-<td style="text-align:right;">
-2190
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-67
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 2a: lower secondary
-</td>
-<td style="text-align:right;">
-5150
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-37
-</td>
-<td style="text-align:left;">
-FALSE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-11030
 </td>
 </tr>
 <tr>
@@ -858,18 +799,18 @@ isced 3b: upper secondary, vocational
 FALSE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+no mig background
 </td>
 <td style="text-align:left;">
-isced 2a: lower secondary
+isced 5a: tertiary, college etc.
 </td>
 <td style="text-align:right;">
-0
+37060
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-71
+65
 </td>
 <td style="text-align:left;">
 FALSE
@@ -878,7 +819,7 @@ FALSE
 foreigner, no own mig background
 </td>
 <td style="text-align:left;">
-isced 4a: post-secondary
+isced 5a: tertiary, college etc.
 </td>
 <td style="text-align:right;">
 0
@@ -886,7 +827,24 @@ isced 4a: post-secondary
 </tr>
 <tr>
 <td style="text-align:right;">
-22
+29
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+citizen, mig background from one parent
+</td>
+<td style="text-align:left;">
+isced 3b: upper secondary, vocational
+</td>
+<td style="text-align:right;">
+5350
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+39
 </td>
 <td style="text-align:left;">
 FALSE
@@ -895,10 +853,61 @@ FALSE
 foreigner, no own mig background
 </td>
 <td style="text-align:left;">
-isced 1: primary
+isced 3a: upper secondary, general
 </td>
 <td style="text-align:right;">
-1170
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+31
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+citizen, mig background from both parents
+</td>
+<td style="text-align:left;">
+isced 3a: upper secondary, general
+</td>
+<td style="text-align:right;">
+610
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+63
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+foreigner, own mig background
+</td>
+<td style="text-align:left;">
+isced 3b: upper secondary, vocational
+</td>
+<td style="text-align:right;">
+10350
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+56
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+no mig background
+</td>
+<td style="text-align:left;">
+isced 6: PhD
+</td>
+<td style="text-align:right;">
+4590
 </td>
 </tr>
 </tbody>

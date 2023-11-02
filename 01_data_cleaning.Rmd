@@ -25,6 +25,8 @@ library(kableExtra)
 
 # TwinLife sample
 
+Note that you cannot run the code here unless you have requested and obtained the TwinLife data. You do not need to do this however, to repdouce the tutorial code in the RMarkdown document 02_tutorial.Rmd. The synthetic dataset we produce here is available on our OSF project and can be used for that purpose. The comparisons to the Raw estimates (Figures 5 and 6 in the manuscript, see document 03_norm_comparisons) can also be reproduced based on the synthetic dataset. The comparisons to the Manual norms cannot be reproduced as we did not have permission to share those norms.
+
 ## preprocessing
 ```{r}
 # Load dataset and define missing values as NA without losing the different types of missing values in the dataset
