@@ -10,11 +10,11 @@
 
 
 
-<meta name="date" content="2023-11-01" />
+<meta name="date" content="2023-12-02" />
 
 <title>MRP vs. Traditional Norming</title>
 
-<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -30,22 +30,22 @@
        h6 {font-size: 12px;}
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
-<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
-<script src="site_libs/htmlwidgets-1.6.2/htmlwidgets.js"></script>
+<script src="site_libs/htmlwidgets-1.6.3/htmlwidgets.js"></script>
 <link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
-<script src="site_libs/datatables-binding-0.28/datatables.js"></script>
+<script src="site_libs/datatables-binding-0.30/datatables.js"></script>
 <link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 <link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.extra.css" rel="stylesheet" />
 <script src="site_libs/dt-core-1.13.4/js/jquery.dataTables.min.js"></script>
-<link href="site_libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet" />
-<script src="site_libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
-<link href="site_libs/font-awesome-6.4.0/css/all.min.css" rel="stylesheet" />
-<link href="site_libs/font-awesome-6.4.0/css/v4-shims.min.css" rel="stylesheet" />
+<link href="site_libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet" />
+<script src="site_libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+<link href="site_libs/font-awesome-6.4.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet" />
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -364,7 +364,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">MRP vs. Traditional Norming</h1>
-<h4 class="date">2023-11-01</h4>
+<h4 class="date">2023-12-02</h4>
 
 </div>
 
@@ -373,19 +373,12 @@ div.tocify {
     message = FALSE,
     warning = FALSE,
     include = TRUE,
-    error = TRUE
+    error = TRUE,
+    fig.width = 8,
+    fig.height = 4
 )</code></pre>
-<div id="load-dependencies-and-preprocessed-datasets"
-class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Load dependencies and
-preprocessed datasets</h1>
+<p>Load dependencies and preprocessed datasets</p>
 <pre class="r"><code>library(tidyverse)
-library(ggrepel)
-library(kableExtra)
-library(brms)
-library(tidybayes)
-library(marginaleffects)
-library(bayesplot)
 
 load(&quot;../unshareable_data/preprocessed/tl.Rda&quot;)
 load(&quot;../unshareable_data/preprocessed/manual_norms.Rda&quot;)
@@ -397,39 +390,19 @@ sim_pop_sample_with_draws &lt;- readRDS(&quot;data/simulated/sim_pop_sample_with
 options(scipen = 999,
         digits = 4)
 
-windowsFonts(Times = windowsFont(&quot;Times New Roman&quot;))
-theme_set(theme_gray(base_size = 14, base_family = &quot;Times&quot;))
+# windowsFonts(Times = windowsFont(&quot;Times New Roman&quot;))
+theme_set(theme_minimal(base_size = 12, base_family = &quot;Times&quot;))
 
 # exclude first twins to avoid twin dependency issues and add variable containing the age groups from the manual
 tl_no_1st_twins &lt;- tl %&gt;% 
- filter(ptyp != 1) %&gt;% 
- mutate(age_group = case_when(
-                         age0100 == 11 ~ &#39;11&#39;,
-                         age0100 == 12 ~ &#39;12&#39;,
-                         age0100 == 13 ~ &#39;13&#39;,
-                         age0100 == 14 ~ &#39;14&#39;,
-                         age0100 == 15 ~ &#39;15&#39;,
-                         age0100 == 16 ~ &#39;16&#39;,
-                         age &gt;= 17 &amp; age &lt;= 19 ~ &#39;17-19&#39;,
-                         age &gt;= 20 &amp; age &lt;= 24 ~ &#39;20-24&#39;,
-                         age &gt;= 25 &amp; age &lt;= 29 ~ &#39;25-29&#39;,
-                         age &gt;= 30 &amp; age &lt;= 34 ~ &#39;30-34&#39;,
-                         age &gt;= 35 &amp; age &lt;= 39 ~ &#39;35-39&#39;,
-                         age &gt;= 40 &amp; age &lt;= 44 ~ &#39;40-44&#39;,
-                         age &gt;= 45 &amp; age &lt;= 49 ~ &#39;45-49&#39;,
-                         age &gt;= 50 &amp; age &lt;= 54 ~ &#39;50-54&#39;,
-                         age &gt;= 55 &amp; age &lt;= 59 ~ &#39;55-59&#39;,
-                         age &gt;= 60 &amp; age &lt;= 64 ~ &#39;60-64&#39;,
-                         TRUE ~ NA_character_))</code></pre>
-</div>
+ filter(ptyp != 1)</code></pre>
 <div id="mrp-predictions-vs.-raw-means" class="section level1"
-number="2">
-<h1><span class="header-section-number">2</span> MRP predictions vs. raw
+number="1">
+<h1><span class="header-section-number">1</span> MRP predictions vs. raw
 means</h1>
-<div id="average-difference-in-means" class="section level2"
-number="2.1">
-<h2><span class="header-section-number">2.1</span> Average difference in
-means</h2>
+<div id="age-group-means-and-sds" class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> Age group means and
+SDs</h2>
 <pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws %&gt;%
   group_by(age, .draw) %&gt;% 
   summarise(mean_prediction = mean(.prediction), 
@@ -450,16 +423,59 @@ means_sds_and_ses_tl &lt;- tl_no_1st_twins %&gt;%
   rename(age = age0100)
 
 
-means_ns_sds_and_ses &lt;- census  %&gt;% 
-  group_by(age) %&gt;% 
-  filter(age &lt;= 65) %&gt;% 
-  summarise (census_n = sum(census_n)) %&gt;% 
-  left_join(means_sds_and_ses_MRP, by = c(&quot;age&quot;)) %&gt;% 
+means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP%&gt;% 
   left_join(means_sds_and_ses_tl, by = &quot;age&quot;) %&gt;% 
-  mutate(abs_dif = abs(MRP_mean - Raw_mean))
+  filter(age &lt;= 65) 
 
+# Here you can browse both MRP and raw ns, means, SDs, and SEs.
+means_ns_sds_and_ses %&gt;% 
+  mutate(age = as.integer(age)) %&gt;% 
+  DT::datatable() %&gt;% 
+  DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)</code></pre>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-f143d6070531542c68ae" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-f143d6070531542c68ae">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55"],[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65],[31.41933539823009,32.24655989110708,33.32109638554217,34.64127640984908,35.59377472984206,36.79180338983051,38.19543727915195,39.0617756686799,38.19902534750613,38.76007715133531,38.85173550724637,38.41969236311239,38.29467464114833,38.02224584487534,37.96273068267067,37.85329496402878,37.58740270848183,37.50988504983389,37.42797503467406,37.38282018479033,37.06883439490446,37.4475076923077,37.09191606886657,37.10331096681097,36.82089683734939,36.91415201900237,36.77070449521002,36.78502578397212,36.53369576379974,37.00188549618321,36.90055977337111,36.9484368174727,36.66468642350557,36.75412098009188,36.73961900049481,36.4389477250726,36.24376216216216,36.13772303060713,35.78314526524542,35.60530874178878,35.2652813174946,35.03552200220022,34.77995720069404,34.31684800469483,33.81975841346154,33.6946588607595,33.04420036101083,32.63930588235294,32.07054700315457,31.94286714659686,31.18580494505494,30.65671521268926,30.31236647955092,29.83173781902552,29.20127586206896],[0.339153310398251,0.3061618209629887,0.3078633350303817,0.3055669830902937,0.3390421565080756,0.3336283856256183,0.3188367944828533,0.3461546468904904,0.8716304300784258,0.5053126848335462,0.3755026188449256,0.3261790654988607,0.2937888023868133,0.2890040636301034,0.2907980404659297,0.2883729173988953,0.2910732146862993,0.3038334098260252,0.2963906547973039,0.3191096276496148,0.3098561531308892,0.2910106914799648,0.2930504645935921,0.2902209377679933,0.2792596597520211,0.2795645142780048,0.2650824227454863,0.2653041013623231,0.2532970721501843,0.239888792119017,0.2336425648829067,0.2279591310975317,0.2274706029223723,0.2304307459583018,0.225476310543732,0.2339454840427181,0.2208976265628471,0.2292422364233698,0.2285928475705538,0.2343638111323304,0.2333928345489918,0.2366422946103777,0.2465770823264749,0.2558637148121597,0.2726879688452084,0.2947641208833013,0.3165220665577687,0.3372502036060847,0.372030032027556,0.400384813119586,0.4565720168456703,0.5007927578750195,0.5715728002961893,0.6206786116371956,0.7203504077886825],[7.760001524094577,7.916828425200666,7.989205055936736,8.04218126579881,8.147276481834234,8.015319933859599,7.900017621702085,7.820289527133149,8.14531118628798,8.141382815843043,8.056733065709043,8.083387008069884,8.130854331271964,8.072673088214097,8.112996378550308,8.106072552128737,8.341149126534466,8.39737690920537,8.397536905619914,8.36492768994399,8.446252932916801,8.44754308276789,8.490731261842866,8.401980189115898,8.562013409760381,8.495367672624461,8.433476562947428,8.410835963703452,8.399688293006081,8.276585517081333,8.21633432284921,8.180149755170644,8.236888877696916,8.146889501025042,8.196045161040368,8.16284564142487,8.175272818969807,8.105046524687365,8.073812824130593,8.029074265644388,8.08430766672312,8.08672208500006,8.080120757486362,8.126574900121183,8.198284084571911,8.075085339035009,8.178450819280553,8.152609390232584,8.160921911251497,8.22134338325721,8.294995488478817,8.225899652464246,8.271131788279105,8.279453085479393,8.383153141472853],[0.2451393232652967,0.2412730582442069,0.2444349347453397,0.2360766215918501,0.2475154855644798,0.2314564843008468,0.2083445662923197,0.2199864449017918,0.3105971386330947,0.2841803443018496,0.230704849386771,0.2128759301726082,0.2043701004319006,0.2012854574764043,0.2045053776706182,0.194838418752444,0.2141909035722671,0.2164304825388623,0.2258041044684931,0.2318557909728574,0.2314505779776289,0.2342532045083403,0.2162915322156641,0.2174313874666326,0.2208266077284186,0.2135229952783785,0.1996857412573016,0.1982461411119428,0.1964356681862101,0.1783895143888073,0.170276411618984,0.1653217058503083,0.1643245285492285,0.1657803354460953,0.1659617577257523,0.1620552305832745,0.165209278923767,0.1643918034946706,0.166795345742865,0.1586471752652176,0.1645677783468691,0.1697065432772101,0.1747755755971221,0.1872430154774536,0.1976067513433616,0.2063389674793608,0.2124618147609756,0.2270246227179788,0.2388714449599543,0.266954282498022,0.2924670132118746,0.3066568514171068,0.3526067961059787,0.3666669113350436,0.4202999666707815],[908,110,141,130,89,122,965,120,86,72,61,285,458,257,70,48,34,26,29,25,59,73,93,128,143,157,169,190,195,203,228,224,237,300,337,298,300,309,315,322,292,263,238,207,169,118,113,79,66,53,32,34,18,17,13],[32.25770925110132,34.32727272727273,36.30496453900709,37.14615384615384,36.70786516853933,37.31967213114754,40.07668393782384,40.46666666666667,41.55813953488372,41.22222222222222,39,40.12631578947369,40.08951965065502,39.94552529182879,39.22857142857143,38.375,36.58823529411764,34.84615384615385,37.3448275862069,32.24,36.16949152542373,37.43835616438356,38.04301075268818,36.75,38.56643356643357,37.10828025477707,37.16568047337278,37.46315789473685,37.91282051282051,38.08866995073892,38.19298245614035,38.23660714285715,37.45147679324894,37.81333333333333,38.40356083086053,38.07382550335571,38.22333333333334,37.78640776699029,37.84761904761905,37.24223602484472,36.53082191780822,37.30798479087453,36.52941176470588,37.15458937198068,35.52662721893491,35.41525423728814,35.17699115044248,35.58227848101266,34.25757575757576,33.9622641509434,34.71875,31.67647058823529,29.38888888888889,30.58823529411765,31.07692307692308],[7.32981827752394,7.332357707993041,8.076370527135978,8.275406300207393,8.017314001571581,8.490409167142531,7.434801352423686,7.458493926568625,7.144894765063399,7.593960206104163,8.199593485858511,7.505268720165701,7.389644669836307,8.083847067726905,8.447916180022094,9.775403349135926,9.032324601149737,10.56292500282874,7.047166918439968,8.627861844049196,9.349815676539926,7.711798863087549,9.100781116134822,8.311835788394061,7.398667029316588,8.303983920179206,8.346428144916086,7.76072124275454,8.629701153788627,8.370860567352258,8.007570419129138,8.277816218767944,8.000183256143226,8.252606088162503,7.873084749526269,8.099211384257696,7.900729543103374,7.687040644626986,7.926149118860502,7.738946612626985,7.437418769140218,7.640803790482602,7.316040442328423,7.335593880067554,7.648579924806923,7.984307548487098,8.691364853050962,7.894508956549725,8.168062770158505,9.563476725685518,7.91174861386737,7.689901241574519,7.769767116571232,8.860437514094688,8.311252798280359],[0.2432485630292096,0.6991128765537922,0.6801530954672579,0.7258011458620808,0.8498335845011183,0.7686855281534873,0.2393347237656941,0.680864228099486,0.7704538167635159,0.8949567929661744,1.049850366647422,0.4445737503670572,0.3452954192001563,0.5042565256253859,1.009719110762133,1.410957938765199,1.549030889645055,2.071560027309265,1.308626044109843,1.725572368809839,1.217242320800168,0.9025977858815822,0.9437070401746656,0.7346694312603093,0.6187076187968894,0.6627300655525055,0.6420329342243143,0.5630218945342673,0.6179857354743291,0.5875192340968579,0.5303143060806719,0.5530848607376824,0.5196677457349802,0.4764644346516565,0.428874254337216,0.4691747182710613,0.4561488328505162,0.437300463502061,0.446587910094509,0.4312746335500847,0.4352420124591023,0.4711521456517989,0.4742284656375508,0.5098590198876498,0.5883523019082249,0.7350150870631209,0.8176148292000777,0.8882016510766225,1.005419024791589,1.313644556350325,1.398612773977221,1.318807182815652,1.831351672122589,2.148971750576327,2.3051267790418]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>age<\/th>\n      <th>MRP_mean<\/th>\n      <th>MRP_se_of_mean<\/th>\n      <th>MRP_sd<\/th>\n      <th>MRP_se_of_sd<\/th>\n      <th>Raw_n<\/th>\n      <th>Raw_mean<\/th>\n      <th>Raw_sd<\/th>\n      <th>Raw_se_of_mean<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"targets":3,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":4,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":5,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":6,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":8,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":9,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"className":"dt-right","targets":[1,2,3,4,5,6,7,8,9]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":["options.columnDefs.0.render","options.columnDefs.1.render","options.columnDefs.2.render","options.columnDefs.3.render","options.columnDefs.4.render","options.columnDefs.5.render"],"jsHooks":[]}</script>
+</div>
+<div id="plot-means" class="section level2" number="1.2">
+<h2><span class="header-section-number">1.2</span> Plot means</h2>
+<pre class="r"><code>means_ns_sds_and_ses_plot &lt;- means_ns_sds_and_ses%&gt;%
+  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
 
-t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)</code></pre>
+means_ns_sds_and_ses_plot  %&gt;%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(0, 5))) + 
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+    geom_text_repel(
+    data = means_ns_sds_and_ses_plot %&gt;% filter(age == 65),
+    aes(label = source), family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<pre><code>## Error in geom_text_repel(data = means_ns_sds_and_ses_plot %&gt;% filter(age == : could not find function &quot;geom_text_repel&quot;</code></pre>
+</div>
+<div id="overall-mean-differences" class="section level2" number="1.3">
+<h2><span class="header-section-number">1.3</span> Overall mean
+differences</h2>
+<pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
+  mutate(dif = MRP_mean - Raw_mean,
+         abs_dif = abs(MRP_mean - Raw_mean))
+
+mean(means_ns_sds_and_ses$dif)</code></pre>
+<pre><code>## [1] -1.181</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$abs_dif)</code></pre>
+<pre><code>## [1] 1.584</code></pre>
+<pre class="r"><code>t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)</code></pre>
 <pre><code>## 
 ##  Welch Two Sample t-test
 ## 
@@ -467,91 +483,53 @@ t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)</code></pre
 ## t = 2.4, df = 108, p-value = 0.02
 ## alternative hypothesis: true difference in means is not equal to 0
 ## 95 percent confidence interval:
-##  0.2283 2.1839
+##  0.2058 2.1560
 ## sample estimates:
 ## mean of x mean of y 
-##     36.81     35.60</code></pre>
-<p>On average a difference of ~ fifth of an SD between raw and corrected
-means.</p>
+##     36.80     35.62</code></pre>
+<p>On average an absolute difference of ~ fifth of an SD between raw and
+corrected means.</p>
 </div>
-<div id="browsable-table" class="section level2" number="2.2">
-<h2><span class="header-section-number">2.2</span> Browsable table</h2>
-<p>Here you can browse both MRP and raw ns, means, SDs, and SEs.</p>
-<pre class="r"><code>means_ns_sds_and_ses %&gt;% DT::datatable() %&gt;% DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)</code></pre>
-<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-ab365512eaaaa375dba6" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-ab365512eaaaa375dba6">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55"],[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65],[769240,776800,795850,820090,777600,773860,794000,817120,834660,946570,969460,976760,988080,961910,931300,937720,938600,968250,965090,979500,947910,927650,923060,914650,882630,883050,912720,945270,1073280,1134230,1190090,1276570,1325360,1356430,1378520,1400540,1407870,1391410,1348090,1301320,1270990,1224990,1183220,1135550,1121210,1086770,1070850,1057980,1053560,1012340,1011600,943870,855750,834000,601800],[31.3349522123894,32.1593938294011,33.2740705679862,34.5823375694996,35.5476816292602,36.7150466101695,38.025546819788,38.8449732528041,38.3099337694195,38.8653783382789,38.9070775362319,38.4869365994236,38.3239377990431,38.0264141274238,37.9851732933233,37.8731474820144,37.5899059158945,37.5005335548173,37.4373113730929,37.3742082444918,37.0495116772824,37.4383992673993,37.089906025825,37.1130844155844,36.8156957831325,36.9027727632621,36.768,36.7682940766551,36.5131039794608,36.9811673517322,36.8665461756374,36.9279053562142,36.6478915906788,36.7282143950995,36.7239134092034,36.4173286544046,36.2299528255528,36.1130572002007,35.7684243926624,35.5879504800404,35.2466425485961,35.0153833883388,34.7584765760555,34.2974712441315,33.7795276442308,33.6570886075949,33.0072827918171,32.6043156862745,32.0322315457413,31.9171302356021,31.1463612637363,30.6180367700072,30.2784659182037,29.7948808971384,29.1819547413793],[0.364261437132174,0.330739279439417,0.321816365989755,0.302240877416298,0.328239944309936,0.34065677992547,0.331084993863289,0.35333878515453,0.867396811994393,0.492823197259443,0.367793553121667,0.317147792081611,0.29199235271525,0.283559160394864,0.288867944132433,0.296582554704766,0.29519471985434,0.300173681099755,0.307978942571795,0.297604917753704,0.312913039426371,0.298024654115966,0.289621945710566,0.290694326757458,0.278810421467359,0.281480504158627,0.269808492858147,0.260991659929406,0.252552423850705,0.248579304709364,0.232939646654007,0.226656663526795,0.225484370052572,0.232652613979114,0.218358908774072,0.223104892737814,0.221832087010038,0.222368836841418,0.221094160452076,0.224367885237721,0.233376689527179,0.244533305300698,0.255523944449339,0.262052531335672,0.279137465512527,0.30116311509636,0.315139708820944,0.346183462028767,0.376644699009379,0.40352147942453,0.45838993614274,0.494989738388335,0.595803431696527,0.650967105442562,0.762903720526423],[7.83380470935044,7.95288411038282,8.03468512653897,8.08086016021924,8.18976825888769,8.06320432675727,7.9807103620199,7.93301103122904,8.14910072656398,8.13194825404384,8.0527874298975,8.07488535882033,8.12537546688942,8.06706327009725,8.11785109039984,8.1089981889354,8.33218440744097,8.40330166792848,8.40668295700915,8.36291782424937,8.45774077736344,8.45438493620583,8.48698484847612,8.39624165586399,8.56586702042609,8.51487910265073,8.45082210484157,8.41672740923513,8.41848351608134,8.28617986422122,8.22601877033026,8.188608524444,8.23471570130471,8.14502801485856,8.19182236922382,8.15218047050651,8.1615604262715,8.09210215073895,8.06114222444106,8.01414632588073,8.07382811195787,8.06967769254623,8.07867890945681,8.11837885904417,8.19581646613701,8.07876743736395,8.18736198247191,8.16708145040938,8.17752598931742,8.24093416727965,8.32557585583462,8.26866141731926,8.32775643737494,8.32766929840385,8.43561015570806],[0.25607828858624,0.238529364976381,0.242762263238947,0.239060421761708,0.251425901002213,0.229540152938835,0.213719185724588,0.245559311225903,0.312827296011058,0.272081912643469,0.241609407713017,0.209845300314643,0.206361037041959,0.196235264670599,0.206075958072938,0.20002075190653,0.215127910286611,0.218929203511594,0.222629267615663,0.22648945882966,0.221099346468683,0.227263407363735,0.218301171927342,0.213324931005388,0.211215978439494,0.207736293807829,0.2006055458074,0.198070762464252,0.190264300175872,0.175445220514753,0.172558877643075,0.173616564060721,0.174988197864183,0.165864721001403,0.162047894567662,0.165887974534728,0.165101717067457,0.167812090634418,0.168491361349965,0.166795911890052,0.177077559060368,0.171261046641371,0.180094472264979,0.188525871487417,0.202376938300036,0.195402481354036,0.209991175115272,0.228881181317583,0.231106619833391,0.25892435926692,0.28600771952637,0.303643166743825,0.345258420460841,0.371747331921048,0.443156546406306],[908,110,141,130,89,122,965,120,86,73,61,285,458,257,70,48,34,26,29,24,60,73,92,128,143,157,169,190,195,203,228,224,237,300,337,298,300,311,314,324,291,262,238,206,169,118,113,79,66,53,32,34,17,18,13],[32.2577092511013,34.3272727272727,36.3049645390071,37.1461538461538,36.7078651685393,37.3196721311475,40.0766839378238,40.4666666666667,41.5581395348837,41.2328767123288,39,40.1263157894737,40.089519650655,39.9455252918288,39.2285714285714,38.375,36.5882352941176,34.8461538461538,37.3448275862069,32.5416666666667,36.1166666666667,37.5205479452055,38.0326086956522,36.75,38.5664335664336,37.1082802547771,37.1656804733728,37.4631578947368,37.9128205128205,38.0886699507389,38.1929824561403,38.2366071428571,37.4514767932489,37.8133333333333,38.4035608308605,38.0738255033557,38.2233333333333,37.7974276527331,37.8248407643312,37.2006172839506,36.5945017182131,37.2862595419847,36.5294117647059,37.1699029126214,35.5266272189349,35.4152542372881,35.1769911504425,35.5822784810127,34.2575757575758,33.9622641509434,34.71875,31.6764705882353,28.9411764705882,30.9444444444444,31.0769230769231],[7.32981827752394,7.33235770799304,8.07637052713598,8.27540630020739,8.01731400157158,8.49040916714253,7.43480135242369,7.45849392656863,7.1448947650634,7.5415894065015,8.19959348585851,7.5052687201657,7.38964466983631,8.08384706772691,8.44791618002209,9.77540334913593,9.03232460114974,10.5629250028287,7.04716691843997,8.67770339616906,9.2792673342181,7.69579536904748,9.15009288003844,8.31183578839406,7.39866702931659,8.30398392017921,8.34642814491609,7.76072124275454,8.62970115378863,8.37086056735226,8.00757041912914,8.27781621876794,8.00018325614323,8.2526060881625,7.87308474952627,8.0992113842577,7.90072954310337,7.67615451905407,7.92846738168773,7.8056817990763,7.35788369188267,7.64728447893293,7.31604044232842,7.3501463061789,7.64857992480692,7.9843075484871,8.69136485305096,7.89450895654972,8.1680627701585,9.56347672568552,7.91174861386737,7.68990124157452,7.76587558034584,8.72772608497649,8.31125279828036],[0.24324856302921,0.699112876553792,0.680153095467258,0.725801145862081,0.849833584501118,0.768685528153487,0.239334723765694,0.680864228099486,0.770453816763516,0.882676275819122,1.04985036664742,0.444573750367057,0.345295419200156,0.504256525625386,1.00971911076213,1.4109579387652,1.54903088964506,2.07156002730926,1.30862604410984,1.77132878831924,1.19794826168111,0.900724718579986,0.953963127724514,0.734669431260309,0.618707618796889,0.662730065552505,0.642032934224314,0.563021894534267,0.617985735474329,0.587519234096858,0.530314306080672,0.553084860737682,0.51966774573498,0.476464434651656,0.428874254337216,0.469174718271061,0.456148832850516,0.435274789211888,0.447429299195548,0.433648988837572,0.431326780796826,0.472450812907846,0.474228465637551,0.512108959138843,0.588352301908225,0.735015087063121,0.817614829200078,0.888201651076623,1.00541902479159,1.31364455635032,1.39861277397722,1.31880718281565,1.88350148783357,2.05714476634187,2.3051267790418],[0.922757038711943,2.16787889787164,3.03089397102087,2.56381627665424,1.16018353927915,0.604625520978047,2.05113711803585,1.62169341386253,3.24820576546426,2.36749837404984,0.0929224637681187,1.63937919005006,1.76558185161196,1.91911116440497,1.2433981352481,0.501852517985611,1.00167062177687,2.65437970866343,0.092483786886028,4.83254157782516,0.932845010615708,0.0821486778062095,0.942702669827206,0.363084415584417,1.75073778330103,0.205507491515,0.39768047337278,0.694863818081792,1.39971653335967,1.10750259900668,1.32643628050295,1.3087017866429,0.803585202570119,1.08511893823379,1.67964742165717,1.65649684895106,1.99338050778051,1.68437045253242,2.05641637166885,1.61266680391019,1.34785916961695,2.2708761536459,1.77093518865036,2.8724316684899,1.74709957470414,1.7581656296932,2.16970835862539,2.97796279473815,2.22534421183443,2.0451339153413,3.57238873626374,1.05843381822809,1.33728944761545,1.14956354730601,1.89496833554377]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>age<\/th>\n      <th>census_n<\/th>\n      <th>MRP_mean<\/th>\n      <th>MRP_se_of_mean<\/th>\n      <th>MRP_sd<\/th>\n      <th>MRP_se_of_sd<\/th>\n      <th>Raw_n<\/th>\n      <th>Raw_mean<\/th>\n      <th>Raw_sd<\/th>\n      <th>Raw_se_of_mean<\/th>\n      <th>abs_dif<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"targets":3,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":4,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":5,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":6,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":8,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":9,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":10,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"targets":11,"render":"function(data, type, row, meta) {\n    return type !== 'display' ? data : DTWidget.formatRound(data, 2, 3, \",\", \".\", null);\n  }"},{"className":"dt-right","targets":[1,2,3,4,5,6,7,8,9,10,11]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":["options.columnDefs.0.render","options.columnDefs.1.render","options.columnDefs.2.render","options.columnDefs.3.render","options.columnDefs.4.render","options.columnDefs.5.render","options.columnDefs.6.render","options.columnDefs.7.render"],"jsHooks":[]}</script>
-</div>
-<div id="plot-of-means-95-cis" class="section level2" number="2.3">
-<h2><span class="header-section-number">2.3</span> Plot of means + 95%
-CIs</h2>
-<pre class="r"><code>means_ns_sds_and_ses %&gt;%
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;%
-  filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;%
-  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
-  geom_line(linewidth = 1) +
-  geom_pointrange(shape = 18, 
-                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
-                  fatten = 6,
-                  linewidth = 1.5,
-                  position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = mean, color = source), family = &quot;Times&quot;, seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
-    legend.position = &quot;none&quot;
-  ) +
-  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
-  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="03_norm_comparisons_files/figure-html/unnamed-chunk-4-1.png" width="864" /></p>
-</div>
-<div id="plot-of-sds" class="section level2" number="2.4">
-<h2><span class="header-section-number">2.4</span> Plot of SDs</h2>
-<pre class="r"><code>means_ns_sds_and_ses %&gt;%
-  filter(age &lt;= 65) %&gt;%
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;%
-  filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;%
+<div id="plot-sds" class="section level2" number="1.4">
+<h2><span class="header-section-number">1.4</span> Plot SDs</h2>
+<pre class="r"><code>means_ns_sds_and_ses_plot %&gt;%
   ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(0, 5))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
                   fatten = 6,
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = sd, color = source), family = &quot;Times&quot;, seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+    geom_text_repel(
+    data = means_ns_sds_and_ses_plot %&gt;% filter(age == 65),
+    aes(label = source), family = &quot;Times&quot;, seed = 810, nudge_x = 2, hjust = 0) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score SD&quot;)</code></pre>
-<p><img src="03_norm_comparisons_files/figure-html/unnamed-chunk-5-1.png" width="864" /></p>
+<pre><code>## Error in geom_text_repel(data = means_ns_sds_and_ses_plot %&gt;% filter(age == : could not find function &quot;geom_text_repel&quot;</code></pre>
 </div>
 </div>
-<div id="mrp-norms-vs.-manual-norms-vs.-raw-means"
-class="section level1" number="3">
-<h1><span class="header-section-number">3</span> MRP norms vs. manual
-norms vs. raw means</h1>
+<div id="mrp-norms-vs.-manual-norms-vs.-raw-estimates"
+class="section level1" number="2">
+<h1><span class="header-section-number">2</span> MRP norms vs. manual
+norms vs. raw estimates</h1>
 <p>Here we compare the MRP-based norms to the traditionally constructed
 norms reported in the CFT 20-R manual. We aggregate by the age groups as
 reported in the manual normal tables. Note that the manual means and SDs
 for ages 20 and older are based on the very same TwinLife sample we are
 using, they just use a different correction method that isn’t described
 in enough detail to make it reproducible for us.</p>
-<div id="plots-of-means-and-sds" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Plots of means and
-SDs</h2>
-<pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws  %&gt;% # the same one from above
+<div id="means" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Means</h2>
+<pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws  %&gt;% 
   mutate(age_group = case_when(
                          age == 11 ~ &#39;11&#39;,
                          age == 12 ~ &#39;12&#39;,
@@ -593,14 +571,13 @@ means_sds_and_ses &lt;- means_sds_and_ses_MRP %&gt;%
   left_join(means_sds_and_ses_tl, by = &quot;age_group&quot;) %&gt;% 
   left_join(manual_norms, by = &quot;age_group&quot;)
 
-
+means_sds_and_ses_plot &lt;- means_sds_and_ses  %&gt;% 
+  pivot_longer(-age_group, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
 
 # means and CIs
-means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% 
-  filter(provenance != &quot;census&quot; 
-         ) %&gt;%
-  ggplot(aes(x = age_group, y = mean, group = provenance, colour = provenance)) +
+means_sds_and_ses_plot %&gt;%
+  ggplot(aes(x = age_group, y = mean, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) + 
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
@@ -608,34 +585,34 @@ means_sds_and_ses %&gt;%
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3))  +
   scale_colour_manual(values = c(&quot;#009e73&quot;, &quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;60-64&quot;),
+    aes(label = c(&quot;MRP&quot;, &quot;Raw&quot;, &quot;&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = .5, hjust = 0) + 
   labs(x = &quot;Age Group&quot;, y = &quot;Mean CFT 20-R Score&quot;) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;11&quot;),
-    aes(label = c(&quot;MRP&quot;, &quot;Raw&quot;, &quot;&quot;), x = age_group, y = mean, color = provenance), family = &quot;Times&quot;, seed = 810) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;14&quot;),
-    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, school sample&quot;), x = age_group, y = mean, color = provenance), family = &quot;Times&quot;, seed = 810, nudge_y = 2.5) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;40-44&quot;),
-    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, TwinLife sample&quot;), x = age_group, y = mean, color = provenance), family = &quot;Times&quot;, seed = 810, nudge_y = -2.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;14&quot;),
+    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, school sample&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_y = 2.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;40-44&quot;),
+    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, TwinLife sample&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_y = -2.5) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
-  ) + 
+  )  + 
   geom_vline(xintercept = 7.5)</code></pre>
-<p><img src="03_norm_comparisons_files/figure-html/unnamed-chunk-6-1.png" width="864" /></p>
-<pre class="r"><code># SDs
-means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% 
-  filter(provenance != &quot;census&quot; 
-         )   %&gt;%
-  ggplot(aes(x = age_group, y = sd, group = provenance, colour = provenance)) +
+<pre><code>## Error in geom_text_repel(data = means_sds_and_ses_plot %&gt;% filter(age_group == : could not find function &quot;geom_text_repel&quot;</code></pre>
+</div>
+<div id="sds" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> SDs</h2>
+<pre class="r"><code>means_sds_and_ses_plot %&gt;%
+  ggplot(aes(x = age_group, y = sd, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
@@ -643,36 +620,37 @@ means_sds_and_ses %&gt;%
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3))  +
   scale_colour_manual(values = c(&quot;#009e73&quot;, &quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
-  labs(x = &quot;Age Group&quot;, y = &quot;CFT 20-R Score SD&quot;) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;11&quot;),
-    aes(label = c(&quot;MRP&quot;, &quot;Raw&quot;, &quot;&quot;), x = age_group, y = sd, color = provenance), family = &quot;Times&quot;, seed = 810) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;14&quot;),
-    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, school sample&quot;), x = age_group, y = sd, color = provenance), family = &quot;Times&quot;, seed = 810, nudge_y = -.5) +
-  geom_label_repel(
-    data = means_sds_and_ses %&gt;% 
-  pivot_longer(-age_group, names_to = c(&quot;provenance&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(age_group == &quot;40-44&quot;),
-    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, TwinLife sample&quot;), x = age_group, y = sd, color = provenance), family = &quot;Times&quot;, seed = 810, nudge_y = .5) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;60-64&quot;),
+    aes(label = c(&quot;MRP&quot;, &quot;Raw&quot;, &quot;&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = .5, hjust = 0) + 
+  labs(x = &quot;Age Group&quot;, y = &quot;Mean CFT 20-R Score&quot;) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;14&quot;),
+    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, school sample&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_y = -.5, nudge_x = -.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %&gt;% filter(age_group == &quot;40-44&quot;),
+    aes(label = c(&quot;&quot;, &quot;&quot;, &quot;Manual, TwinLife sample&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_y = .5) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
   ) + 
-  geom_vline(xintercept = 7.5)</code></pre>
-<p><img src="03_norm_comparisons_files/figure-html/unnamed-chunk-7-1.png" width="864" /></p>
+  geom_vline(xintercept = 7.5) + 
+  labs(x = &quot;Age Group&quot;, y = &quot;CFT 20-R Score SD&quot;) </code></pre>
+<pre><code>## Error in geom_text_repel(data = means_sds_and_ses_plot %&gt;% filter(age_group == : could not find function &quot;geom_text_repel&quot;</code></pre>
 </div>
-<div id="iq-calculations" class="section level2" number="3.2">
-<h2><span class="header-section-number">3.2</span> IQ calculations</h2>
+<div id="iq-calculations" class="section level2" number="2.3">
+<h2><span class="header-section-number">2.3</span> IQ calculations</h2>
 <p>Rather than calculating IQs for all possible CFT 20-R scores (0-56),
 we restrict our calculations to those which occur in our data.</p>
 <div id="linearly-transformed-iqs" class="section level3"
-number="3.2.1">
-<h3><span class="header-section-number">3.2.1</span> Linearly
+number="2.3.1">
+<h3><span class="header-section-number">2.3.1</span> Linearly
 transformed IQs</h3>
 <pre class="r"><code>iq &lt;- function(cft_score, mean, sd) {
   iq_score &lt;- ((cft_score - mean) / sd) * 15 + 100
@@ -692,8 +670,8 @@ iqs_linear &lt;- tl_no_1st_twins %&gt;%
          IQ_linear_dif_abs = abs(MRP_IQ_linear - Manual_IQ_linear))</code></pre>
 </div>
 <div id="normalised-area-transformed-normal-rank-transformed-iqs"
-class="section level3" number="3.2.2">
-<h3><span class="header-section-number">3.2.2</span> Normalised (area
+class="section level3" number="2.3.2">
+<h3><span class="header-section-number">2.3.2</span> Normalised (area
 transformed / normal rank transformed) IQs</h3>
 <pre class="r"><code>iqs_normalised &lt;- sim_pop_sample_with_draws %&gt;% 
   mutate(raw_score = round(.prediction),
@@ -729,104 +707,76 @@ transformed / normal rank transformed) IQs</h3>
   rename(&quot;cft&quot; = raw_score)</code></pre>
 </div>
 <div id="some-aggregated-comparisons-between-mrp-and-manual-iqs"
-class="section level3" number="3.2.3">
-<h3><span class="header-section-number">3.2.3</span> Some aggregated
+class="section level3" number="2.3.3">
+<h3><span class="header-section-number">2.3.3</span> Some aggregated
 comparisons between MRP and Manual IQs</h3>
 <pre class="r"><code>iq_table &lt;- iqs_linear %&gt;% 
   left_join(iqs_normalised, by = c(&quot;age_group&quot;, &quot;cft&quot;)) %&gt;% 
   mutate(IQ_MRP_abs_dif = abs(MRP_IQ_linear - MRP_IQ_normalised),
-         Manual_kids_sample = ifelse(age_group %in% c(&quot;11&quot;, &quot;12&quot;, &quot;13&quot;, &quot;14&quot;, &quot;15&quot;, &quot;16&quot;, &quot;17-19&quot;), TRUE, FALSE)) %&gt;%
-  arrange(-IQ_linear_dif_abs)
+         Manual_kids_sample = ifelse(age_group %in% c(&quot;11&quot;, &quot;12&quot;, &quot;13&quot;, &quot;14&quot;, &quot;15&quot;, &quot;16&quot;, &quot;17-19&quot;), TRUE, FALSE)) 
 
 
 mean(iq_table$IQ_linear_dif_abs)</code></pre>
-<pre><code>## [1] 4.445</code></pre>
+<pre><code>## [1] 4.405</code></pre>
 <pre class="r"><code>mean(iq_table$IQ_MRP_abs_dif)</code></pre>
-<pre><code>## [1] 1.506</code></pre>
+<pre><code>## [1] 1.532</code></pre>
 <pre class="r"><code>iq_table %&gt;% group_by(Manual_kids_sample) %&gt;% summarise(mean(IQ_linear_dif_abs))</code></pre>
 <pre><code>## # A tibble: 2 × 2
 ##   Manual_kids_sample `mean(IQ_linear_dif_abs)`
 ##   &lt;lgl&gt;                                  &lt;dbl&gt;
-## 1 FALSE                                   2.21
-## 2 TRUE                                    7.76</code></pre>
+## 1 FALSE                                   2.29
+## 2 TRUE                                    7.61</code></pre>
 </div>
 </div>
 </div>
-<div id="session-info" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Session info</h1>
+<div id="session-info" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Session info</h1>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.3.0 (2023-04-21 ucrt)
-## Platform: x86_64-w64-mingw32/x64 (64-bit)
-## Running under: Windows 10 x64 (build 19045)
+<pre><code>## R version 4.2.2 (2022-10-31)
+## Platform: x86_64-pc-linux-gnu (64-bit)
+## Running under: Rocky Linux 8.8 (Green Obsidian)
 ## 
 ## Matrix products: default
-## 
+## BLAS/LAPACK: /software/all/FlexiBLAS/3.2.1-GCC-12.2.0/lib64/libflexiblas.so.3.2
 ## 
 ## locale:
-## [1] LC_COLLATE=English_United Kingdom.utf8 
-## [2] LC_CTYPE=English_United Kingdom.utf8   
-## [3] LC_MONETARY=English_United Kingdom.utf8
-## [4] LC_NUMERIC=C                           
-## [5] LC_TIME=English_United Kingdom.utf8    
-## 
-## time zone: Europe/Berlin
-## tzcode source: internal
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] bayesplot_1.10.0       marginaleffects_0.12.0 tidybayes_3.0.4       
-##  [4] brms_2.20.4            Rcpp_1.0.10            kableExtra_1.3.4      
-##  [7] ggrepel_0.9.3          forcats_0.5.2          stringr_1.5.0         
-## [10] dplyr_1.1.2            purrr_1.0.1            readr_2.1.3           
-## [13] tidyr_1.2.1            tibble_3.2.1           ggplot2_3.4.2         
-## [16] tidyverse_1.3.2       
+## [1] forcats_1.0.0   stringr_1.5.1   dplyr_1.1.4     purrr_1.0.2    
+## [5] readr_2.1.4     tidyr_1.3.0     tibble_3.2.1    ggplot2_3.4.4  
+## [9] tidyverse_1.3.2
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] tensorA_0.36.2       rstudioapi_0.14      jsonlite_1.8.4      
-##   [4] magrittr_2.0.3       estimability_1.4.1   farver_2.1.1        
-##   [7] rmarkdown_2.21       fs_1.6.2             vctrs_0.6.2         
-##  [10] base64enc_0.1-3      webshot_0.5.4        htmltools_0.5.5     
-##  [13] distributional_0.3.2 curl_5.0.0           haven_2.5.1         
-##  [16] broom_1.0.4          cellranger_1.1.0     googlesheets4_1.0.1 
-##  [19] sass_0.4.6           StanHeaders_2.26.26  bslib_0.4.2         
-##  [22] htmlwidgets_1.6.2    plyr_1.8.8           emmeans_1.8.7       
-##  [25] zoo_1.8-12           lubridate_1.9.0      cachem_1.0.8        
-##  [28] igraph_1.4.2         mime_0.12            lifecycle_1.0.3     
-##  [31] pkgconfig_2.0.3      colourpicker_1.2.0   Matrix_1.5-4        
-##  [34] R6_2.5.1             fastmap_1.1.1        shiny_1.7.4         
-##  [37] digest_0.6.31        colorspace_2.1-0     ps_1.7.5            
-##  [40] crosstalk_1.2.0      labeling_0.4.2       fansi_1.0.4         
-##  [43] timechange_0.2.0     httr_1.4.5           abind_1.4-5         
-##  [46] compiler_4.3.0       gargle_1.4.0         withr_2.5.0         
-##  [49] backports_1.4.1      inline_0.3.19        shinystan_2.6.0     
-##  [52] DBI_1.1.3            highr_0.10           pkgbuild_1.4.0      
-##  [55] gtools_3.9.4         loo_2.6.0            tools_4.3.0         
-##  [58] googledrive_2.0.0    httpuv_1.6.11        threejs_0.3.3       
-##  [61] glue_1.6.2           callr_3.7.3          nlme_3.1-162        
-##  [64] promises_1.2.0.1     grid_4.3.0           checkmate_2.2.0     
-##  [67] reshape2_1.4.4       generics_0.1.3       gtable_0.3.3        
-##  [70] tzdb_0.3.0           data.table_1.14.6    hms_1.1.2           
-##  [73] xml2_1.3.3           utf8_1.2.3           ggdist_3.2.1        
-##  [76] pillar_1.9.0         markdown_1.6         posterior_1.4.1     
-##  [79] later_1.3.1          lattice_0.20-45      renv_0.17.3         
-##  [82] tidyselect_1.2.0     miniUI_0.1.1.1       knitr_1.42          
-##  [85] arrayhelpers_1.1-0   gridExtra_2.3        V8_4.3.0            
-##  [88] svglite_2.1.1        stats4_4.3.0         xfun_0.39           
-##  [91] bridgesampling_1.1-2 matrixStats_0.63.0   DT_0.28             
-##  [94] rstan_2.26.22        stringi_1.7.12       yaml_2.3.7          
-##  [97] evaluate_0.21        codetools_0.2-19     cli_3.6.1           
-## [100] RcppParallel_5.1.7   shinythemes_1.2.0    xtable_1.8-4        
-## [103] systemfonts_1.0.4    munsell_0.5.0        processx_3.8.2      
-## [106] jquerylib_0.1.4      modelr_0.1.11        readxl_1.4.1        
-## [109] dbplyr_2.3.0         coda_0.19-4          svUnit_1.0.6        
-## [112] parallel_4.3.0       rstantools_2.3.1     ellipsis_0.3.2      
-## [115] assertthat_0.2.1     prettyunits_1.1.1    dygraphs_1.1.1.6    
-## [118] reprex_2.0.2         Brobdingnag_1.2-9    viridisLite_0.4.2   
-## [121] mvtnorm_1.1-3        scales_1.2.1         xts_0.13.1          
-## [124] crayon_1.5.2         rlang_1.1.1          rvest_1.0.3         
-## [127] shinyjs_2.1.0</code></pre>
+##  [1] tidyselect_1.2.0    xfun_0.41           bslib_0.6.0        
+##  [4] haven_2.5.3         gargle_1.5.2        colorspace_2.1-0   
+##  [7] vctrs_0.6.4         generics_0.1.3      htmltools_0.5.7    
+## [10] yaml_2.3.7          utf8_1.2.4          rlang_1.1.2        
+## [13] jquerylib_0.1.4     pillar_1.9.0        withr_2.5.2        
+## [16] glue_1.6.2          DBI_1.1.3           dbplyr_2.4.0       
+## [19] modelr_0.1.11       readxl_1.4.3        lifecycle_1.0.4    
+## [22] munsell_0.5.0       gtable_0.3.4        cellranger_1.1.0   
+## [25] rvest_1.0.3         htmlwidgets_1.6.3   evaluate_0.23      
+## [28] knitr_1.45          tzdb_0.4.0          fastmap_1.1.1      
+## [31] crosstalk_1.2.1     fansi_1.0.5         broom_1.0.5        
+## [34] DT_0.30             renv_1.0.3          backports_1.4.1    
+## [37] scales_1.2.1        googlesheets4_1.1.1 cachem_1.0.8       
+## [40] jsonlite_1.8.7      fs_1.6.3            hms_1.1.3          
+## [43] digest_0.6.33       stringi_1.8.2       grid_4.2.2         
+## [46] cli_3.6.1           tools_4.2.2         magrittr_2.0.3     
+## [49] sass_0.4.7          crayon_1.5.2        pkgconfig_2.0.3    
+## [52] ellipsis_0.3.2      xml2_1.3.5          reprex_2.0.2       
+## [55] googledrive_2.1.1   lubridate_1.9.3     timechange_0.2.0   
+## [58] rmarkdown_2.25      httr_1.4.7          rstudioapi_0.15.0  
+## [61] R6_2.5.1            compiler_4.2.2</code></pre>
 </div>
 
 

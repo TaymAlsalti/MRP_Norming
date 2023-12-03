@@ -10,11 +10,11 @@
 
 
 
-<meta name="date" content="2023-11-02" />
+<meta name="date" content="2023-12-02" />
 
 <title>Data preprocessing code</title>
 
-<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -30,7 +30,7 @@
        h6 {font-size: 12px;}
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
-<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
@@ -38,8 +38,8 @@
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 <script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="site_libs/font-awesome-6.4.0/css/all.min.css" rel="stylesheet" />
-<link href="site_libs/font-awesome-6.4.0/css/v4-shims.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet" />
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -358,7 +358,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Data preprocessing code</h1>
-<h4 class="date">2023-11-02</h4>
+<h4 class="date">2023-12-02</h4>
 
 </div>
 
@@ -386,59 +386,61 @@ can also be reproduced based on the synthetic dataset. The comparisons
 to the Manual norms cannot be reproduced as we did not have permission
 to share those norms.</p>
 <div id="preprocessing" class="section level2" number="1.1">
-<h2><span class="header-section-number">1.1</span> preprocessing</h2>
+<h2><span class="header-section-number">1.1</span> Preprocessing</h2>
 <pre class="r"><code># Load dataset and define missing values as NA without losing the different types of missing values in the dataset
-tl_1 &lt;- haven::read_dta(&quot;../unshareable_data/raw/ZA6701_person_wid1_v6-0-0.dta&quot;) %&gt;% 
-  # get variables specifying own, mother&#39;s, and father&#39;s birthplace, respectively, from an older version of the TL sample
-  left_join(haven::read_sav(&quot;../unshareable_data/raw/ZA6701_de_person_v2-0-0.sav&quot;) %&gt;% 
-                              select(pid, mig0100, mig0300, mig0400), by = &quot;pid&quot;) %&gt;% 
+tl_1 &lt;- haven::read_dta(&quot;../unshareable_data/raw/ZA6701_person_wid1_v7-1-0.dta&quot;) %&gt;% 
+  # define variously coded NAs as NAs explicitly
   codebook::detect_missing(ninety_nine_problems = T) %&gt;% 
-  # total sum scores of the sum scores of all 4 subtests
+  # total sum scores of the sum scores of all 4 subtests, automatically excludes invalid and NA subtests
   mutate(cft = igf0182 + igf0282 + igf0382 + igf0482,
   # divide age in months variable by 12 for easier interpretablility
          age = age0101/12,
   # create logical sex variable
-         male = sex == 1)
-
-
-# create a migration variable whose categories correspond to the migration variable in the census
+         male = sex == 1, 
+  # create age groups corresponding to those in the manual
+  age_group = case_when(
+                         age0100 == 11 ~ &#39;11&#39;,
+                         age0100 == 12 ~ &#39;12&#39;,
+                         age0100 == 13 ~ &#39;13&#39;,
+                         age0100 == 14 ~ &#39;14&#39;,
+                         age0100 == 15 ~ &#39;15&#39;,
+                         age0100 == 16 ~ &#39;16&#39;,
+                         age0100 &gt;= 17 &amp; age0100 &lt;= 19 ~ &#39;17-19&#39;,
+                         age0100 &gt;= 20 &amp; age0100 &lt;= 24 ~ &#39;20-24&#39;,
+                         age0100 &gt;= 25 &amp; age0100 &lt;= 29 ~ &#39;25-29&#39;,
+                         age0100 &gt;= 30 &amp; age0100 &lt;= 34 ~ &#39;30-34&#39;,
+                         age0100 &gt;= 35 &amp; age0100 &lt;= 39 ~ &#39;35-39&#39;,
+                         age0100 &gt;= 40 &amp; age0100 &lt;= 44 ~ &#39;40-44&#39;,
+                         age0100 &gt;= 45 &amp; age0100 &lt;= 49 ~ &#39;45-49&#39;,
+                         age0100 &gt;= 50 &amp; age0100 &lt;= 54 ~ &#39;50-54&#39;,
+                         age0100 &gt;= 55 &amp; age0100 &lt;= 59 ~ &#39;55-59&#39;,
+                         age0100 &gt;= 60 &amp; age0100 &lt;= 64 ~ &#39;60-64&#39;,
+                         TRUE ~ NA_character_))
+  
 tl_2 &lt;- tl_1 %&gt;%
-  # wrangle the birthplace variable in the current version of the dataset to get the birthplace of the father and mother of the twins in case mig0300 and mig0400 (which have a lot of NAs) fail
-  filter(ptyp == 300 | ptyp == 400) %&gt;% 
-  pivot_wider(id_cols = fid, names_from = ptyp, values_from = mig2000) %&gt;% 
-  right_join(tl_1, by = &quot;fid&quot;) %&gt;% 
-  rename(mig2000_dad = `400`, mig2000_mom = `300`) %&gt;% 
-  # set mig2000 to NA if the person is themselves a mother or a father
-  mutate(mig2000_dad = as.numeric(ifelse(ptyp == 300 | ptyp == 400, NA_character_, mig2000_dad)),
-         mig2000_mom = as.numeric(ifelse(ptyp == 300 | ptyp == 400, NA_character_, mig2000_mom)),
-  # collapse the east germany into one germany category
-         mig0300 = recode(as.numeric(mig0300), `2` = 1),
-         mig0400 = recode(as.numeric(mig0400), `2` = 1),
-  # if no information on citzenship is available, assume the person is a citizen
-         mig0520 = coalesce(mig0520, 1),
   # since the migration variable in the census encodes information about both one&#39;s own and the parent&#39;s migration background and experience (&quot;Migrationshintergrund und -erfahrung&quot;), we start with creating a variable indicating with the person and/or parents is/are born abroad
+  # assume German citizenship lacking information about citizenship
+  mutate(mig0520 = coalesce(mig0520, 1), 
          born_abroad = case_when(
            # if the person themselves is not born in germany, then born_abroad = &quot;self&quot;
             mig2000 != 1 ~ &#39;self&#39;,
            # if the person and both their parents are born in germany, then born_abroad = &quot;none&quot;
-            mig2000 == 1 &amp; ((coalesce(mig2000_dad, mig0400) == 1 &amp; coalesce(mig2000_mom, mig0300) == 1)) ~ &#39;none&#39;,
+            mig2000 == 1 &amp; mig3100 == 1 &amp; mig3200 == 1 ~ &#39;none&#39;,
            # etc..
-            coalesce(mig2000_dad, mig0400) != 1 &amp; coalesce(mig2000_mom, mig0300) != 1 ~ &#39;both_parents&#39;,
-            mig2000_mom != 1 ~ &#39;one_parent&#39;,
-            mig2000_dad != 1 ~ &#39;one_parent&#39;,  
-            mig0300 != 1 ~ &#39;one_parent&#39;,
-            mig0400 != 1 ~ &#39;one_parent&#39;,
-            mig2000 == 1 ~ &#39;none&#39;,
+            mig3100 != 1 &amp; mig3200 != 1 ~ &#39;both_parents&#39;,
+            mig3100 != 1 ~ &#39;one_parent&#39;,
+            mig3200 != 1 ~ &#39;one_parent&#39;,
            # if no information is available, assume both the person and their parents are born in germany
             TRUE ~ &quot;none&quot;), 
          mig = case_when(
-           # if the person is born abroad and is a citizen... 
-            born_abroad == &quot;self&quot; &amp; mig0520 == 1 ~ &quot;citizen, own mig background&quot;,
-            born_abroad == &quot;self&quot; &amp; mig0520 != 1 ~ &quot;foreigner, own mig background&quot;,
-            born_abroad != &quot;self&quot; &amp; mig0520 != 1 ~ &quot;foreigner, no own mig background&quot;,
-            born_abroad == &quot;one_parent&quot; &amp; mig0520 == 1 ~ &quot;citizen, mig background from one parent&quot;,
-            born_abroad == &quot;both_parents&quot; &amp; mig0520 == 1 ~ &quot;citizen, mig background from both parents&quot;,
-            born_abroad == &quot;none&quot; &amp; mig0520 == 1 ~ &quot;no mig background&quot;))
+           # if the person is born abroad and is a Citizen... 
+            born_abroad == &quot;self&quot; &amp; mig0520 == 1 ~ &quot;Citizen: Own mig experience&quot;,
+           # etc..
+            born_abroad == &quot;self&quot; &amp; mig0520 != 1 ~ &quot;Non-citizen: Own mig experience&quot;,
+            born_abroad != &quot;self&quot; &amp; mig0520 != 1 ~ &quot;Non-citizen: No own mig experience&quot;,
+            born_abroad == &quot;one_parent&quot; &amp; mig0520 == 1 ~ &quot;Citizen: Mig background from one parent&quot;,
+            born_abroad == &quot;both_parents&quot; &amp; mig0520 == 1 ~ &quot;Citizen: Mig background from both parents&quot;,
+            born_abroad == &quot;none&quot; &amp; mig0520 == 1 ~ &quot;Citizen: No mig background&quot;))
 
 
 
@@ -448,45 +450,49 @@ tl &lt;- tl_2 %&gt;%
   mutate(eca0108 = str_sub(as.character(as_factor(eca0108)), 4, -1),
          school_type = case_when(
            # we had to collapse some categories unto one another in order to ensure correspondance to census categories while attempting to minimise data loss. school types in the comments on the right are what the numerical codes refer to
-            edu0400 == 1 ~ &quot;at school: primary&quot;, # Grundschule
-            edu0400 == 2 ~ &quot;at school: primary&quot;, # Orientierungsschule
-            edu0400 == 3 ~ &quot;at school: lower secondary&quot;, # Hauptschule
-            edu0400 == 4 ~ &quot;at school: intermediate secondary&quot;, # Realschule
-            edu0400 == 5 ~ &quot;at school: comprehensive school&quot;, # Verbundene Haupt- und Realschule (auch Sekundar-, Real-, Regel-, Mittel-, Ober- und Wirtschaftsschule, regionale Schule, erweiterte Realschule)
-            edu0400 == 6 ~ &quot;at school: comprehensive school&quot;, # Gesamtschule
-            edu0400 == 7 ~ &quot;at school: comprehensive school&quot;, # Waldorfschule
-            edu0400 == 8 ~ &quot;at school: upper secondary&quot;, # Gymnasium (auch Kolleg)
-            edu0400 == 9 ~ &quot;at school: other school&quot;, # Sonderschule/Förderschule
-            edu0400 == 10 ~ &quot;at school: other school&quot;, # Andere Schule
+            edu0400 == 1 ~ &quot;ST1: Primary&quot;, # Grundschule
+            edu0400 == 2 ~ &quot;ST6: Other school&quot;, # Orientierungsschule
+            edu0400 == 3 ~ &quot;ST2: Lower secondary&quot;, # Hauptschule
+            edu0400 == 4 ~ &quot;ST3: Intermediate secondary&quot;, # Realschule
+            edu0400 == 5 ~ &quot;ST6: Other school&quot;, # Verbundene Haupt- und Realschule (auch Sekundar-, Real-, Regel-, Mittel-, Ober- und Wirtschaftsschule, regionale Schule, erweiterte Realschule)
+            edu0400 == 6 ~ &quot;ST5: Comprehensive school&quot;, # Gesamtschule
+            edu0400 == 7 ~ &quot;ST6: Other school&quot;, # Waldorfschule
+            edu0400 == 8 ~ &quot;ST4: Upper secondary&quot;, # Gymnasium (auch Kolleg)
+            edu0400 == 9 ~ &quot;ST6: Other school&quot;, # Sonderschule/Förderschule
+            edu0400 == 10 ~ &quot;ST6: Other school&quot;, # Andere Schule
             # &quot;Entfällt, da kein/e Schüler/-innen&quot; is a category in the census so we gave kids who don&#39;t have a school type category and who specified as an answer to another question that they no longer go to school this category
-            edu0100 == 3 ~ &quot;no longer at school&quot;),  # &quot;ich gehe nicht mehr in die Schule&quot;
+            edu0100 == 3 ~ &quot;ST7: No longer at school&quot;),  # &quot;ich gehe nicht mehr in die Schule&quot;
          isced = as.factor(case_when(
            # isced is coded starting with age 15, if the person is still at school, assume they will have a primary school certificate to be conservative
-            eca0108 == &quot;3] -83: in school or training/not in school yet&quot; ~ &quot;isced 1: primary&quot;,
+            eca0108 == &quot;3] -83: in school or training/not in school yet&quot; ~ &quot;ISCED 1: Primary&quot;,
             eca0108 == &quot;9] -89: not codable&quot; ~ NA_character_,
             eca0108 == &quot;5] -95: doesn&#39;t apply (screened out)&quot; ~ NA_character_,
            # we don&#39;t change any coding here, only translation/explanation
-            eca0108 == &quot;level 1&quot; ~   &quot;isced 1: primary&quot;,
-            eca0108 == &quot;level 2a&quot; ~  &quot;isced 2a: lower secondary&quot;,
-            eca0108 == &quot;level 3a&quot; ~  &quot;isced 3a: upper secondary, general&quot;,
-            eca0108 == &quot;level 3b&quot; ~  &quot;isced 3b: upper secondary, vocational&quot;,
-            eca0108 == &quot;level 3c&quot; ~  &quot;isced 3b: upper secondary, vocational&quot;,
-            eca0108 == &quot;level 4a&quot; ~  &quot;isced 4a: post-secondary&quot;,
-            eca0108 == &quot;level 5a&quot; ~  &quot;isced 5a: tertiary, college etc.&quot;,
-            eca0108 == &quot; level 5b&quot; ~ &quot;isced 5b: tertiary, tech school etc.&quot;,
-            eca0108 == &quot; level 6&quot; ~  &quot;isced 6: PhD&quot;)),
+            eca0108 == &quot;level 1&quot; ~   &quot;ISCED 1: Primary&quot;,
+            eca0108 == &quot;level 2a&quot; ~  &quot;ISCED 2: Lower secondary&quot;,
+            eca0108 == &quot;level 3a&quot; ~  &quot;ISCED 3a: Upper secondary, general&quot;,
+            eca0108 == &quot;level 3b&quot; ~  &quot;ISCED 3b: Upper secondary, vocational&quot;,
+            eca0108 == &quot;level 3c&quot; ~  &quot;ISCED 3b: Upper secondary, vocational&quot;,
+            eca0108 == &quot;level 4a&quot; ~  &quot;ISCED 4: Post-secondary&quot;,
+            eca0108 == &quot;level 5a&quot; ~  &quot;ISCED 5a: Tertiary, e.g., college&quot;,
+            eca0108 == &quot; level 5b&quot; ~ &quot;ISCED 5b: Tertiary, e.g., Berufsakademie&quot;,
+            eca0108 == &quot; level 6&quot; ~  &quot;ISCED 6: PhD&quot;)),
            # the final education variable combines the variable school type (age &lt;19) and isced (age &gt; 18)
          educ = as.factor(case_when(
            age0100 &lt;= 18 ~ school_type, 
            age0100 &gt;= 19 ~ isced)),
            # set a large category (upper secondary, vocational) as the reference category of the educ factor
-         educ = relevel(educ, 10),
+         educ = relevel(educ, 4),
            # same for isced
          isced = relevel(isced, 4)) %&gt;%
- filter(!is.na(cft)
-        # unfortunately, 227 participants aged &lt;19 don&#39;t have school type information and 42 aged &gt;18 don&#39;t have isced information
-        &amp; !is.na(educ) 
+ filter(# filter out those who didn&#39;t take the IQ test
+        !is.na(cft) &amp;
+        # filter kids aged &lt;11 because no school type information
+        age &gt;= 11 &amp;
+        # exclude kids aged &gt;10 &amp; &lt;19 who don&#39;t have school type info and everyone &gt;18 who doesn&#39;t have ISCED information, i.e., n = 106
+         !is.na(educ)
         )
+
 
 # save dataset
 save(tl, file=&quot;../unshareable_data/preprocessed/tl.Rda&quot;)</code></pre>
@@ -494,23 +500,78 @@ save(tl, file=&quot;../unshareable_data/preprocessed/tl.Rda&quot;)</code></pre>
 <div
 id="synthetic-tl-sample-for-the-sake-of-reproducing-the-tutorial-code"
 class="section level2" number="1.2">
-<h2><span class="header-section-number">1.2</span> synthetic TL sample
+<h2><span class="header-section-number">1.2</span> Synthetic TL sample
 for the sake of reproducing the tutorial code</h2>
-<pre class="r"><code># reduced_tl &lt;- tl %&gt;% 
-#  filter(ptyp != 1) %&gt;%  
-#  select(cft, age0100, age, male, mig, educ) %&gt;% 
-#  mutate(age0100 = as.double(age0100))
+<pre class="r"><code>reduced_tl &lt;- tl %&gt;%
+filter(ptyp != 1) %&gt;%
+select(cft, age, male, mig, educ)
 
-# synthetic_tl &lt;- synthpop::syn(reduced_tl)
-# 
-# summary(synthetic_tl)
-# 
-# synthpop::compare(synthetic_tl, reduced_tl, stat = &quot;counts&quot;)
+synthetic_tl &lt;- synthpop::syn(reduced_tl, seed = 14)</code></pre>
+<pre><code>## 
+## Variable(s): mig have been changed for synthesis from character to factor.
+## 
+## Synthesis
+## -----------
+##  cft age male mig educ</code></pre>
+<pre class="r"><code>summary(synthetic_tl)</code></pre>
+<pre><code>## Synthetic object with one synthesis using methods:
+##      cft      age     male      mig     educ 
+## &quot;sample&quot;   &quot;cart&quot;   &quot;cart&quot;   &quot;cart&quot;   &quot;cart&quot; 
+## 
+##       cft             age           male             mig           
+##  Min.   : 7.00   Min.   :11.00   Mode :logical   Length:10059      
+##  1st Qu.:32.00   1st Qu.:18.83   FALSE:5829      Class :character  
+##  Median :38.00   Median :39.25   TRUE :4230      Mode  :character  
+##  Mean   :37.36   Mean   :35.36                                     
+##  3rd Qu.:43.00   3rd Qu.:48.58                                     
+##  Max.   :55.00   Max.   :74.67                                     
+##                                                                    
+##                                        educ     
+##  ISCED 5a: Tertiary, e.g., college       :2266  
+##  ISCED 3b: Upper secondary, vocational   :2094  
+##  ST4: Upper secondary                    :1249  
+##  ISCED 5b: Tertiary, e.g., Berufsakademie:1081  
+##  ISCED 4: Post-secondary                 : 672  
+##  ISCED 3a: Upper secondary, general      : 517  
+##  (Other)                                 :2180</code></pre>
+<pre class="r"><code>synthpop::compare(synthetic_tl, reduced_tl, stat = &quot;counts&quot;)</code></pre>
+<pre><code>## 
+## Comparing counts observed with synthetic</code></pre>
+<p><img src="01_data_cleaning_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<pre><code>## Press return for next variable(s):</code></pre>
+<p><img src="01_data_cleaning_files/figure-html/unnamed-chunk-2-2.png" width="672" /></p>
+<pre><code>## 
+## Selected utility measures:
+##          pMSE   S_pMSE df
+## cft  0.000045 1.806774  4
+## age  0.000028 1.106727  4
+## male 0.000006 0.899838  1
+## mig  0.000024 0.786009  5
+## educ 0.000129 1.488444 14</code></pre>
+<pre class="r"><code>synthetic_tl &lt;- synthetic_tl$syn %&gt;%
+ mutate(age0100 = round(age),
+        age_group = case_when(
+                         age0100 == 11 ~ &#39;11&#39;,
+                         age0100 == 12 ~ &#39;12&#39;,
+                         age0100 == 13 ~ &#39;13&#39;,
+                         age0100 == 14 ~ &#39;14&#39;,
+                         age0100 == 15 ~ &#39;15&#39;,
+                         age0100 == 16 ~ &#39;16&#39;,
+                         age0100 &gt;= 17 &amp; age0100 &lt;= 19 ~ &#39;17-19&#39;,
+                         age0100 &gt;= 20 &amp; age0100 &lt;= 24 ~ &#39;20-24&#39;,
+                         age0100 &gt;= 25 &amp; age0100 &lt;= 29 ~ &#39;25-29&#39;,
+                         age0100 &gt;= 30 &amp; age0100 &lt;= 34 ~ &#39;30-34&#39;,
+                         age0100 &gt;= 35 &amp; age0100 &lt;= 39 ~ &#39;35-39&#39;,
+                         age0100 &gt;= 40 &amp; age0100 &lt;= 44 ~ &#39;40-44&#39;,
+                         age0100 &gt;= 45 &amp; age0100 &lt;= 49 ~ &#39;45-49&#39;,
+                         age0100 &gt;= 50 &amp; age0100 &lt;= 54 ~ &#39;50-54&#39;,
+                         age0100 &gt;= 55 &amp; age0100 &lt;= 59 ~ &#39;55-59&#39;,
+                         age0100 &gt;= 60 &amp; age0100 &lt;= 64 ~ &#39;60-64&#39;,
+                         TRUE ~ NA_character_))
 
-# synthetic_tl &lt;- synthetic_tl$syn
 
 # save synthetic dataset
-# save(synthetic_tl, file=&quot;data/simulated/synthetic_tl.Rda&quot;)</code></pre>
+save(synthetic_tl, file=&quot;data/simulated/synthetic_tl.Rda&quot;)</code></pre>
 </div>
 </div>
 <div id="cft-manual-norms" class="section level1" number="2">
@@ -540,14 +601,14 @@ to share them.</p>
 #             Manual_sd = sqrt(mean(sd_manual^2)),
 #             Manual_se_of_mean = Manual_sd/sqrt(Manual_n))
 
-#save(manual_norms, file=&quot;../unshareable_data/preprocessed/manual_norms.Rda&quot;)
-#write.csv(manual_norms, file = &quot;../unshareable_data/preprocessed/manual_norms.csv&quot;)</code></pre>
+# save(manual_norms, file=&quot;../unshareable_data/preprocessed/manual_norms.Rda&quot;)
+# write.csv(manual_norms, file = &quot;../unshareable_data/preprocessed/manual_norms.csv&quot;)</code></pre>
 </div>
 <div id="census-tables" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Census tables</h1>
 <div id="main-poststratification-table" class="section level2"
 number="3.1">
-<h2><span class="header-section-number">3.1</span> main
+<h2><span class="header-section-number">3.1</span> Main
 poststratification table</h2>
 <pre class="r"><code>census_school_type_raw &lt;- readxl::read_excel(&quot;data/raw/729305_Zensus2011_Bildung_Schulform.xlsx&quot;, 
     sheet = &quot;Migration und Schulform&quot;) 
@@ -558,20 +619,20 @@ census_school_type &lt;- census_school_type_raw %&gt;%
   # exclude sex and age columns
   select(3:50) %&gt;%
   # before iteratively naming the 48 columns, 8 (school types) * 6 (migration background) 
-  set_names(map(c(&quot;no mig background&quot;, # Personen ohne Migrationshintergrund
-                  &quot;foreigner, own mig background&quot;, # Ausländer/-innen mit eigener Migrationserfahrung
-                  &quot;foreigner, no own mig background&quot;, # Ausländer/-innen ohne eigene Migrationserfahrung
-                  &quot;citizen, own mig background&quot;, # Deutsche mit eigener Migrationserfahrung
-                  &quot;citizen, mig background from both parents&quot;, # Deutsche mit beidseitigem Migrationshintergrund
-                  &quot;citizen, mig background from one parent&quot;), # Deutsche mit einseitigem Migrationshintergrund
+  set_names(map(c(&quot;Citizen: No mig background&quot;, # Personen ohne Migrationshintergrund
+                  &quot;Non-citizen: Own mig experience&quot;, # Ausländer/-innen mit eigener Migrationserfahrung
+                  &quot;Non-citizen: No own mig experience&quot;, # Ausländer/-innen ohne eigene Migrationserfahrung
+                  &quot;Citizen: Own mig experience&quot;, # Deutsche mit eigener Migrationserfahrung
+                  &quot;Citizen: Mig background from both parents&quot;, # Deutsche mit beidseitigem Migrationshintergrund
+                  &quot;Citizen: Mig background from one parent&quot;), # Deutsche mit einseitigem Migrationshintergrund
                 ~ paste0(.x, &quot;_&quot;, c(&quot;total&quot;, 
-                                    &quot;no longer at school&quot;, # Entfällt, da kein/e Schüler/-innen
-                                    &quot;at school: primary&quot;, # Grundschule
-                                    &quot;at school: lower secondary&quot;, # Hauptschule
-                                    &quot;at school: intermediate secondary&quot;, # Realschule
-                                    &quot;at school: upper secondary&quot;, # Gymnasium
-                                    &quot;at school: comprehensive school&quot;, # Gesamtschule
-                                    &quot;at school: other school&quot;))) %&gt;% # Sonstige Schule
+                                    &quot;ST7: No longer at school&quot;, # Entfällt, da kein/e Schüler/-innen
+                                    &quot;ST1: Primary&quot;, # Grundschule
+                                    &quot;ST2: Lower secondary&quot;, # Hauptschule
+                                    &quot;ST3: Intermediate secondary&quot;, # Realschule
+                                    &quot;ST4: Upper secondary&quot;, # Gymnasium
+                                    &quot;ST5: Comprehensive school&quot;, # Gesamtschule
+                                    &quot;ST6: Other school&quot;))) %&gt;% # Sonstige Schule
             unlist()) %&gt;%
   # recover sex and age columns
   mutate(age = as.numeric(parse_number(census_school_type_raw[[2]])),
@@ -603,21 +664,21 @@ census_ISCED &lt;- census_ISCED_raw %&gt;%
   )) %&gt;% 
   select(1:2, var24:var34, var57:var78, var90:var100, var112:var133) %&gt;% 
   select(3:56) %&gt;%
-  set_names(map(c(&quot;no mig background&quot;, # Personen ohne Migrationshintergrund
-                  &quot;foreigner, own mig background&quot;, # Ausländer/-innen mit eigener Migrationserfahrung
-                  &quot;foreigner, no own mig background&quot;, # Ausländer/-innen ohne eigene Migrationserfahrung
-                  &quot;citizen, own mig background&quot;, # Deutsche mit eigener Migrationserfahrung
-                  &quot;citizen, mig background from both parents&quot;, # Deutsche mit beidseitigem Migrationshintergrun,
-                  &quot;citizen, mig background from one parent&quot;), # Deutsche mit einseitigem Migrationshintergrund
+  set_names(map(c(&quot;Citizen: No mig background&quot;, # Personen ohne Migrationshintergrund
+                  &quot;Non-citizen: Own mig experience&quot;, # Ausländer/-innen mit eigener Migrationserfahrung
+                  &quot;Non-citizen: No own mig experience&quot;, # Ausländer/-innen ohne eigene Migrationserfahrung
+                  &quot;Citizen: Own mig experience&quot;, # Deutsche mit eigener Migrationserfahrung
+                  &quot;Citizen: Mig background from both parents&quot;, # Deutsche mit beidseitigem Migrationshintergrun,
+                  &quot;Citizen: Mig background from one parent&quot;), # Deutsche mit einseitigem Migrationshintergrund
          ~ paste0(.x, &quot;_&quot;, c(&quot;total&quot;,
-                             &quot;isced 1: primary&quot;, # ISCED-Ebene 1 = Primärbereich
-                             &quot;isced 2a: lower secondary&quot;, # ISCED-Ebene 2 = Sekundarbereich I
-                             &quot;isced 3a: upper secondary, general&quot;, # Sekundarbereich II A, allgemein bildend
-                             &quot;isced 3b: upper secondary, vocational&quot;, # Sekundarbereich II B, beruflich
-                             &quot;isced 4a: post-secondary&quot;, # ISCED-Ebene 4 = Postsekundäre nichttertiäre Bildung
-                             &quot;isced 5a: tertiary, college etc.&quot;, # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich A
-                             &quot;isced 5b: tertiary, tech school etc.&quot;, # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich B
-                             &quot;isced 6: PhD&quot; # ISCED-Ebene 6 = Zweite Stufe der tertiären Bildung
+                             &quot;ISCED 1: Primary&quot;, # ISCED-Ebene 1 = Primärbereich
+                             &quot;ISCED 2: Lower secondary&quot;, # ISCED-Ebene 2 = Sekundarbereich I
+                             &quot;ISCED 3a: Upper secondary, general&quot;, # Sekundarbereich II A, allgemein bildend
+                             &quot;ISCED 3b: Upper secondary, vocational&quot;, # Sekundarbereich II B, beruflich
+                             &quot;ISCED 4: Post-secondary&quot;, # ISCED-Ebene 4 = Postsekundäre nichttertiäre Bildung
+                             &quot;ISCED 5a: Tertiary, e.g., college&quot;, # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich A
+                             &quot;ISCED 5b: Tertiary, e.g., Berufsakademie&quot;, # ISCED-Ebene 5 = Erste Stufe der tertiären Bildung, Tertiärbereich B
+                             &quot;ISCED 6: PhD&quot; # ISCED-Ebene 6 = Zweite Stufe der tertiären Bildung
                              ))) %&gt;% 
             unlist()) %&gt;% 
   mutate(age = as.numeric(parse_number(census_ISCED_raw[[2]])),
@@ -674,50 +735,16 @@ census_n
 <tbody>
 <tr>
 <td style="text-align:right;">
-47
+57
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+Citizen: Mig background from one parent
 </td>
 <td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-1190
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-61
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, own mig background
-</td>
-<td style="text-align:left;">
-isced 4a: post-secondary
-</td>
-<td style="text-align:right;">
-1620
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-68
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, mig background from both parents
-</td>
-<td style="text-align:left;">
-isced 3a: upper secondary, general
+ISCED 3b: Upper secondary, vocational
 </td>
 <td style="text-align:right;">
 0
@@ -725,33 +752,16 @@ isced 3a: upper secondary, general
 </tr>
 <tr>
 <td style="text-align:right;">
-52
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 4a: post-secondary
-</td>
-<td style="text-align:right;">
-1700
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-15
+50
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+Non-citizen: No own mig experience
 </td>
 <td style="text-align:left;">
-at school: primary
+ISCED 5a: Tertiary, e.g., college
 </td>
 <td style="text-align:right;">
 0
@@ -759,16 +769,16 @@ at school: primary
 </tr>
 <tr>
 <td style="text-align:right;">
-58
+24
 </td>
 <td style="text-align:left;">
 TRUE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+Non-citizen: No own mig experience
 </td>
 <td style="text-align:left;">
-isced 6: PhD
+ISCED 6: PhD
 </td>
 <td style="text-align:right;">
 0
@@ -776,16 +786,33 @@ isced 6: PhD
 </tr>
 <tr>
 <td style="text-align:right;">
-60
+44
 </td>
 <td style="text-align:left;">
 TRUE
 </td>
 <td style="text-align:left;">
-citizen, mig background from both parents
+Non-citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-isced 5a: tertiary, college etc.
+ISCED 5a: Tertiary, e.g., college
+</td>
+<td style="text-align:right;">
+6010
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+51
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Citizen: Own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 6: PhD
 </td>
 <td style="text-align:right;">
 0
@@ -793,33 +820,84 @@ isced 5a: tertiary, college etc.
 </tr>
 <tr>
 <td style="text-align:right;">
-63
+53
 </td>
 <td style="text-align:left;">
-FALSE
+TRUE
 </td>
 <td style="text-align:left;">
-no mig background
+Citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-isced 5a: tertiary, college etc.
+ISCED 1: Primary
 </td>
 <td style="text-align:right;">
-37060
+3070
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-65
+75
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+Citizen: No mig background
+</td>
+<td style="text-align:left;">
+ISCED 5a: Tertiary, e.g., college
+</td>
+<td style="text-align:right;">
+42090
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+36
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+Citizen: No mig background
+</td>
+<td style="text-align:left;">
+ISCED 1: Primary
+</td>
+<td style="text-align:right;">
+4720
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+71
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+Non-citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-isced 5a: tertiary, college etc.
+ISCED 3a: Upper secondary, general
+</td>
+<td style="text-align:right;">
+440
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+77
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Non-citizen: No own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 1: Primary
 </td>
 <td style="text-align:right;">
 0
@@ -827,33 +905,50 @@ isced 5a: tertiary, college etc.
 </tr>
 <tr>
 <td style="text-align:right;">
-29
+73
 </td>
 <td style="text-align:left;">
 TRUE
 </td>
 <td style="text-align:left;">
-citizen, mig background from one parent
+Citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-isced 3b: upper secondary, vocational
+ISCED 1: Primary
 </td>
 <td style="text-align:right;">
-5350
+3350
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-39
+34
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+Non-citizen: Own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 3a: Upper secondary, general
+</td>
+<td style="text-align:right;">
+3300
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+54
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-foreigner, no own mig background
+Citizen: Mig background from both parents
 </td>
 <td style="text-align:left;">
-isced 3a: upper secondary, general
+ISCED 3a: Upper secondary, general
 </td>
 <td style="text-align:right;">
 0
@@ -861,53 +956,19 @@ isced 3a: upper secondary, general
 </tr>
 <tr>
 <td style="text-align:right;">
-31
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-citizen, mig background from both parents
-</td>
-<td style="text-align:left;">
-isced 3a: upper secondary, general
-</td>
-<td style="text-align:right;">
-610
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-63
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-foreigner, own mig background
-</td>
-<td style="text-align:left;">
-isced 3b: upper secondary, vocational
-</td>
-<td style="text-align:right;">
-10350
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-56
+27
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-no mig background
+Citizen: Mig background from one parent
 </td>
 <td style="text-align:left;">
-isced 6: PhD
+ISCED 1: Primary
 </td>
 <td style="text-align:right;">
-4590
+0
 </td>
 </tr>
 </tbody>
@@ -915,7 +976,7 @@ isced 6: PhD
 </div>
 <div id="totals-for-the-disparities-plot" class="section level2"
 number="3.2">
-<h2><span class="header-section-number">3.2</span> totals for the
+<h2><span class="header-section-number">3.2</span> Totals for the
 disparities plot</h2>
 <pre class="r"><code>age_marginals &lt;- census_school_type_raw %&gt;%
   # total column, rows for ages 11 through 79
@@ -943,13 +1004,13 @@ sex_marginals &lt;- census_school_type_raw %&gt;%
 school_type_marginals &lt;- census_school_type_raw %&gt;% 
   select(14:20) %&gt;% 
   slice(23:30) %&gt;% 
-  set_names(paste0(c(&quot;A7: no longer at school&quot;, # Entfällt, da kein/e Schüler/-innen
-                     &quot;A1: primary&quot;, # Grundschule
-                     &quot;A2: lower secondary&quot;, # Hauptschule
-                     &quot;A3: intermediate secondary&quot;, # Realschule
-                     &quot;A6: upper secondary&quot;, # Gymnasium
-                     &quot;A5: comprehensive school&quot;, # Gesamtschule
-                     &quot;A4: other school&quot;))) %&gt;% # Sonstige Schule  
+  set_names(paste0(c(&quot;ST7: No longer at school&quot;, # Entfällt, da kein/e Schüler/-innen
+                     &quot;ST1: Primary&quot;, # Grundschule
+                     &quot;ST2: Lower secondary&quot;, # Hauptschule
+                     &quot;ST3: Intermediate secondary&quot;, # Realschule
+                     &quot;ST4: Upper secondary&quot;, # Gymnasium
+                     &quot;ST5: Comprehensive school&quot;, # Gesamtschule
+                     &quot;ST6: Other school&quot;))) %&gt;% # Sonstige Schule  
   mutate_all(as.numeric) %&gt;% 
   summarise(across(everything(), ~sum(., na.rm = TRUE))) %&gt;% 
   pivot_longer(cols = everything(), names_to = &quot;category&quot;, values_to = &quot;n&quot;)
@@ -958,14 +1019,14 @@ school_type_marginals &lt;- census_school_type_raw %&gt;%
 educ_marginals &lt;- census_ISCED_raw %&gt;% 
   select(14, 15, 17:19, 21, 22, 23) %&gt;% 
     slice(17:77) %&gt;% 
-  set_names(paste0(c(&quot;B1: primary&quot;,                 
-                     &quot;B2: lower secondary&quot;,          
-                     &quot;B4: upper secondary, general&quot;, 
-                     &quot;B3: upper secondary, vocational&quot;,
-                     &quot;B5: post-secondary&quot;,           
-                     &quot;B7: tertiary, college etc.&quot;,   
-                     &quot;B6: tertiary, tech school etc.&quot;,
-                     &quot;B8: PhD&quot;))) %&gt;% 
+  set_names(paste0(c(&quot;ISCED 1: Primary&quot;,                 
+                     &quot;ISCED 2: Lower secondary&quot;,          
+                     &quot;ISCED 3a: Upper secondary, general&quot;, 
+                     &quot;ISCED 3b: Upper secondary, vocational&quot;,
+                     &quot;ISCED 4: Post-secondary&quot;,           
+                     &quot;ISCED 5a: Tertiary, e.g., college&quot;,   
+                     &quot;ISCED 5b: Tertiary, e.g., Berufsakademie&quot;,
+                     &quot;ISCED 6: PhD&quot;))) %&gt;% 
   mutate_all(as.numeric) %&gt;% 
   summarise(across(everything(), ~sum(., na.rm = TRUE))) %&gt;% 
   pivot_longer(cols = everything(), names_to = &quot;category&quot;, values_to = &quot;n&quot;) %&gt;% 
@@ -979,12 +1040,12 @@ educ_marginals &lt;- census_ISCED_raw %&gt;%
 mig_marginals &lt;- census_school_type_raw %&gt;% 
   select(4, 7, 8, 10, 12, 13) %&gt;% 
   slice(23:91) %&gt;% 
-  set_names(paste0(c(&quot;Citizen: no mig background&quot;, 
-                     &quot;Non-citizen: own mig experience&quot;, 
-                     &quot;Non-citizen: no own mig experience&quot;, 
-                     &quot;Citizen: own mig experience&quot;,
-                     &quot;Citizen: mig background from both parents&quot;,
-                     &quot;Citizen: mig background from one parent&quot;))) %&gt;% 
+  set_names(paste0(c(&quot;Citizen: No mig background&quot;, 
+                     &quot;Non-citizen: Own mig experience&quot;, 
+                     &quot;Non-citizen: No own mig experience&quot;, 
+                     &quot;Citizen: Own mig experience&quot;,
+                     &quot;Citizen: Mig background from both parents&quot;,
+                     &quot;Citizen: Mig background from one parent&quot;))) %&gt;% 
   mutate_all(as.numeric) %&gt;% 
   summarise(across(everything(), ~sum(., na.rm = TRUE))) %&gt;% 
   pivot_longer(cols = everything(), names_to = &quot;category&quot;, values_to = &quot;n&quot;) %&gt;% 
@@ -1000,55 +1061,66 @@ save(census_marginals, file=&quot;data/preprocessed/census_marginals.Rda&quot;)<
 <div id="session-info" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Session info</h1>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.3.0 (2023-04-21 ucrt)
-## Platform: x86_64-w64-mingw32/x64 (64-bit)
-## Running under: Windows 10 x64 (build 19045)
+<pre><code>## R version 4.2.2 (2022-10-31)
+## Platform: x86_64-pc-linux-gnu (64-bit)
+## Running under: Rocky Linux 8.8 (Green Obsidian)
 ## 
 ## Matrix products: default
-## 
+## BLAS/LAPACK: /software/all/FlexiBLAS/3.2.1-GCC-12.2.0/lib64/libflexiblas.so.3.2
 ## 
 ## locale:
-## [1] LC_COLLATE=English_United Kingdom.utf8 
-## [2] LC_CTYPE=English_United Kingdom.utf8   
-## [3] LC_MONETARY=English_United Kingdom.utf8
-## [4] LC_NUMERIC=C                           
-## [5] LC_TIME=English_United Kingdom.utf8    
-## 
-## time zone: Europe/Berlin
-## tzcode source: internal
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] kableExtra_1.3.4 forcats_0.5.2    stringr_1.5.0    dplyr_1.1.2     
-##  [5] purrr_1.0.1      readr_2.1.3      tidyr_1.2.1      tibble_3.2.1    
-##  [9] ggplot2_3.4.2    tidyverse_1.3.2 
+##  [1] kableExtra_1.3.4 forcats_1.0.0    stringr_1.5.1    dplyr_1.1.4     
+##  [5] purrr_1.0.2      readr_2.1.4      tidyr_1.3.0      tibble_3.2.1    
+##  [9] ggplot2_3.4.4    tidyverse_1.3.2 
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] gtable_0.3.3        xfun_0.39           bslib_0.4.2        
-##  [4] codebook_0.9.2      gargle_1.4.0        tzdb_0.3.0         
-##  [7] vctrs_0.6.2         tools_4.3.0         generics_0.1.3     
-## [10] fansi_1.0.4         highr_0.10          pkgconfig_2.0.3    
-## [13] dbplyr_2.3.0        webshot_0.5.4       readxl_1.4.1       
-## [16] assertthat_0.2.1    lifecycle_1.0.3     compiler_4.3.0     
-## [19] munsell_0.5.0       htmltools_0.5.5     sass_0.4.6         
-## [22] yaml_2.3.7          pillar_1.9.0        crayon_1.5.2       
-## [25] jquerylib_0.1.4     ellipsis_0.3.2      googlesheets4_1.0.1
-## [28] cachem_1.0.8        tidyselect_1.2.0    rvest_1.0.3        
-## [31] digest_0.6.31       stringi_1.7.12      labelled_2.10.0    
-## [34] fastmap_1.1.1       grid_4.3.0          colorspace_2.1-0   
-## [37] cli_3.6.1           magrittr_2.0.3      utf8_1.2.3         
-## [40] broom_1.0.4         withr_2.5.0         scales_1.2.1       
-## [43] backports_1.4.1     lubridate_1.9.0     googledrive_2.0.0  
-## [46] timechange_0.2.0    rmarkdown_2.21      modelr_0.1.11      
-## [49] httr_1.4.5          cellranger_1.1.0    hms_1.1.2          
-## [52] evaluate_0.21       knitr_1.42          haven_2.5.1        
-## [55] viridisLite_0.4.2   rlang_1.1.1         glue_1.6.2         
-## [58] DBI_1.1.3           xml2_1.3.3          renv_0.17.3        
-## [61] reprex_2.0.2        svglite_2.1.1       rstudioapi_0.14    
-## [64] jsonlite_1.8.4      R6_2.5.1            systemfonts_1.0.4  
-## [67] fs_1.6.2</code></pre>
+##   [1] TH.data_1.1-2        googledrive_2.1.1    colorspace_2.1-0    
+##   [4] class_7.3-21         modeltools_0.2-23    mipfp_3.2.1         
+##   [7] fs_1.6.3             rmutil_1.1.10        rstudioapi_0.15.0   
+##  [10] proxy_0.4-27         farver_2.1.1         fansi_1.0.5         
+##  [13] mvtnorm_1.2-3        lubridate_1.9.3      coin_1.4-3          
+##  [16] ranger_0.16.0        xml2_1.3.5           codetools_0.2-19    
+##  [19] splines_4.2.2        cachem_1.0.8         libcoin_1.0-10      
+##  [22] knitr_1.45           jsonlite_1.8.7       broom_1.0.5         
+##  [25] dbplyr_2.4.0         compiler_4.2.2       httr_1.4.7          
+##  [28] backports_1.4.1      Matrix_1.5-3         fastmap_1.1.1       
+##  [31] gargle_1.5.2         strucchange_1.5-3    cli_3.6.1           
+##  [34] htmltools_0.5.7      tools_4.2.2          gtable_0.3.4        
+##  [37] glue_1.6.2           broman_0.80          Rcpp_1.0.11         
+##  [40] cellranger_1.1.0     jquerylib_0.1.4      vctrs_0.6.4         
+##  [43] svglite_2.1.2        xfun_0.41            proto_1.0.0         
+##  [46] rvest_1.0.3          timechange_0.2.0     lifecycle_1.0.4     
+##  [49] cmm_1.0              renv_1.0.3           googlesheets4_1.1.1 
+##  [52] polspline_1.1.24     MASS_7.3-58.3        zoo_1.8-12          
+##  [55] scales_1.2.1         hms_1.1.3            parallel_4.2.2      
+##  [58] sandwich_3.0-2       yaml_2.3.7           sass_0.4.7          
+##  [61] labelled_2.12.0      rpart_4.1.19         stringi_1.8.2       
+##  [64] highr_0.10           randomForest_4.7-1.1 e1071_1.7-13        
+##  [67] truncnorm_1.0-9      rlang_1.1.2          pkgconfig_2.0.3     
+##  [70] systemfonts_1.0.5    matrixStats_1.1.0    Rsolnp_1.16         
+##  [73] evaluate_0.23        lattice_0.20-45      labeling_0.4.3      
+##  [76] codebook_0.9.2       synthpop_1.8-0       tidyselect_1.2.0    
+##  [79] plyr_1.8.9           magrittr_2.0.3       R6_2.5.1            
+##  [82] generics_0.1.3       multcomp_1.4-25      DBI_1.1.3           
+##  [85] pillar_1.9.0         haven_2.5.3          foreign_0.8-84      
+##  [88] withr_2.5.2          survival_3.5-5       nnet_7.3-18         
+##  [91] modelr_0.1.11        crayon_1.5.2         KernSmooth_2.23-20  
+##  [94] utf8_1.2.4           party_1.3-13         tzdb_0.4.0          
+##  [97] rmarkdown_2.25       grid_4.2.2           readxl_1.4.3        
+## [100] reprex_2.0.2         digest_0.6.33        classInt_0.4-10     
+## [103] webshot_0.5.5        numDeriv_2016.8-1.1  stats4_4.2.2        
+## [106] munsell_0.5.0        viridisLite_0.4.2    bslib_0.6.0</code></pre>
 </div>
 
 

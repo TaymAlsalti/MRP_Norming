@@ -14,20 +14,16 @@ knitr::opts_chunk$set(
 	message = FALSE,
 	warning = FALSE,
 	include = TRUE,
-	error = TRUE
+	error = TRUE,
+	fig.width = 8,
+	fig.height = 4
 )
 
 ```
 
-# Load dependencies and preprocessed datasets
+Load dependencies and preprocessed datasets
 ```{r}
 library(tidyverse)
-library(ggrepel)
-library(kableExtra)
-library(brms)
-library(tidybayes)
-library(marginaleffects)
-library(bayesplot)
 
 load("../unshareable_data/preprocessed/tl.Rda")
 load("../unshareable_data/preprocessed/manual_norms.Rda")
@@ -39,39 +35,18 @@ sim_pop_sample_with_draws <- readRDS("data/simulated/sim_pop_sample_with_draws.r
 options(scipen = 999,
         digits = 4)
 
-windowsFonts(Times = windowsFont("Times New Roman"))
-theme_set(theme_gray(base_size = 14, base_family = "Times"))
+# windowsFonts(Times = windowsFont("Times New Roman"))
+theme_set(theme_minimal(base_size = 12, base_family = "Times"))
 
 # exclude first twins to avoid twin dependency issues and add variable containing the age groups from the manual
 tl_no_1st_twins <- tl %>% 
- filter(ptyp != 1) %>% 
- mutate(age_group = case_when(
-                         age0100 == 11 ~ '11',
-                         age0100 == 12 ~ '12',
-                         age0100 == 13 ~ '13',
-                         age0100 == 14 ~ '14',
-                         age0100 == 15 ~ '15',
-                         age0100 == 16 ~ '16',
-                         age >= 17 & age <= 19 ~ '17-19',
-                         age >= 20 & age <= 24 ~ '20-24',
-                         age >= 25 & age <= 29 ~ '25-29',
-                         age >= 30 & age <= 34 ~ '30-34',
-                         age >= 35 & age <= 39 ~ '35-39',
-                         age >= 40 & age <= 44 ~ '40-44',
-                         age >= 45 & age <= 49 ~ '45-49',
-                         age >= 50 & age <= 54 ~ '50-54',
-                         age >= 55 & age <= 59 ~ '55-59',
-                         age >= 60 & age <= 64 ~ '60-64',
-                         TRUE ~ NA_character_))
+ filter(ptyp != 1)
 
 ```
 
-
-
-
 # MRP predictions vs. raw means
 
-## Average difference in means
+## Age group means and SDs
 ```{r}
 
 means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
@@ -94,83 +69,83 @@ means_sds_and_ses_tl <- tl_no_1st_twins %>%
   rename(age = age0100)
 
 
-means_ns_sds_and_ses <- census  %>% 
-  group_by(age) %>% 
-  filter(age <= 65) %>% 
-  summarise (census_n = sum(census_n)) %>% 
-  left_join(means_sds_and_ses_MRP, by = c("age")) %>% 
+means_ns_sds_and_ses <- means_sds_and_ses_MRP%>% 
   left_join(means_sds_and_ses_tl, by = "age") %>% 
-  mutate(abs_dif = abs(MRP_mean - Raw_mean))
+  filter(age <= 65) 
 
-
-t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)
-
-
+# Here you can browse both MRP and raw ns, means, SDs, and SEs.
+means_ns_sds_and_ses %>% 
+  mutate(age = as.integer(age)) %>% 
+  DT::datatable() %>% 
+  DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)
 ```
 
-On average a difference of ~ fifth of an SD between raw and corrected means. 
-
-## Browsable table
-
-Here you can browse both MRP and raw ns, means, SDs, and SEs.
+## Plot means 
 
 ```{r}
-means_ns_sds_and_ses %>% DT::datatable() %>% DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)
-```
+means_ns_sds_and_ses_plot <- means_ns_sds_and_ses%>%
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
 
-
-## Plot of means + 95% CIs
-
-```{r, fig.width=9}
-means_ns_sds_and_ses %>%
-  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>%
-  filter(source != "census" & source != "abs") %>%
+means_ns_sds_and_ses_plot  %>%
   ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(0, 5))) + 
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
-                  fatten = 6,
-                  linewidth = 1.5,
+                  fatten = 3,
+                  linewidth = 1,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(source != "census" & source != "abs") %>% group_by(source) %>% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = mean, color = source), family = "Times", seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+    geom_text_repel(
+    data = means_ns_sds_and_ses_plot %>% filter(age == 65),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 1, hjust = 0) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = "Times"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
     legend.position = "none"
   ) +
   scale_colour_manual(values = c("#0072b2", "#e69f00")) +
   labs(x = "Age", y = "Mean CFT 20-R Score")
 ```
 
+## Overall mean differences
+```{r}
+means_ns_sds_and_ses <- means_ns_sds_and_ses %>% 
+  mutate(dif = MRP_mean - Raw_mean,
+         abs_dif = abs(MRP_mean - Raw_mean))
 
-## Plot of SDs
+mean(means_ns_sds_and_ses$dif)
+mean(means_ns_sds_and_ses$abs_dif)
+  
+t.test(means_ns_sds_and_ses$Raw_mean, means_ns_sds_and_ses$MRP_mean)
+```
 
-```{r, fig.width=9}
-means_ns_sds_and_ses %>%
-  filter(age <= 65) %>%
-  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>%
-  filter(source != "census" & source != "abs") %>%
+On average an absolute difference of ~ fifth of an SD between raw and corrected means. 
+
+
+## Plot SDs
+
+```{r}
+means_ns_sds_and_ses_plot %>%
   ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(0, 5))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
                   fatten = 6,
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %>% filter(age <= 65) %>% pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(source != "census" & source != "abs") %>% group_by(source) %>% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = sd, color = source), family = "Times", seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+    geom_text_repel(
+    data = means_ns_sds_and_ses_plot %>% filter(age == 65),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 2, hjust = 0) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = "Times"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
     legend.position = "none"
   ) +
   scale_colour_manual(values = c("#0072b2", "#e69f00")) +
@@ -178,14 +153,14 @@ means_ns_sds_and_ses %>%
 ```
 
 
-# MRP norms vs. manual norms vs. raw means
+# MRP norms vs. manual norms vs. raw estimates
 
 Here we compare the MRP-based norms to the traditionally constructed norms reported in the CFT 20-R manual. We aggregate by the age groups as reported in the manual normal tables. Note that the manual means and SDs for ages 20 and older are based on the very same TwinLife sample we are using, they just use a different correction method that isn't described in enough detail to make it reproducible for us. 
 
-## Plots of means and SDs
+## Means
 
-```{r, fig.width=9}
-means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% # the same one from above
+```{r}
+means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% 
   mutate(age_group = case_when(
                          age == 11 ~ '11',
                          age == 12 ~ '12',
@@ -227,14 +202,13 @@ means_sds_and_ses <- means_sds_and_ses_MRP %>%
   left_join(means_sds_and_ses_tl, by = "age_group") %>% 
   left_join(manual_norms, by = "age_group")
 
-
+means_sds_and_ses_plot <- means_sds_and_ses  %>% 
+  pivot_longer(-age_group, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
 
 # means and CIs
-means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% 
-  filter(provenance != "census" 
-         ) %>%
-  ggplot(aes(x = age_group, y = mean, group = provenance, colour = provenance)) +
+means_sds_and_ses_plot %>%
+  ggplot(aes(x = age_group, y = mean, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) + 
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
@@ -242,37 +216,34 @@ means_sds_and_ses %>%
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3))  +
   scale_colour_manual(values = c("#009e73", "#0072b2", "#e69f00")) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "60-64"),
+    aes(label = c("MRP", "Raw", "")), 
+    family = "Times", seed = 810, nudge_x = .5, hjust = 0) + 
   labs(x = "Age Group", y = "Mean CFT 20-R Score") +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "11"),
-    aes(label = c("MRP", "Raw", ""), x = age_group, y = mean, color = provenance), family = "Times", seed = 810) +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "14"),
-    aes(label = c("", "", "Manual, school sample"), x = age_group, y = mean, color = provenance), family = "Times", seed = 810, nudge_y = 2.5) +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "40-44"),
-    aes(label = c("", "", "Manual, TwinLife sample"), x = age_group, y = mean, color = provenance), family = "Times", seed = 810, nudge_y = -2.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample")), 
+    family = "Times", seed = 810, nudge_y = 2.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample")), 
+    family = "Times", seed = 810, nudge_y = -2.5) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = "Times"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
     legend.position = "none"
-  ) + 
+  )  + 
   geom_vline(xintercept = 7.5)
 ```
 
-
-```{r, fig.width=9}
-# SDs
-means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% 
-  filter(provenance != "census" 
-         )   %>%
-  ggplot(aes(x = age_group, y = sd, group = provenance, colour = provenance)) +
+## SDs
+```{r}
+means_sds_and_ses_plot %>%
+  ggplot(aes(x = age_group, y = sd, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
@@ -280,27 +251,28 @@ means_sds_and_ses %>%
                   linewidth = 1.5,
                   position = position_dodge(width = 0.3))  +
   scale_colour_manual(values = c("#009e73", "#0072b2", "#e69f00")) +
-  labs(x = "Age Group", y = "CFT 20-R Score SD") +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "11"),
-    aes(label = c("MRP", "Raw", ""), x = age_group, y = sd, color = provenance), family = "Times", seed = 810) +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "14"),
-    aes(label = c("", "", "Manual, school sample"), x = age_group, y = sd, color = provenance), family = "Times", seed = 810, nudge_y = -.5) +
-  geom_label_repel(
-    data = means_sds_and_ses %>% 
-  pivot_longer(-age_group, names_to = c("provenance", ".value"), names_pattern = "([^_]*)_(.*)") %>% filter(age_group == "40-44"),
-    aes(label = c("", "", "Manual, TwinLife sample"), x = age_group, y = sd, color = provenance), family = "Times", seed = 810, nudge_y = .5) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "60-64"),
+    aes(label = c("MRP", "Raw", "")), 
+    family = "Times", seed = 810, nudge_x = .5, hjust = 0) + 
+  labs(x = "Age Group", y = "Mean CFT 20-R Score") +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample")), 
+    family = "Times", seed = 810, nudge_y = -.5, nudge_x = -.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample")), 
+    family = "Times", seed = 810, nudge_y = .5) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = "Times"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
     legend.position = "none"
   ) + 
-  geom_vline(xintercept = 7.5)
+  geom_vline(xintercept = 7.5) + 
+  labs(x = "Age Group", y = "CFT 20-R Score SD") 
 ```
 
 
@@ -373,8 +345,7 @@ iqs_normalised <- sim_pop_sample_with_draws %>%
 iq_table <- iqs_linear %>% 
   left_join(iqs_normalised, by = c("age_group", "cft")) %>% 
   mutate(IQ_MRP_abs_dif = abs(MRP_IQ_linear - MRP_IQ_normalised),
-         Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) %>%
-  arrange(-IQ_linear_dif_abs)
+         Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) 
 
 
 mean(iq_table$IQ_linear_dif_abs)

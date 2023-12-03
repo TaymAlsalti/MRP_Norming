@@ -10,11 +10,11 @@
 
 
 
-<meta name="date" content="2023-11-01" />
+<meta name="date" content="2023-12-02" />
 
 <title>Supplementary analyses</title>
 
-<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
@@ -30,14 +30,14 @@
        h6 {font-size: 12px;}
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
-<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
-<link href="site_libs/font-awesome-6.4.0/css/all.min.css" rel="stylesheet" />
-<link href="site_libs/font-awesome-6.4.0/css/v4-shims.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet" />
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -356,7 +356,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2023-11-01</h4>
+<h4 class="date">2023-12-02</h4>
 
 </div>
 
@@ -365,34 +365,37 @@ div.tocify {
     message = FALSE,
     warning = FALSE,
     include = TRUE,
-    error = TRUE
+    error = TRUE,
+    fig.width = 8,
+    fig.height = 4
 )</code></pre>
 <p>Load dependencies and preprocessed datasets</p>
 <pre class="r"><code>library(tidyverse)
 library(ggrepel)
-library(kableExtra)
 library(brms)
 library(tidybayes)
-library(marginaleffects)
 
 load(&quot;../unshareable_data/preprocessed/tl.Rda&quot;)
 load(&quot;data/preprocessed/census.Rda&quot;)
+sim_pop_sample_with_draws &lt;- readRDS(&quot;data/simulated/sim_pop_sample_with_draws.rds&quot;)
 
 
+options(mc.cores = 4,
+        brms.backend = &quot;cmdstanr&quot;)
 
 options(scipen = 999,
         digits = 4)
 
-windowsFonts(Times = windowsFont(&quot;Times New Roman&quot;))
-theme_set(theme_gray(base_size = 14, base_family = &quot;Times&quot;))
+# windowsFonts(Times = windowsFont(&quot;Times New Roman&quot;))
+theme_set(theme_minimal(base_size = 12, base_family = &quot;Times&quot;))
 
 # exclude first twins to avoid twin dependency issues
 tl_no_1st_twins &lt;- tl %&gt;% 
  filter(ptyp != 1)</code></pre>
-<div id="multilevel-model-predictions-without-poststratification"
+<div id="model-predictions-without-poststratification"
 class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Multilevel model
-predictions without poststratification</h1>
+<h1><span class="header-section-number">1</span> Model predictions
+without poststratification</h1>
 <p>In order to clearly see the contribution of poststratification as
 opposed to only making predictions based on the regression model (as is
 done in continuous norming and similar approaches for example), we
@@ -407,10 +410,6 @@ MRP results and comparing them with raw values and MR predictions</h2>
 <pre class="r"><code>mrp_age_norms &lt;- function(ps_table, ps_variables, brm) {
 
   
-if (&quot;cft_total&quot; %in% colnames(brm$data)) {
-  brm$data &lt;- brm$data %&gt;%
-    rename(cft = cft_total)
-}
   norming_sample &lt;- brm$data
   
 
@@ -425,7 +424,7 @@ if (&quot;cft_total&quot; %in% colnames(brm$data)) {
   
   
   sim_pop_sample_with_draws &lt;- sim_pop_sample %&gt;%
-  add_predicted_draws(brm, ndraws = 100, seed = 810,
+  add_predicted_draws(brm, ndraws = 1000, seed = 810,
                       allow_new_levels = T) %&gt;% 
   mutate(.prediction = case_when(.prediction &lt; 0 ~ 0, # censor predictions which go over scale limits
                                  .prediction &gt; 56 ~ 56,
@@ -450,7 +449,7 @@ if (&quot;cft_total&quot; %in% colnames(brm$data)) {
   
   sim_norming_sample_with_draws &lt;- sim_norming_sample %&gt;% 
     select(all_of(ps_variables))  %&gt;%
-  add_predicted_draws(brm, ndraws = 100, seed = 810,
+  add_predicted_draws(brm, ndraws = 1000, seed = 810,
                       allow_new_levels = T) %&gt;% 
   mutate(.prediction = case_when(.prediction &lt; 0 ~ 0, # censor predictions which go over scale limits
                                  .prediction &gt; 56 ~ 56,
@@ -475,76 +474,73 @@ if (&quot;cft_total&quot; %in% colnames(brm$data)) {
   
   means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP  %&gt;%
     left_join(means_sds_and_ses_MR, by = c(&quot;age&quot;)) %&gt;% 
-    left_join(means_sds_and_ses_raw, by = &quot;age&quot;) 
-  
-  means_ns_sds_and_ses %&gt;% 
+    left_join(means_sds_and_ses_raw, by = &quot;age&quot;) %&gt;% 
     filter(age &lt;= 65) %&gt;% 
     pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;) 
   
-  means_plot &lt;- means_ns_sds_and_ses %&gt;%
-  filter(age &lt;= 65) %&gt;%
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;)  %&gt;%
-  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  means_plot &lt;- means_ns_sds_and_ses %&gt;% 
+    ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = mean - 1.96*seOfmean, ymax = mean + 1.96*seOfmean), 
-                  fatten = 6,
-                  linewidth = 1.5,
+                  fatten = 3,
+                  linewidth = 1,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;)  %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = mean, color = source), family = &quot;Times&quot;, seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %&gt;% filter(age == 65),
+    aes(label = source), family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = &quot;y&quot;) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
-    legend.position = &quot;none&quot;) +
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
   scale_colour_manual(values = c(&quot;#cc79a7&quot;, &quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)
 
   
-  SDs_plot &lt;- means_ns_sds_and_ses %&gt;%
-  filter(age &lt;= 65) %&gt;%
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;) %&gt;%
-  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  SDs_plot &lt;- means_ns_sds_and_ses %&gt;% 
+    ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = sd - 1.96*seOfsd, ymax = sd + 1.96*seOfsd), 
-                  fatten = 6,
-                  linewidth = 1.5,
+                  fatten = 3,
+                  linewidth = 1,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;) %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = sd, color = source), family = &quot;Times&quot;, seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %&gt;% filter(age == 65),
+    aes(label = source), family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = &quot;x&quot;) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
   ) +
   scale_colour_manual(values = c(&quot;#cc79a7&quot;, &quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score SD&quot;)
   
+  
+  
   SEs_plot &lt;- means_ns_sds_and_ses %&gt;%
-  filter(age &lt;= 65) %&gt;%
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;) %&gt;%
-  filter(source != &quot;census&quot;) %&gt;%
   ggplot(aes(x = as.factor(age), y = seOfmean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
     geom_line(linewidth = 1) +
     geom_point(size = 3, shape = 18) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;(.*)_(.*)&quot;) %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = source, x = as.factor(age), y = seOfmean, color = source), family = &quot;Times&quot;, seed = 810)  +
-    scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  geom_text(
+    data = means_ns_sds_and_ses %&gt;% filter(age == 65),
+    aes(label = source), family = &quot;Times&quot;, nudge_x = 1, hjust = 0)  +
     theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
   ) +
   scale_colour_manual(values = c(&quot;#cc79a7&quot;, &quot;#0072b2&quot;, &quot;#e69f00&quot;)) +
@@ -599,86 +595,236 @@ prediction model</h2>
 number="1.3">
 <h2><span class="header-section-number">1.3</span> Use the mrp_age_norms
 function</h2>
-<pre class="r"><code># debug(mrp_age_norms)
-mrp_age_norms(ps_table = census, 
+<pre class="r"><code>mrp_age_norms(ps_table = census, 
               ps_variables = c(&quot;age&quot;, &quot;educ&quot;, &quot;mig&quot;, &quot;male&quot;),
               brm = brm_age_by_educ)</code></pre>
 <pre><code>## $means_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-1.png" width="864" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-1.png" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-2.png" width="864" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-2.png" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-3.png" width="864" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-4-3.png" width="768" /></p>
 <pre><code>## 
 ## $mrp_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.6            0.115     8.56         0.0873
+## 1       35.7            0.107     8.54         0.0910
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0701    8.16        0.0570</code></pre>
+## 1      37.4          0.0694    8.15        0.0568</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
+<pre class="r"><code>s</code></pre>
+<pre><code>## function (...) 
+## {
+##     mgcv::s(...)
+## }
+## &lt;bytecode: 0x11b697e0&gt;
+## &lt;environment: namespace:brms&gt;</code></pre>
 </div>
 </div>
-<div id="one-person-per-family" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> One person per
-family</h1>
-<p>Since the TwinLife sample is composed of families, one could argue
-that the dependence among estimates of family members violates the i.i.d
-assumption and leads to underestimation of SEs. To check the robustness
-of our results against this violation, we ran the same MRP but with only
-one person chosen randomly out of each family, thus eliminating the
-dependency.</p>
-<div id="fitload-the-prediction-model-1" class="section level2"
-number="2.1">
-<h2><span class="header-section-number">2.1</span> Fit/load the
-prediction model</h2>
-<pre class="r"><code>tl_no_1st_twins_1_per_fid &lt;- tl_no_1st_twins %&gt;%
-  group_by(fid) %&gt;%
-  sample_n(1)
+<div id="mrp-predictions-vs.-raw-means-vs.-weighted-means"
+class="section level1" number="2">
+<h1><span class="header-section-number">2</span> MRP predictions vs. raw
+means vs. weighted means</h1>
+<p>Here we use the weights provided by the TwinLife panel study data
+custodians, described <a
+href="https://pub.uni-bielefeld.de/record/2979229">here</a>. We compare
+them with both raw and MRP means.</p>
+<div
+id="get-the-design-and-non-response-weights-from-the-weights-dataset"
+class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Get the design and
+non-response weights from the weights dataset</h2>
+<pre class="r"><code>tl_no_1st_twins_w_ws &lt;- tl_no_1st_twins %&gt;% 
+  left_join((haven::read_dta(&quot;../unshareable_data/raw/ZA6701_weights_v7-1-0.dta&quot;) %&gt;% 
+              select(c(fid, svw0100, svw0200))), by = &quot;fid&quot;) %&gt;% 
+  # rename the weights
+  mutate(dw = svw0100, # design weights
+         nrw = svw0200, # non-response weights
+         dnrw = svw0100*svw0200) # total weights (both weights together)</code></pre>
+</div>
+<div id="mean-differences" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> Mean differences</h2>
+<pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws %&gt;%
+  group_by(age, .draw) %&gt;% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %&gt;%
+  group_by(age) %&gt;% 
+  summarise(MRP_mean = mean(mean_prediction), 
+            MRP_se_of_mean = sd(mean_prediction), 
+            MRP_sd = sqrt(mean(sd_prediction^2)), 
+            MRP_se_of_sd = sd(sd_prediction)) 
 
-brm_age_by_educ_1_per_fid &lt;-
+
+means_sds_and_ses_tl &lt;- tl_no_1st_twins_w_ws %&gt;% 
+  group_by(age0100) %&gt;% 
+  summarise(n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(n),
+            DesignWeighted_mean = weighted.mean(cft, dw, na.rm = T), 
+            DesignWeighted_sd = sqrt(weighted.mean((cft - DesignWeighted_mean)^2, dw, na.rm = T)), 
+            DesignWeighted_se_of_mean = DesignWeighted_sd/sqrt(n),
+            NonresponseWeighted_mean = weighted.mean(cft, nrw, na.rm = T), 
+            NonresponseWeighted_sd = sqrt(weighted.mean((cft - NonresponseWeighted_mean)^2, nrw, na.rm = T)), 
+            NonresponseWeighted_se_of_mean = NonresponseWeighted_sd/sqrt(n),
+            TotalWeighted_mean       = weighted.mean(cft, dnrw, na.rm = T), 
+            TotalWeighted_sd         = sqrt(weighted.mean((cft - TotalWeighted_mean)^2, dnrw, na.rm = T)),
+            TotalWeighted_se_of_mean = TotalWeighted_sd/sqrt(n)) %&gt;% 
+  rename(age = age0100)
+
+means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP %&gt;% 
+  left_join(means_sds_and_ses_tl, by = &quot;age&quot;) %&gt;%
+  filter(age &lt;= 65) %&gt;%
+  pivot_longer(-c(age, n), names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)</code></pre>
+<pre class="r"><code>means_ns_sds_and_ses  %&gt;%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %&gt;% filter(age == 65) %&gt;% arrange(source),
+    aes(label = c(&quot;Design weighted&quot;, &quot;MRP&quot;, &quot;Non-response weighted&quot;, &quot;Raw&quot;, &quot;Total weighted&quot;)), family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = &quot;y&quot;) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#490092&quot;, &quot;#0072b2&quot;, &quot;#920000&quot;,&quot;#e69f00&quot;,&quot;#24ff24&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-8-1.png" width="768" /></p>
+<p>No large differences to raw means but it’s hard to see details.</p>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;%
+  group_by(source) %&gt;% 
+  summarise(mean = mean(mean, na.rm = TRUE)) %&gt;% 
+  arrange(mean)</code></pre>
+<pre><code>## # A tibble: 5 × 2
+##   source               mean
+##   &lt;chr&gt;               &lt;dbl&gt;
+## 1 MRP                  35.6
+## 2 NonresponseWeighted  36.4
+## 3 TotalWeighted        36.5
+## 4 Raw                  36.8
+## 5 DesignWeighted       36.9</code></pre>
+<p>Overall, non response weighting also recognised an overestimation and
+corrected for it, but not as much as MRP.</p>
+<p>Since the previous plot was too cluttered, here’s one with
+non-response only since it’s the one that seems to make the largest
+difference to raw means.</p>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;%
+  filter(source != &quot;DesignWeighted&quot; &amp; source != &quot;TotalWeighted&quot;) %&gt;% 
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text(
+    data = means_ns_sds_and_ses 
+    %&gt;% filter(source != &quot;DesignWeighted&quot; &amp; source != &quot;TotalWeighted&quot;)
+    %&gt;% filter(age == 65),
+    aes(label = c(&quot;MRP&quot;, &quot;Raw&quot;, &quot;Non-response weighted&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0)  +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#920000&quot;, &quot;#e69f00&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-1.png" width="768" /></p>
+</div>
+<div id="sd-differences" class="section level2" number="2.3">
+<h2><span class="header-section-number">2.3</span> SD differences</h2>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;%
+  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %&gt;% filter(age == 65) %&gt;% arrange(source),
+    aes(label = c(&quot;Design weighted&quot;, &quot;MRP&quot;, &quot;Non-response weighted&quot;, &quot;Raw&quot;, &quot;Total weighted&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = &quot;y&quot;) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#490092&quot;, &quot;#0072b2&quot;, &quot;#920000&quot;,&quot;#e69f00&quot;,&quot;#24ff24&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score SD&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-11-1.png" width="768" /></p>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;%
+  group_by(source) %&gt;% 
+  summarise(sd = sqrt(mean(sd^2))) %&gt;% 
+  arrange(sd)</code></pre>
+<pre><code>## # A tibble: 5 × 2
+##   source                 sd
+##   &lt;chr&gt;               &lt;dbl&gt;
+## 1 DesignWeighted       7.87
+## 2 TotalWeighted        8.07
+## 3 Raw                  8.12
+## 4 MRP                  8.20
+## 5 NonresponseWeighted  8.23</code></pre>
+<p>No large differences in SDs.</p>
+</div>
+</div>
+<div id="including-first-twins" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Including first
+twins</h1>
+<p>Our main analysis exludes 1st twins to avoid having to deal with the
+twins’ dependent observations and because we used the data of the 1st
+twins extensively for model comparison. Here we test our results’
+robustsness against including them.</p>
+<div id="fitload-the-prediction-model-1" class="section level2"
+number="3.1">
+<h2><span class="header-section-number">3.1</span> Fit/load the
+prediction model</h2>
+<pre class="r"><code>brm_age_by_educ_with_1st_twins &lt;-
   brm(bf(
       cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
       sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
-      chains = 4,
-      iter = 6000,
       family = gaussian(),
+      chains = 4,
+      iter = 5000,
       seed = 810,
       control = list(adapt_delta = 0.99),
-      file = &quot;../unshareable_data/brms/brm_age_by_educ_1_per_fid&quot;,
+      file = &quot;../unshareable_data/brms/brm_age_by_educ_18_delta_99_5000_with_1st_twins&quot;,
       file_refit = &quot;never&quot;,
-      data = tl_no_1st_twins_1_per_fid) %&gt;%
+      data = tl) %&gt;% 
   add_criterion(&quot;loo&quot;)</code></pre>
 </div>
 <div id="compare-with-raw-and-regular-mrp" class="section level2"
-number="2.2">
-<h2><span class="header-section-number">2.2</span> Compare with raw and
+number="3.2">
+<h2><span class="header-section-number">3.2</span> Compare with raw and
 regular MRP</h2>
-<pre class="r"><code>sim_pop_sample1 &lt;- census %&gt;% 
-  sample_n(size = 100000, # total census_n in the PS table is 67738120
-           weight = census_n, 
-           replace = TRUE)
-
-sim_pop_sample_with_draws1 &lt;- sim_pop_sample1 %&gt;%
-  add_predicted_draws(brm_age_by_educ, 
-                      ndraws = 1000, 
-                      seed = 810, 
-                      allow_new_levels = TRUE) %&gt;% 
-  mutate(.prediction = round(case_when(.prediction &lt; 0 ~ 0, 
-                                 .prediction &gt; 56 ~ 56,
-                                 TRUE ~ .prediction)))
-
-
-means_sds_and_ses_MRP1 &lt;- sim_pop_sample_with_draws1 %&gt;%
+<pre class="r"><code>means_sds_and_ses_MRP1 &lt;- sim_pop_sample_with_draws %&gt;% # the one generated in the tutorial
   group_by(age, .draw) %&gt;% 
   summarise(mean_prediction = mean(.prediction), 
             sd_prediction = sd(.prediction)) %&gt;%
@@ -690,12 +836,12 @@ means_sds_and_ses_MRP1 &lt;- sim_pop_sample_with_draws1 %&gt;%
 
 
 sim_pop_sample2 &lt;- census %&gt;% 
-  sample_n(size = 100000, # total census_n in the PS table is 67738120
+  sample_n(size = 100000, 
            weight = census_n, 
            replace = TRUE)
 
-sim_pop_sample_with_draws2 &lt;- sim_pop_sample2 %&gt;%
-  add_predicted_draws(brm_age_by_educ_1_per_fid, 
+sim_pop_sample_with_draws2 &lt;- sim_pop_sample2 %&gt;% 
+  add_predicted_draws(brm_age_by_educ_with_1st_twins, # based on the 1/family model
                       ndraws = 1000, 
                       seed = 810, 
                       allow_new_levels = TRUE) %&gt;% 
@@ -724,125 +870,387 @@ means_sds_and_ses_tl &lt;- tl %&gt;%
 
 means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP1 %&gt;% 
   left_join(means_sds_and_ses_MRP2, by = c(&quot;age&quot;)) %&gt;% 
-  left_join(means_sds_and_ses_tl, by = &quot;age&quot;) 
+  left_join(means_sds_and_ses_tl, by = &quot;age&quot;) %&gt;%
+  filter(age &lt;= 65) 
+
+means_ns_sds_and_ses_plot &lt;- means_ns_sds_and_ses %&gt;% 
+  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
 
 
-means_ns_sds_and_ses%&gt;%
-  filter(age &lt;= 65) %&gt;% 
-  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;%
-  filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;%
+means_ns_sds_and_ses_plot %&gt;%
   ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
   geom_line(linewidth = 1) +
   geom_pointrange(shape = 18, 
                   aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
-                  fatten = 6,
-                  linewidth = 1.5,
+                  fatten = 3,
+                  linewidth = 1,
                   position = position_dodge(width = 0.3)) +
-  geom_label_repel(
-    data = means_ns_sds_and_ses %&gt;% filter(age &lt;= 65) %&gt;% pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;) %&gt;% filter(source != &quot;census&quot; &amp; source != &quot;abs&quot;) %&gt;% group_by(source) %&gt;% filter(age == 11),
-    aes(label = c(&quot;MRP, full sample&quot;, &quot;MRP, 1 person per family&quot;, &quot;Raw&quot;), x = as.factor(age), y = mean, color = source), family = &quot;Times&quot;, seed = 810) +
-  scale_x_discrete(breaks = seq(12, 79, by = 2)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses_plot %&gt;%  filter(age == 65) %&gt;% arrange(source),
+    aes(label = c(&quot;MRP, excl. 1st twins&quot;, &quot;MRP, incl. 1st twins&quot;, &quot;Raw&quot;)), family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_line(color = &quot;gray&quot;, linetype = &quot;dashed&quot;),
-    panel.grid.minor.x = element_blank(),
-    text = element_text(family = &quot;Times&quot;),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#000000&quot;, &quot;#e69f00&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-14-1.png" width="768" /></p>
+<pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
+  mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
+         dif_mrp_raw = MRP1_mean - Raw_mean,
+         dif_mrps = MRP1_mean - MRP2_mean,
+         dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
+
+mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
+<pre><code>## [1] -1.202</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
+<pre><code>## [1] 1.611</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
+<pre><code>## [1] -0.03555</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
+<pre><code>## [1] 0.1827</code></pre>
+</div>
+</div>
+<div id="one-person-per-family" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> One person per
+family</h1>
+<p>Since the TwinLife sample is composed of families, one could argue
+that the dependence among estimates of family members violates the i.i.d
+assumption and leads to underestimation of SEs. To check the robustness
+of our results against this violation, we ran the same MRP but with only
+one person chosen randomly out of each family, thus eliminating the
+dependency.</p>
+<div id="fitload-the-prediction-model-2" class="section level2"
+number="4.1">
+<h2><span class="header-section-number">4.1</span> Fit/load the
+prediction model</h2>
+<pre class="r"><code>set.seed(14)
+
+tl_no_1st_twins_1_per_fid &lt;- tl_no_1st_twins %&gt;%
+  group_by(fid) %&gt;%
+  sample_n(1)
+
+brm_age_by_educ_1_per_fid &lt;-
+  brm(bf(
+      cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
+      chains = 4,
+      iter = 6000,
+      family = gaussian(),
+      seed = 810,
+      control = list(adapt_delta = 0.99),
+      file = &quot;../unshareable_data/brms/brm_age_by_educ_1_per_fid&quot;,
+      file_refit = &quot;never&quot;,
+      data = tl_no_1st_twins_1_per_fid) %&gt;%
+  add_criterion(&quot;loo&quot;)</code></pre>
+</div>
+<div id="compare-with-raw-and-regular-mrp-1" class="section level2"
+number="4.2">
+<h2><span class="header-section-number">4.2</span> Compare with raw and
+regular MRP</h2>
+<pre class="r"><code>means_sds_and_ses_MRP1 &lt;- sim_pop_sample_with_draws %&gt;% # the one generated in the tutorial
+  group_by(age, .draw) %&gt;% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %&gt;%
+  group_by(age) %&gt;% 
+  summarise(MRP1_mean = mean(mean_prediction), 
+            MRP1_se_of_mean = sd(mean_prediction), 
+            MRP1_sd = sqrt(mean(sd_prediction^2)), 
+            MRP1_se_of_sd = sd(sd_prediction))
+
+
+sim_pop_sample2 &lt;- census %&gt;% 
+  sample_n(size = 100000, 
+           weight = census_n, 
+           replace = TRUE)
+
+sim_pop_sample_with_draws2 &lt;- sim_pop_sample2 %&gt;% 
+  add_predicted_draws(brm_age_by_educ_1_per_fid, # based on the 1/family model
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %&gt;% 
+  mutate(.prediction = round(case_when(.prediction &lt; 0 ~ 0, 
+                                 .prediction &gt; 56 ~ 56,
+                                 TRUE ~ .prediction)))
+
+
+means_sds_and_ses_MRP2 &lt;- sim_pop_sample_with_draws2 %&gt;%
+  group_by(age, .draw) %&gt;% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %&gt;%
+  group_by(age) %&gt;% 
+  summarise(MRP2_mean = mean(mean_prediction), 
+            MRP2_se_of_mean = sd(mean_prediction), 
+            MRP2_sd = sqrt(mean(sd_prediction^2)), 
+            MRP2_se_of_sd = sd(sd_prediction))
+
+means_sds_and_ses_tl &lt;- tl_no_1st_twins_1_per_fid %&gt;% 
+  group_by(age0100) %&gt;% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %&gt;% 
+  rename(age = age0100)
+
+means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP1 %&gt;% 
+  left_join(means_sds_and_ses_MRP2, by = c(&quot;age&quot;)) %&gt;% 
+  left_join(means_sds_and_ses_tl, by = &quot;age&quot;) %&gt;% 
+  filter(age &lt;= 65)
+
+means_ns_sds_and_ses_plot &lt;- means_ns_sds_and_ses %&gt;% 
+  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
+
+
+means_ns_sds_and_ses_plot %&gt;%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text(
+    data = means_ns_sds_and_ses_plot %&gt;% filter(age == 65),
+    aes(label = c(&quot;MRP, full sample&quot;, &quot;MRP, 1 person/family&quot;, &quot;Raw&quot;)),
+    family = &quot;Times&quot;, nudge_x = 1, hjust = 0) +
+  
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
     legend.position = &quot;none&quot;
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#56b4e9&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-6-1.png" width="864" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-16-1.png" width="768" /></p>
 <pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
   mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
          dif_mrp_raw = MRP1_mean - Raw_mean,
+         dif_mrps = MRP1_mean - MRP2_mean,
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.517</code></pre>
+<pre><code>## [1] -1.098</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 2.09</code></pre>
+<pre><code>## [1] 1.763</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
+<pre><code>## [1] -0.02691</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.4921</code></pre>
+<pre><code>## [1] 0.2693</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
-seem to be largely unchanged. Only the SEs increased as would be
-expected.</p>
+seem to be largely unchanged. Only the SEs slightly increased as would
+be expected.</p>
 </div>
 </div>
-<div id="session-info" class="section level1" number="3">
-<h1><span class="header-section-number">3</span> Session info</h1>
+<div
+id="excluding-participants-with-ambivalent-educational-attainment-category"
+class="section level1" number="5">
+<h1><span class="header-section-number">5</span> Excluding participants
+with ambivalent educational attainment category</h1>
+<p>Some participants were assigned an education category that combines
+two degrees with variable ISCED levels: “university of applied sciences,
+university of cooperative education”. While a degree from a university
+of applied sciences (Fachhochschule) would put one in ISCED level 5a, a
+degree from a university of cooperative education (Berufsakademie) is
+equivalent to ISCED level 5b. TwinLife assigns all people who have this
+ambivalent category to ISCED 5a. Here we test the robustness of our
+results against excluding those 357 participants.</p>
+<div id="fitload-the-prediction-model-3" class="section level2"
+number="5.1">
+<h2><span class="header-section-number">5.1</span> Fit/load the
+prediction model</h2>
+<pre class="r"><code>tl_no_1st_twins_no_berufsakad_with_fachhochschule &lt;- tl_no_1st_twins %&gt;% 
+  filter(!(eca0108 == &quot;level 5a&quot; &amp; eca0230 == 8))
+
+
+brm_age_by_educ_modif_isced5a &lt;-
+  brm(bf(
+      cft ~ (1 | mig)  + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + (male)  + (1 | mig:male) + (1 | mig:educ) + (1 | male:educ) + (1 | mig:educ:male) + s(age)),
+      family = gaussian(),
+      chains = 4,
+      iter = 5000,
+      seed = 810,
+      control = list(adapt_delta = 0.99),
+      file = &quot;../unshareable_data/brms/brm_age_by_educ_18_delta_99_5000_isced5a&quot;,
+      file_refit = &quot;never&quot;,
+      data = tl_no_1st_twins_no_berufsakad_with_fachhochschule) %&gt;% 
+  add_criterion(&quot;loo&quot;)</code></pre>
+</div>
+<div id="compare-with-raw-and-regular-mrp-2" class="section level2"
+number="5.2">
+<h2><span class="header-section-number">5.2</span> Compare with raw and
+regular MRP</h2>
+<pre class="r"><code>means_sds_and_ses_MRP1 &lt;- sim_pop_sample_with_draws %&gt;% # the one generated in the tutorial
+  group_by(age, .draw) %&gt;% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %&gt;%
+  group_by(age) %&gt;% 
+  summarise(MRP1_mean = mean(mean_prediction), 
+            MRP1_se_of_mean = sd(mean_prediction), 
+            MRP1_sd = sqrt(mean(sd_prediction^2)), 
+            MRP1_se_of_sd = sd(sd_prediction))
+
+
+sim_pop_sample2 &lt;- census %&gt;% 
+  sample_n(size = 100000, 
+           weight = census_n, 
+           replace = TRUE)
+
+sim_pop_sample_with_draws2 &lt;- sim_pop_sample2 %&gt;% 
+  add_predicted_draws(brm_age_by_educ_modif_isced5a, # based on the 1/family model
+                      ndraws = 1000, 
+                      seed = 810, 
+                      allow_new_levels = TRUE) %&gt;% 
+  mutate(.prediction = round(case_when(.prediction &lt; 0 ~ 0, 
+                                 .prediction &gt; 56 ~ 56,
+                                 TRUE ~ .prediction)))
+
+
+means_sds_and_ses_MRP2 &lt;- sim_pop_sample_with_draws2 %&gt;%
+  group_by(age, .draw) %&gt;% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %&gt;%
+  group_by(age) %&gt;% 
+  summarise(MRP2_mean = mean(mean_prediction), 
+            MRP2_se_of_mean = sd(mean_prediction), 
+            MRP2_sd = sqrt(mean(sd_prediction^2)), 
+            MRP2_se_of_sd = sd(sd_prediction))
+
+means_sds_and_ses_tl &lt;- tl_no_1st_twins_no_berufsakad_with_fachhochschule %&gt;% 
+  group_by(age0100) %&gt;% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) %&gt;% 
+  rename(age = age0100)
+
+means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP1 %&gt;% 
+  left_join(means_sds_and_ses_MRP2, by = c(&quot;age&quot;)) %&gt;% 
+  left_join(means_sds_and_ses_tl, by = &quot;age&quot;) %&gt;% 
+  filter(age &lt;= 65)
+
+means_ns_sds_and_ses_plot &lt;- means_ns_sds_and_ses %&gt;% 
+  pivot_longer(-age, names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
+
+
+means_ns_sds_and_ses_plot %&gt;%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses_plot %&gt;% filter(age == 65) %&gt;% arrange(source),
+    aes(label = c(&quot;MRP, full sample&quot;, &quot;MRP, no BeAk/FHS&quot;, &quot;Raw&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = &quot;y&quot;) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#924900&quot;, &quot;#e69f00&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-18-1.png" width="768" /></p>
+<pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
+  mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
+         dif_mrp_raw = MRP1_mean - Raw_mean,
+         dif_mrps = MRP1_mean - MRP2_mean,
+         dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
+
+mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
+<pre><code>## [1] -1.065</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
+<pre><code>## [1] 1.523</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
+<pre><code>## [1] -0.02004</code></pre>
+<pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
+<pre><code>## [1] 0.1256</code></pre>
+</div>
+</div>
+<div id="session-info" class="section level1" number="6">
+<h1><span class="header-section-number">6</span> Session info</h1>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.3.0 (2023-04-21 ucrt)
-## Platform: x86_64-w64-mingw32/x64 (64-bit)
-## Running under: Windows 10 x64 (build 19045)
+<pre><code>## R version 4.2.2 (2022-10-31)
+## Platform: x86_64-pc-linux-gnu (64-bit)
+## Running under: Rocky Linux 8.8 (Green Obsidian)
 ## 
 ## Matrix products: default
-## 
+## BLAS/LAPACK: /software/all/FlexiBLAS/3.2.1-GCC-12.2.0/lib64/libflexiblas.so.3.2
 ## 
 ## locale:
-## [1] LC_COLLATE=English_United Kingdom.utf8 
-## [2] LC_CTYPE=English_United Kingdom.utf8   
-## [3] LC_MONETARY=English_United Kingdom.utf8
-## [4] LC_NUMERIC=C                           
-## [5] LC_TIME=English_United Kingdom.utf8    
-## 
-## time zone: Europe/Berlin
-## tzcode source: internal
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] marginaleffects_0.12.0 tidybayes_3.0.4        brms_2.20.4           
-##  [4] Rcpp_1.0.10            kableExtra_1.3.4       ggrepel_0.9.3         
-##  [7] forcats_0.5.2          stringr_1.5.0          dplyr_1.1.2           
-## [10] purrr_1.0.1            readr_2.1.3            tidyr_1.2.1           
-## [13] tibble_3.2.1           ggplot2_3.4.2          tidyverse_1.3.2       
+##  [1] tidybayes_3.0.6 brms_2.20.4     Rcpp_1.0.11     ggrepel_0.9.4  
+##  [5] forcats_1.0.0   stringr_1.5.1   dplyr_1.1.4     purrr_1.0.2    
+##  [9] readr_2.1.4     tidyr_1.3.0     tibble_3.2.1    ggplot2_3.4.4  
+## [13] tidyverse_1.3.2
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] tensorA_0.36.2       rstudioapi_0.14      jsonlite_1.8.4      
-##   [4] magrittr_2.0.3       estimability_1.4.1   farver_2.1.1        
-##   [7] rmarkdown_2.21       fs_1.6.2             vctrs_0.6.2         
-##  [10] base64enc_0.1-3      webshot_0.5.4        htmltools_0.5.5     
-##  [13] distributional_0.3.2 curl_5.0.0           haven_2.5.1         
-##  [16] broom_1.0.4          cellranger_1.1.0     googlesheets4_1.0.1 
-##  [19] sass_0.4.6           StanHeaders_2.26.26  bslib_0.4.2         
-##  [22] htmlwidgets_1.6.2    plyr_1.8.8           emmeans_1.8.7       
-##  [25] zoo_1.8-12           lubridate_1.9.0      cachem_1.0.8        
-##  [28] igraph_1.4.2         mime_0.12            lifecycle_1.0.3     
-##  [31] pkgconfig_2.0.3      colourpicker_1.2.0   Matrix_1.5-4        
-##  [34] R6_2.5.1             fastmap_1.1.1        shiny_1.7.4         
-##  [37] digest_0.6.31        colorspace_2.1-0     ps_1.7.5            
-##  [40] crosstalk_1.2.0      labeling_0.4.2       fansi_1.0.4         
-##  [43] timechange_0.2.0     mgcv_1.8-42          httr_1.4.5          
-##  [46] abind_1.4-5          compiler_4.3.0       gargle_1.4.0        
-##  [49] withr_2.5.0          backports_1.4.1      inline_0.3.19       
-##  [52] shinystan_2.6.0      DBI_1.1.3            highr_0.10          
-##  [55] pkgbuild_1.4.0       gtools_3.9.4         loo_2.6.0           
-##  [58] tools_4.3.0          googledrive_2.0.0    httpuv_1.6.11       
-##  [61] threejs_0.3.3        glue_1.6.2           callr_3.7.3         
-##  [64] nlme_3.1-162         promises_1.2.0.1     grid_4.3.0          
-##  [67] checkmate_2.2.0      reshape2_1.4.4       generics_0.1.3      
-##  [70] gtable_0.3.3         tzdb_0.3.0           data.table_1.14.6   
-##  [73] hms_1.1.2            xml2_1.3.3           utf8_1.2.3          
-##  [76] ggdist_3.2.1         pillar_1.9.0         markdown_1.6        
-##  [79] posterior_1.4.1      later_1.3.1          splines_4.3.0       
-##  [82] lattice_0.20-45      renv_0.17.3          tidyselect_1.2.0    
-##  [85] miniUI_0.1.1.1       knitr_1.42           arrayhelpers_1.1-0  
-##  [88] gridExtra_2.3        V8_4.3.0             svglite_2.1.1       
-##  [91] stats4_4.3.0         xfun_0.39            bridgesampling_1.1-2
-##  [94] matrixStats_0.63.0   DT_0.28              rstan_2.26.22       
-##  [97] stringi_1.7.12       yaml_2.3.7           evaluate_0.21       
-## [100] codetools_0.2-19     cli_3.6.1            RcppParallel_5.1.7  
-## [103] shinythemes_1.2.0    xtable_1.8-4         systemfonts_1.0.4   
-## [106] munsell_0.5.0        processx_3.8.2       jquerylib_0.1.4     
-## [109] modelr_0.1.11        readxl_1.4.1         dbplyr_2.3.0        
-## [112] coda_0.19-4          svUnit_1.0.6         parallel_4.3.0      
-## [115] rstantools_2.3.1     ellipsis_0.3.2       assertthat_0.2.1    
-## [118] prettyunits_1.1.1    dygraphs_1.1.1.6     bayesplot_1.10.0    
-## [121] reprex_2.0.2         Brobdingnag_1.2-9    viridisLite_0.4.2   
-## [124] mvtnorm_1.1-3        scales_1.2.1         xts_0.13.1          
-## [127] crayon_1.5.2         rlang_1.1.1          rvest_1.0.3         
-## [130] shinyjs_2.1.0</code></pre>
+##   [1] googledrive_2.1.1    colorspace_2.1-0     ellipsis_0.3.2      
+##   [4] QuickJSR_1.0.8       markdown_1.11        base64enc_0.1-3     
+##   [7] fs_1.6.3             rstudioapi_0.15.0    farver_2.1.1        
+##  [10] rstan_2.32.3         svUnit_1.0.6         DT_0.30             
+##  [13] fansi_1.0.5          mvtnorm_1.2-3        lubridate_1.9.3     
+##  [16] xml2_1.3.5           splines_4.2.2        codetools_0.2-19    
+##  [19] bridgesampling_1.1-2 cachem_1.0.8         knitr_1.45          
+##  [22] shinythemes_1.2.0    bayesplot_1.10.0     jsonlite_1.8.7      
+##  [25] broom_1.0.5          dbplyr_2.4.0         ggdist_3.3.0        
+##  [28] shiny_1.8.0          compiler_4.2.2       httr_1.4.7          
+##  [31] backports_1.4.1      Matrix_1.5-3         fastmap_1.1.1       
+##  [34] gargle_1.5.2         cli_3.6.1            later_1.3.1         
+##  [37] prettyunits_1.2.0    htmltools_0.5.7      tools_4.2.2         
+##  [40] igraph_1.5.1         coda_0.19-4          gtable_0.3.4        
+##  [43] glue_1.6.2           reshape2_1.4.4       posterior_1.5.0     
+##  [46] cellranger_1.1.0     jquerylib_0.1.4      vctrs_0.6.4         
+##  [49] nlme_3.1-162         crosstalk_1.2.1      tensorA_0.36.2      
+##  [52] xfun_0.41            ps_1.7.5             rvest_1.0.3         
+##  [55] timechange_0.2.0     mime_0.12            miniUI_0.1.1.1      
+##  [58] lifecycle_1.0.4      renv_1.0.3           gtools_3.9.5        
+##  [61] googlesheets4_1.1.1  zoo_1.8-12           scales_1.2.1        
+##  [64] colourpicker_1.3.0   hms_1.1.3            promises_1.2.1      
+##  [67] Brobdingnag_1.2-9    parallel_4.2.2       inline_0.3.19       
+##  [70] shinystan_2.6.0      yaml_2.3.7           gridExtra_2.3       
+##  [73] StanHeaders_2.26.28  loo_2.6.0            sass_0.4.7          
+##  [76] stringi_1.8.2        highr_0.10           dygraphs_1.1.1.6    
+##  [79] checkmate_2.3.0      pkgbuild_1.4.2       cmdstanr_0.6.1      
+##  [82] rlang_1.1.2          pkgconfig_2.0.3      matrixStats_1.1.0   
+##  [85] distributional_0.3.2 evaluate_0.23        lattice_0.20-45     
+##  [88] labeling_0.4.3       rstantools_2.3.1.1   htmlwidgets_1.6.3   
+##  [91] processx_3.8.2       tidyselect_1.2.0     plyr_1.8.9          
+##  [94] magrittr_2.0.3       R6_2.5.1             generics_0.1.3      
+##  [97] DBI_1.1.3            mgcv_1.8-42          pillar_1.9.0        
+## [100] haven_2.5.3          withr_2.5.2          xts_0.13.1          
+## [103] abind_1.4-5          modelr_0.1.11        crayon_1.5.2        
+## [106] arrayhelpers_1.1-0   utf8_1.2.4           tzdb_0.4.0          
+## [109] rmarkdown_2.25       grid_4.2.2           readxl_1.4.3        
+## [112] callr_3.7.3          threejs_0.3.3        reprex_2.0.2        
+## [115] digest_0.6.33        xtable_1.8-4         httpuv_1.6.12       
+## [118] RcppParallel_5.1.7   stats4_4.2.2         munsell_0.5.0       
+## [121] bslib_0.6.0          shinyjs_2.1.0</code></pre>
 </div>
 
 
