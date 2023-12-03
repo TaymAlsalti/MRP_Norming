@@ -24,6 +24,7 @@ knitr::opts_chunk$set(
 Load dependencies and preprocessed datasets
 ```{r}
 library(tidyverse)
+library(ggrepel)
 
 load("../unshareable_data/preprocessed/tl.Rda")
 load("../unshareable_data/preprocessed/manual_norms.Rda")
