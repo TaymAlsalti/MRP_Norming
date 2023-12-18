@@ -51,6 +51,7 @@ tl_no_1st_twins <- tl %>%
 
 In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), we superimposed another line for non-poststratified predictions on the plot seen in the Tutorial document. We did this using a function at an earlier stage of the project to facilitate comparing several models:
 
+
 ## Function for plotting MRP results and comparing them with raw values and MR predictions
 
 ```{r}
@@ -250,20 +251,183 @@ mrp_age_norms(ps_table = census,
 Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
 
 
+# Poststratification without prediction model
 
-
-
+## vs. MRP & Raw
 ```{r}
-s
+
+means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(MRP_mean = mean(mean_prediction), 
+            MRP_se_of_mean = sd(mean_prediction), 
+            MRP_sd = sqrt(mean(sd_prediction^2)), 
+            MRP_se_of_sd = sd(sd_prediction)) %>%
+  filter(age <= 65)
+
+
+
+means_sds_and_ses_tl_ps <- tl_no_1st_twins %>% 
+  mutate(age = age0100) %>% 
+  left_join((census %>% 
+               filter(age <= 65) %>% 
+               mutate(PS_w = census_n/sum(census_n))), by = c("age", "male", "mig", "educ")) %>% 
+  filter(age <= 65) %>%  
+  group_by(age) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
+            PS_mean = weighted.mean(cft, PS_w, na.rm = T), 
+            PS_sd = sqrt(weighted.mean((cft - PS_mean)^2, PS_w, na.rm = T)), 
+            PS_se_of_mean = PS_sd/sqrt(Raw_n))
+
+means_ns_sds_and_ses <- means_sds_and_ses_MRP %>% 
+  left_join(means_sds_and_ses_tl_ps, by = "age")  %>%
+  pivot_longer(-c(age), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+means_ns_sds_and_ses %>% 
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses 
+    %>% filter(age == 65) %>% arrange(source),
+    aes(label = c("MRP", "P", "Raw")), 
+    family = "Times", seed = 810, nudge_x = 1, hjust = 0)  +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#0072b2", "#b66dff", "#e69f00")) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+means_ns_sds_and_ses %>% group_by(source) %>% summarise(means = mean(mean), sds = sd(mean))
 ```
 
+## vs. MRP & Raw & Manual
+```{r}
+means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% 
+  mutate(age_group = case_when(
+                         age == 11 ~ '11',
+                         age == 12 ~ '12',
+                         age == 13 ~ '13',
+                         age == 14 ~ '14',
+                         age == 15 ~ '15',
+                         age == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>% 
+  group_by(age_group, .draw) %>%
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise(MRP_mean = mean(mean_prediction),
+              MRP_se_of_mean = sd(mean_prediction),
+              MRP_sd = sqrt(mean(sd_prediction^2)),
+              MRP_se_of_sd = sd(sd_prediction)) %>% 
+  filter(!is.na(age_group))
 
 
+census_manual_age_groups <- census %>% 
+  mutate(age_group = case_when(
+                         age == 11 ~ '11',
+                         age == 12 ~ '12',
+                         age == 13 ~ '13',
+                         age == 14 ~ '14',
+                         age == 15 ~ '15',
+                         age == 16 ~ '16',
+                         age >= 17 & age <= 19 ~ '17-19',
+                         age >= 20 & age <= 24 ~ '20-24',
+                         age >= 25 & age <= 29 ~ '25-29',
+                         age >= 30 & age <= 34 ~ '30-34',
+                         age >= 35 & age <= 39 ~ '35-39',
+                         age >= 40 & age <= 44 ~ '40-44',
+                         age >= 45 & age <= 49 ~ '45-49',
+                         age >= 50 & age <= 54 ~ '50-54',
+                         age >= 55 & age <= 59 ~ '55-59',
+                         age >= 60 & age <= 64 ~ '60-64',
+                         TRUE ~ NA_character_)) %>% 
+  group_by(age_group, male, mig, educ) %>% 
+  summarise(census_n = sum(census_n))  %>% 
+  ungroup() %>% 
+  filter(!is.na(age_group)) 
+  
+load("../unshareable_data/preprocessed/manual_norms.Rda")
 
 
+means_sds_and_ses_tl_ps <- tl_no_1st_twins %>% 
+  left_join((census_manual_age_groups 
+             %>% mutate(PS_w = census_n/sum(census_n))), by = c("age_group", "male", "mig", "educ")) %>%  
+  group_by(age_group) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
+            P_mean = weighted.mean(cft, PS_w, na.rm = T), 
+            P_sd = sqrt(weighted.mean((cft - P_mean)^2, PS_w, na.rm = T)), 
+            P_se_of_mean = P_sd/sqrt(Raw_n)) %>% 
+  filter(!is.na(age_group))
+
+means_ns_sds_and_ses_plot <- means_sds_and_ses_MRP %>% 
+  left_join(means_sds_and_ses_tl_ps, by = "age_group")%>%
+  left_join(manual_norms, by = "age_group") %>% 
+  pivot_longer(-c(age_group), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+means_ns_sds_and_ses_plot %>%
+  ggplot(aes(x = age_group, y = mean, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) + 
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3))  +
+    geom_text_repel(
+    data = means_ns_sds_and_ses_plot %>% filter(age_group == "60-64"),
+    aes(label = c(source[1:3], "")), 
+    family = "Times", seed = 810, nudge_x = .5, hjust = 0) + 
+  labs(x = "Age Group", y = "Mean CFT 20-R Score", ) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses_plot %>% filter(age_group == "14"),
+    aes(label = c("", "", "", "Manual, school sample")), 
+    family = "Times", seed = 810, nudge_y = 2.5) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses_plot %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "", "Manual, TwinLife sample")), 
+    family = "Times", seed = 810, nudge_y = -3) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  )  + 
+  geom_vline(xintercept = 7.5) +
+  scale_colour_manual(values = c("#009e73", "#0072b2", "#b66dff", "#e69f00"))
 
 
-# MRP predictions vs. raw means vs. weighted means
+```
+
+# MRP vs. raw means vs. weighted means
 
 Here we use the weights provided by the TwinLife panel study data custodians, described [here](https://pub.uni-bielefeld.de/record/2979229). We compare them with both raw  and MRP means.
 

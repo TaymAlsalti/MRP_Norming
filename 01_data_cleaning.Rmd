@@ -60,7 +60,8 @@ tl_1 <- haven::read_dta("../unshareable_data/raw/ZA6701_person_wid1_v7-1-0.dta")
                          age0100 >= 50 & age0100 <= 54 ~ '50-54',
                          age0100 >= 55 & age0100 <= 59 ~ '55-59',
                          age0100 >= 60 & age0100 <= 64 ~ '60-64',
-                         TRUE ~ NA_character_))
+                         TRUE ~ NA_character_),
+  neuroticism = )
   
 tl_2 <- tl_1 %>%
   # since the migration variable in the census encodes information about both one's own and the parent's migration background and experience ("Migrationshintergrund und -erfahrung"), we start with creating a variable indicating with the person and/or parents is/are born abroad

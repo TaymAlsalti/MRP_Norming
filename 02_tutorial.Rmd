@@ -185,7 +185,6 @@ census %>%
   summarise(census_n = sum(census_n),
             sample_n = sum(sample_n)) %>% 
   group_by(age) %>% 
-  ungroup() %>% 
   mutate(census_percentage = census_n*100/sum(census_n),
          sample_percentage = sample_n*100/sum(sample_n),
          dif_percentage = census_percentage-sample_percentage,
@@ -340,6 +339,14 @@ fitted_ISCED <- fitted_tl %>%
 
 
 
+max_age_per_ST <- fitted_ST %>%
+                     group_by(school_type) %>%
+                     summarise(max_age = max(age, na.rm = TRUE))
+
+
+labeled_data <- fitted_ST %>%
+                inner_join(max_age_per_ST, by = "school_type") %>%
+                filter(age == max_age)
 
 
 # colour palette from https://jacksonlab.agronomy.wisc.edu/2016/05/23/15-level-colorblind-friendly-palette/
@@ -349,22 +356,10 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, color = school_type)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = Q20, ymax = Q80), alpha = 0.01) +
   labs(x = "Age", y = "CFT 20-R Score", colour = "School Type") +
-  geom_text_repel(
-    data = fitted_ST %>% filter(age == max(age, na.rm = T)) %>% arrange(school_type),
-    aes(label = school_type), 
-    family = "Times", seed = 810, nudge_x = .3, hjust = 0, point.padding = 1, direction = "y") +
-  geom_text_repel(
-    data = fitted_ST %>% filter(school_type == "Primary" & round(age) == 13) %>% arrange(school_type),
-    aes(label = school_type), 
-    family = "Times", seed = 810, nudge_x = .5, nudge_y = -.7) +
-  geom_text_repel(
-    data = fitted_ST %>% filter(school_type == "Intermediate secondary") %>% filter(age == max(age, na.rm = T)) %>% arrange(school_type),
-    aes(label = school_type), 
-    family = "Times", seed = 810, nudge_y = -1.3, nudge_x = 1.1) +
-  geom_text_repel(
-    data = fitted_ST %>% filter(school_type == "Lower secondary") %>% filter(age == max(age, na.rm = T)) %>% arrange(school_type),
-    aes(label = school_type), 
-    family = "Times", seed = 810, point.padding = 1, direction = "x") +
+  geom_text_repel(data = labeled_data %>% arrange(school_type),
+    aes(label = c(school_type[1:5], "", school_type[7])), family = "Times", seed = 810, xlim = c(18.3, 20)) +
+  geom_text_repel(data = labeled_data %>% arrange(school_type),
+    aes(label = c("", "", "", "", "", school_type[6], "")), family = "Times", nudge_x = 1.2, seed = 810) + 
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),

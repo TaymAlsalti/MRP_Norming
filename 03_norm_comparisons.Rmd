@@ -74,11 +74,11 @@ means_ns_sds_and_ses <- means_sds_and_ses_MRP%>%
   left_join(means_sds_and_ses_tl, by = "age") %>% 
   filter(age <= 65) 
 
-# Here you can browse both MRP and raw ns, means, SDs, and SEs.
+# Here you can browse both MRP and raw means, SDs, and SEs.
 means_ns_sds_and_ses %>% 
   mutate(age = as.integer(age)) %>% 
   DT::datatable() %>% 
-  DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 2, 7)], digits = 2)
+  DT::formatRound(columns = names(means_ns_sds_and_ses)[-c(1, 6)], digits = 2)
 ```
 
 ## Plot means 
