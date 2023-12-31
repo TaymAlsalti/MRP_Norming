@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-12-18" />
+<meta name="date" content="2023-12-31" />
 
 <title>Supplementary analyses</title>
 
@@ -356,7 +356,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2023-12-18</h4>
+<h4 class="date">2023-12-31</h4>
 
 </div>
 
@@ -374,6 +374,8 @@ div.tocify {
 library(ggrepel)
 library(brms)
 library(tidybayes)
+
+
 
 load(&quot;../unshareable_data/preprocessed/tl.Rda&quot;)
 load(&quot;data/preprocessed/census.Rda&quot;)
@@ -611,13 +613,13 @@ function</h2>
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.7            0.107     8.54         0.0895
+## 1       35.7            0.106     8.53         0.0881
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0703    8.15        0.0570</code></pre>
+## 1      37.4          0.0703    8.14        0.0561</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
@@ -628,8 +630,12 @@ class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Poststratification
 without prediction model</h1>
 <div id="vs.-mrp-raw" class="section level2" number="2.1">
-<h2><span class="header-section-number">2.1</span> vs. MRP &amp;
+<h2><span class="header-section-number">2.1</span> Vs. MRP &amp;
 Raw</h2>
+<div id="ignoring-empty-subgroups" class="section level3"
+number="2.1.1">
+<h3><span class="header-section-number">2.1.1</span> Ignoring empty
+subgroups</h3>
 <pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws %&gt;%
   group_by(age, .draw) %&gt;% 
   summarise(mean_prediction = mean(.prediction), 
@@ -648,7 +654,9 @@ means_sds_and_ses_tl_ps &lt;- tl_no_1st_twins %&gt;%
   left_join((census %&gt;% 
                filter(age &lt;= 65) %&gt;% 
                mutate(PS_w = census_n/sum(census_n))), by = c(&quot;age&quot;, &quot;male&quot;, &quot;mig&quot;, &quot;educ&quot;)) %&gt;% 
-  filter(age &lt;= 65) %&gt;%  
+  filter(age &lt;= 65) %&gt;%
+  # set PS weights of cells that exist in the sample but not in the census to 0
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %&gt;% 
   group_by(age) %&gt;% 
   summarise(Raw_n = n(), 
             Raw_mean = mean(cft, na.rm = T), 
@@ -688,16 +696,79 @@ means_ns_sds_and_ses %&gt;%
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#b66dff&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-5-1.png" width="768" /></p>
-<pre class="r"><code>means_ns_sds_and_ses %&gt;% group_by(source) %&gt;% summarise(means = mean(mean), sds = sd(mean))</code></pre>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;% group_by(source) %&gt;% summarise(means = mean(mean), ses = mean(se_of_mean))</code></pre>
 <pre><code>## # A tibble: 3 × 3
-##   source means   sds
+##   source means   ses
 ##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
-## 1 MRP     35.6  2.56
-## 2 PS      36.9  3.30
-## 3 Raw     36.8  2.60</code></pre>
+## 1 MRP     35.6 0.328
+## 2 PS      36.9 0.800
+## 3 Raw     36.8 0.845</code></pre>
+</div>
+<div id="weighting-by-education-only" class="section level3"
+number="2.1.2">
+<h3><span class="header-section-number">2.1.2</span> Weighting by
+education only</h3>
+<pre class="r"><code>census_educ_only &lt;- census %&gt;% 
+  group_by(educ) %&gt;% 
+  summarise(census_n = sum(census_n))  %&gt;% 
+  ungroup()
+
+
+means_sds_and_ses_tl_ps &lt;- tl_no_1st_twins %&gt;% 
+  mutate(age = age0100) %&gt;% 
+  left_join((census_educ_only 
+             %&gt;% mutate(PS_w = census_n/sum(census_n))), by = c(&quot;educ&quot;)) %&gt;%  
+  group_by(age) %&gt;% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
+            P_mean = weighted.mean(cft, PS_w, na.rm = T), 
+            P_sd = sqrt(weighted.mean((cft - P_mean)^2, PS_w, na.rm = T)), 
+            P_se_of_mean = P_sd/sqrt(Raw_n)) %&gt;% 
+  filter(!is.na(age))
+
+means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP %&gt;% 
+  left_join(means_sds_and_ses_tl_ps, by = &quot;age&quot;)  %&gt;%
+  pivot_longer(-c(age), names_to = c(&quot;source&quot;, &quot;.value&quot;), names_pattern = &quot;([^_]*)_(.*)&quot;)
+
+
+means_ns_sds_and_ses %&gt;% 
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses 
+    %&gt;% filter(age == 65) %&gt;% arrange(source),
+    aes(label = c(&quot;MRP&quot;, &quot;P&quot;, &quot;Raw&quot;)), 
+    family = &quot;Times&quot;, seed = 810, nudge_x = 1, hjust = 0)  +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = &quot;dashed&quot;, size = 0.3),
+    legend.position = &quot;none&quot;
+  ) +
+  scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#b66dff&quot;, &quot;#e69f00&quot;)) +
+  labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-6-1.png" width="768" /></p>
+<pre class="r"><code>means_ns_sds_and_ses %&gt;% group_by(source) %&gt;% summarise(means = mean(mean), ses = mean(se_of_mean))</code></pre>
+<pre><code>## # A tibble: 3 × 3
+##   source means   ses
+##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1 MRP     35.6 0.328
+## 2 P       35.8 0.826
+## 3 Raw     36.8 0.845</code></pre>
+</div>
 </div>
 <div id="vs.-mrp-raw-manual" class="section level2" number="2.2">
-<h2><span class="header-section-number">2.2</span> vs. MRP &amp; Raw
+<h2><span class="header-section-number">2.2</span> Vs. MRP &amp; Raw
 &amp; Manual</h2>
 <pre class="r"><code>means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws  %&gt;% 
   mutate(age_group = case_when(
@@ -758,6 +829,7 @@ means_sds_and_ses_tl_ps &lt;- tl_no_1st_twins %&gt;%
   left_join((census_manual_age_groups 
              %&gt;% mutate(PS_w = census_n/sum(census_n))), by = c(&quot;age_group&quot;, &quot;male&quot;, &quot;mig&quot;, &quot;educ&quot;)) %&gt;%  
   group_by(age_group) %&gt;% 
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %&gt;%
   summarise(Raw_n = n(), 
             Raw_mean = mean(cft, na.rm = T), 
             Raw_sd = sd(cft, na.rm = T), 
@@ -803,7 +875,7 @@ means_ns_sds_and_ses_plot %&gt;%
   )  + 
   geom_vline(xintercept = 7.5) +
   scale_colour_manual(values = c(&quot;#009e73&quot;, &quot;#0072b2&quot;, &quot;#b66dff&quot;, &quot;#e69f00&quot;))</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-6-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-7-1.png" width="768" /></p>
 </div>
 </div>
 <div id="mrp-vs.-raw-means-vs.-weighted-means" class="section level1"
@@ -883,7 +955,7 @@ means_ns_sds_and_ses &lt;- means_sds_and_ses_MRP %&gt;%
   ) +
   scale_colour_manual(values = c(&quot;#490092&quot;, &quot;#0072b2&quot;, &quot;#920000&quot;,&quot;#e69f00&quot;,&quot;#24ff24&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-9-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-1.png" width="768" /></p>
 <p>No large differences to raw means but it’s hard to see details.</p>
 <pre class="r"><code>means_ns_sds_and_ses %&gt;%
   group_by(source) %&gt;% 
@@ -928,7 +1000,7 @@ difference to raw means.</p>
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#920000&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-11-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-12-1.png" width="768" /></p>
 </div>
 <div id="sd-differences" class="section level2" number="3.3">
 <h2><span class="header-section-number">3.3</span> SD differences</h2>
@@ -955,7 +1027,7 @@ difference to raw means.</p>
   ) +
   scale_colour_manual(values = c(&quot;#490092&quot;, &quot;#0072b2&quot;, &quot;#920000&quot;,&quot;#e69f00&quot;,&quot;#24ff24&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score SD&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-12-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-13-1.png" width="768" /></p>
 <pre class="r"><code>means_ns_sds_and_ses %&gt;%
   group_by(source) %&gt;% 
   summarise(sd = sqrt(mean(sd^2))) %&gt;% 
@@ -1075,7 +1147,7 @@ means_ns_sds_and_ses_plot %&gt;%
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#000000&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-15-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-16-1.png" width="768" /></p>
 <pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
   mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
          dif_mrp_raw = MRP1_mean - Raw_mean,
@@ -1083,13 +1155,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.202</code></pre>
+<pre><code>## [1] -1.201</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.612</code></pre>
+<pre><code>## [1] 1.611</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.04576</code></pre>
+<pre><code>## [1] -0.01517</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1589</code></pre>
+<pre><code>## [1] 0.1729</code></pre>
 </div>
 </div>
 <div id="one-person-per-family" class="section level1" number="5">
@@ -1206,7 +1278,7 @@ means_ns_sds_and_ses_plot %&gt;%
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#56b4e9&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-17-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-18-1.png" width="768" /></p>
 <pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
   mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
          dif_mrp_raw = MRP1_mean - Raw_mean,
@@ -1216,11 +1288,11 @@ means_ns_sds_and_ses_plot %&gt;%
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
 <pre><code>## [1] -1.098</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.764</code></pre>
+<pre><code>## [1] 1.762</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02689</code></pre>
+<pre><code>## [1] -0.02534</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.2705</code></pre>
+<pre><code>## [1] 0.271</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
 seem to be largely unchanged. Only the SEs slightly increased as would
 be expected.</p>
@@ -1341,7 +1413,7 @@ means_ns_sds_and_ses_plot %&gt;%
   ) +
   scale_colour_manual(values = c(&quot;#0072b2&quot;, &quot;#924900&quot;, &quot;#e69f00&quot;)) +
   labs(x = &quot;Age&quot;, y = &quot;Mean CFT 20-R Score&quot;)</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-19-1.png" width="768" /></p>
+<p><img src="04_supplements_files/figure-html/unnamed-chunk-20-1.png" width="768" /></p>
 <pre class="r"><code>means_ns_sds_and_ses &lt;- means_ns_sds_and_ses %&gt;% 
   mutate(dif_mrp_raw_abs = abs(MRP1_mean - Raw_mean),
          dif_mrp_raw = MRP1_mean - Raw_mean,
@@ -1349,13 +1421,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.066</code></pre>
+<pre><code>## [1] -1.065</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.524</code></pre>
+<pre><code>## [1] 1.522</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02295</code></pre>
+<pre><code>## [1] -0.02023</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1276</code></pre>
+<pre><code>## [1] 0.1254</code></pre>
 </div>
 </div>
 <div id="session-info" class="section level1" number="7">

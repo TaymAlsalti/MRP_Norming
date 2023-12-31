@@ -299,7 +299,8 @@ iqs_linear <- tl_no_1st_twins %>%
   mutate(MRP_IQ_linear = round(iq(cft, MRP_mean, MRP_sd)),
          Manual_IQ_linear = round(iq(cft, Manual_mean, Manual_sd)),
          IQ_linear_dif = MRP_IQ_linear - Manual_IQ_linear,
-         IQ_linear_dif_abs = abs(MRP_IQ_linear - Manual_IQ_linear))
+         IQ_linear_dif_abs = abs(MRP_IQ_linear - Manual_IQ_linear)) %>% 
+  rename("raw_score" = cft)
 
 ```
 
@@ -325,26 +326,36 @@ iqs_normalised <- sim_pop_sample_with_draws %>%
                          age >= 50 & age <= 54 ~ '50-54',
                          age >= 55 & age <= 59 ~ '55-59',
                          age >= 60 & age <= 64 ~ '60-64',
-                         TRUE ~ NA_character_)) %>% 
-  filter(!is.na(age_group)) %>% 
-  group_by(age_group, .draw) %>% 
-  mutate(percentile = ecdf(raw_score)(raw_score)) %>%
-  mutate(iq_score_tr_ag = qnorm(percentile) * 15 + 100) %>% 
-  group_by(age_group, raw_score) %>% 
-  summarise(percentile = mean(percentile),
-            iq_score_tr_ag = mean(iq_score_tr_ag)) %>% 
-  mutate(iq_score_tr_ag = ifelse(is.finite(iq_score_tr_ag), iq_score_tr_ag, NA),
-         iq_score_ag_tr = qnorm(percentile) * 15 + 100,
-         MRP_IQ_normalised = round(coalesce(iq_score_tr_ag, iq_score_ag_tr))) %>% 
-  select(age_group, raw_score, MRP_IQ_normalised) %>% 
-  rename("cft" = raw_score)
+                         TRUE ~ NA_character_)) %>%
+  filter(!is.na(age_group)) %>%
+  group_by(age_group, .draw) %>%
+  mutate(n = n(),
+         normal_transformed_score = qnorm((rank(raw_score) - 0.5) / n)) %>%
+  mutate(iq_score = normal_transformed_score * 15 + 100) %>%
+  group_by(age_group, raw_score) %>%
+  summarise(MRP_IQ_normalised = round(mean(iq_score)),
+            MRP_IQ_normalised_se = sd(iq_score))
 ```
+
+
+### Model-based SEs for the normalised MRP IQs
+Another advantage over traditional norming is that here we can calculate SEs for each norm IQ score, which can be considered in individual diagnostics. Here we show that SEs at the tail of the distribution have larger SEs because those are based on less data.
+```{r}
+iqs_normalised %>% 
+  mutate(at_tail = ifelse(MRP_IQ_normalised <= 70 | MRP_IQ_normalised >= 130, TRUE, FALSE)) %>% 
+  group_by(at_tail) %>% 
+  summarise(mean_SE = mean(MRP_IQ_normalised_se))
+```
+
+
+
+
 
 ### Some aggregated comparisons between MRP and Manual IQs
 
 ```{r}
 iq_table <- iqs_linear %>% 
-  left_join(iqs_normalised, by = c("age_group", "cft")) %>% 
+  left_join(iqs_normalised, by = c("age_group", "raw_score")) %>% 
   mutate(IQ_MRP_abs_dif = abs(MRP_IQ_linear - MRP_IQ_normalised),
          Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) 
 
@@ -355,6 +366,7 @@ mean(iq_table$IQ_MRP_abs_dif)
 
 iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif_abs))
 ```
+
 
 
 

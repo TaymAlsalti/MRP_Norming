@@ -28,6 +28,8 @@ library(ggrepel)
 library(brms)
 library(tidybayes)
 
+
+
 load("../unshareable_data/preprocessed/tl.Rda")
 load("data/preprocessed/census.Rda")
 sim_pop_sample_with_draws <- readRDS("data/simulated/sim_pop_sample_with_draws.rds")
@@ -253,7 +255,8 @@ Besides the obvious effect that poststratification has on means, it also smoothe
 
 # Poststratification without prediction model
 
-## vs. MRP & Raw
+## Vs. MRP & Raw
+### Ignoring empty subgroups
 ```{r}
 
 means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
@@ -274,7 +277,9 @@ means_sds_and_ses_tl_ps <- tl_no_1st_twins %>%
   left_join((census %>% 
                filter(age <= 65) %>% 
                mutate(PS_w = census_n/sum(census_n))), by = c("age", "male", "mig", "educ")) %>% 
-  filter(age <= 65) %>%  
+  filter(age <= 65) %>%
+  # set PS weights of cells that exist in the sample but not in the census to 0
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %>% 
   group_by(age) %>% 
   summarise(Raw_n = n(), 
             Raw_mean = mean(cft, na.rm = T), 
@@ -314,10 +319,67 @@ means_ns_sds_and_ses %>%
   scale_colour_manual(values = c("#0072b2", "#b66dff", "#e69f00")) +
   labs(x = "Age", y = "Mean CFT 20-R Score")
 
-means_ns_sds_and_ses %>% group_by(source) %>% summarise(means = mean(mean), sds = sd(mean))
+means_ns_sds_and_ses %>% group_by(source) %>% summarise(means = mean(mean), ses = mean(se_of_mean))
 ```
 
-## vs. MRP & Raw & Manual
+### Weighting by education only
+```{r}
+census_educ_only <- census %>% 
+  group_by(educ) %>% 
+  summarise(census_n = sum(census_n))  %>% 
+  ungroup()
+
+
+means_sds_and_ses_tl_ps <- tl_no_1st_twins %>% 
+  mutate(age = age0100) %>% 
+  left_join((census_educ_only 
+             %>% mutate(PS_w = census_n/sum(census_n))), by = c("educ")) %>%  
+  group_by(age) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
+            P_mean = weighted.mean(cft, PS_w, na.rm = T), 
+            P_sd = sqrt(weighted.mean((cft - P_mean)^2, PS_w, na.rm = T)), 
+            P_se_of_mean = P_sd/sqrt(Raw_n)) %>% 
+  filter(!is.na(age))
+
+means_ns_sds_and_ses <- means_sds_and_ses_MRP %>% 
+  left_join(means_sds_and_ses_tl_ps, by = "age")  %>%
+  pivot_longer(-c(age), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+means_ns_sds_and_ses %>% 
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(12, 64, by = 2),
+                   expand = expansion(add = c(1, 15))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses 
+    %>% filter(age == 65) %>% arrange(source),
+    aes(label = c("MRP", "P", "Raw")), 
+    family = "Times", seed = 810, nudge_x = 1, hjust = 0)  +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c("#0072b2", "#b66dff", "#e69f00")) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+means_ns_sds_and_ses %>% group_by(source) %>% summarise(means = mean(mean), ses = mean(se_of_mean))
+
+```
+
+
+## Vs. MRP & Raw & Manual
 ```{r}
 means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% 
   mutate(age_group = case_when(
@@ -378,6 +440,7 @@ means_sds_and_ses_tl_ps <- tl_no_1st_twins %>%
   left_join((census_manual_age_groups 
              %>% mutate(PS_w = census_n/sum(census_n))), by = c("age_group", "male", "mig", "educ")) %>%  
   group_by(age_group) %>% 
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %>%
   summarise(Raw_n = n(), 
             Raw_mean = mean(cft, na.rm = T), 
             Raw_sd = sd(cft, na.rm = T), 

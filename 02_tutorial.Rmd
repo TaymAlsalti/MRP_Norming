@@ -492,7 +492,8 @@ iqs_linear <- tl_no_1st_twins  %>%
   summarise(n()) %>% 
   select(age = age0100, cft) %>% 
   left_join(select(means_sds_and_ses_MRP, c(MRP_mean, MRP_sd, age)), by = "age") %>% 
-  mutate(MRP_IQ_linear = round(iq(cft, MRP_mean, MRP_sd)))
+  mutate(MRP_IQ_linear = round(iq(cft, MRP_mean, MRP_sd))) %>% 
+  rename("raw_score" = cft)
 
 iqs_linear %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```
@@ -503,18 +504,14 @@ Here we calculate normal rank transformed IQs for all cft scores that occur in t
 
 ```{r}
 iqs_normalised <- sim_pop_sample_with_draws  %>% 
-  mutate(raw_score = round(.prediction)) %>% 
-  group_by(age, .draw) %>% 
-  mutate(percentile = ecdf(raw_score)(raw_score)) %>%
-  mutate(iq_score_tr_ag = qnorm(percentile) * 15 + 100) %>% 
-  group_by(age, raw_score) %>% 
-  summarise(percentile = mean(percentile),
-            iq_score_tr_ag = mean(iq_score_tr_ag)) %>% 
-  mutate(iq_score_tr_ag = ifelse(is.finite(iq_score_tr_ag), iq_score_tr_ag, NA),
-         iq_score_ag_tr = qnorm(percentile) * 15 + 100,
-         MRP_IQ_normalised = round(coalesce(iq_score_tr_ag, iq_score_ag_tr))) %>% 
-  select(age, raw_score, MRP_IQ_normalised) %>% 
-  rename("cft" = raw_score)
+  mutate(raw_score = round(.prediction)) %>%
+  group_by(age, .draw) %>%
+  mutate(n = n(),
+         normal_transformed_score = qnorm((rank(raw_score) - 0.5) / n)) %>%
+  mutate(iq_score = normal_transformed_score * 15 + 100) %>%
+  group_by(age, raw_score) %>%
+  summarise(MRP_IQ_normalised = round(mean(iq_score)),
+            MRP_IQ_normalised_se = sd(iq_score))
 
 iqs_normalised %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```
