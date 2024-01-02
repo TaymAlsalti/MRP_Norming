@@ -279,7 +279,7 @@ means_sds_and_ses_plot %>%
 
 ## IQ calculations
 
-Rather than calculating IQs for all possible CFT 20-R scores (0-56), we restrict our calculations to those which occur in our data. 
+Rather than calculating IQs for all possible CFT 20-R scores (0-56), we restrict our calculations to those which occur in our data.
 
 ### Linearly transformed IQs
 
@@ -302,13 +302,14 @@ iqs_linear <- tl_no_1st_twins %>%
          IQ_linear_dif_abs = abs(MRP_IQ_linear - Manual_IQ_linear)) %>% 
   rename("raw_score" = cft)
 
+
 ```
 
 ### Normalised (area transformed / normal rank transformed) IQs
 
 ```{r}
 iqs_normalised <- sim_pop_sample_with_draws %>% 
-  mutate(raw_score = round(.prediction),
+  mutate(raw_score = .prediction,
          age_group = case_when(
                          age == 11 ~ '11',
                          age == 12 ~ '12',
@@ -338,7 +339,7 @@ iqs_normalised <- sim_pop_sample_with_draws %>%
 ```
 
 
-### Model-based SEs for the normalised MRP IQs
+Model-based SEs for the normalised MRP IQs
 Another advantage over traditional norming is that here we can calculate SEs for each norm IQ score, which can be considered in individual diagnostics. Here we show that SEs at the tail of the distribution have larger SEs because those are based on less data.
 ```{r}
 iqs_normalised %>% 

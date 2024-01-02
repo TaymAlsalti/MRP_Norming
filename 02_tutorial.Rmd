@@ -476,24 +476,18 @@ This code chunk first aggregates by age and posterior draw (1000) to compute the
 ## Age norm tables
 
 ### Linearly transformed IQs
-
-Rather than calculating IQs for all possible CFT 20-R scores (0-56), we restrict our calculations to those which occur in the data.
-
+Here we calculate linearly transformed IQs for all cft scores that occur in the poststratified sample.
 ```{r}
 iq <- function(cft_score, mean, sd) {
   iq_score <- ((cft_score - mean) / sd) * 15 + 100
   return(iq_score)
 }
 
-
-iqs_linear <- tl_no_1st_twins  %>% 
-  filter(age0100 <= 65) %>% 
-  group_by(age0100, cft) %>% 
-  summarise(n()) %>% 
-  select(age = age0100, cft) %>% 
-  left_join(select(means_sds_and_ses_MRP, c(MRP_mean, MRP_sd, age)), by = "age") %>% 
-  mutate(MRP_IQ_linear = round(iq(cft, MRP_mean, MRP_sd))) %>% 
-  rename("raw_score" = cft)
+iqs_linear <- sim_pop_sample_with_draws %>% 
+  filter(age <= 65) %>% 
+  left_join(select(means_sds_and_ses_MRP, c(MRP_mean, MRP_sd, age)), by = "age") %>%
+  group_by(age, raw_score = .prediction) %>%
+  summarise(MRP_IQ_linear = round(mean(iq(raw_score, MRP_mean, MRP_sd))))
 
 iqs_linear %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```
@@ -504,7 +498,8 @@ Here we calculate normal rank transformed IQs for all cft scores that occur in t
 
 ```{r}
 iqs_normalised <- sim_pop_sample_with_draws  %>% 
-  mutate(raw_score = round(.prediction)) %>%
+  filter(age <= 65) %>%
+  rename(raw_score = .prediction) %>%
   group_by(age, .draw) %>%
   mutate(n = n(),
          normal_transformed_score = qnorm((rank(raw_score) - 0.5) / n)) %>%

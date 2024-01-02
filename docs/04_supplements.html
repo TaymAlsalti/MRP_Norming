@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-12-31" />
+<meta name="date" content="2024-01-02" />
 
 <title>Supplementary analyses</title>
 
@@ -356,7 +356,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2023-12-31</h4>
+<h4 class="date">2024-01-02</h4>
 
 </div>
 
@@ -613,13 +613,13 @@ function</h2>
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.7            0.106     8.53         0.0881
+## 1       35.7            0.107     8.54         0.0890
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0703    8.14        0.0561</code></pre>
+## 1      37.3          0.0696    8.16        0.0577</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
@@ -1155,13 +1155,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.201</code></pre>
+<pre><code>## [1] -1.203</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.611</code></pre>
+<pre><code>## [1] 1.612</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.01517</code></pre>
+<pre><code>## [1] -0.03478</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1729</code></pre>
+<pre><code>## [1] 0.1705</code></pre>
 </div>
 </div>
 <div id="one-person-per-family" class="section level1" number="5">
@@ -1286,13 +1286,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.098</code></pre>
+<pre><code>## [1] -1.099</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.762</code></pre>
+<pre><code>## [1] 1.764</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02534</code></pre>
+<pre><code>## [1] -0.02838</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.271</code></pre>
+<pre><code>## [1] 0.2687</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
 seem to be largely unchanged. Only the SEs slightly increased as would
 be expected.</p>
@@ -1421,13 +1421,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.065</code></pre>
+<pre><code>## [1] -1.067</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.522</code></pre>
+<pre><code>## [1] 1.524</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02023</code></pre>
+<pre><code>## [1] -0.02093</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1254</code></pre>
+<pre><code>## [1] 0.1253</code></pre>
 </div>
 </div>
 <div id="session-info" class="section level1" number="7">
@@ -1486,7 +1486,7 @@ mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
 ##  [76] stringi_1.8.2        highr_0.10           dygraphs_1.1.1.6    
 ##  [79] checkmate_2.3.0      pkgbuild_1.4.2       cmdstanr_0.6.1      
 ##  [82] rlang_1.1.2          pkgconfig_2.0.3      matrixStats_1.1.0   
-##  [85] distributional_0.3.2 evaluate_0.23        lattice_0.20-45     
+##  [85] distributional_0.3.2 evaluate_0.23        lattice_0.22-5      
 ##  [88] labeling_0.4.3       rstantools_2.3.1.1   htmlwidgets_1.6.3   
 ##  [91] processx_3.8.2       tidyselect_1.2.0     plyr_1.8.9          
 ##  [94] magrittr_2.0.3       R6_2.5.1             generics_0.1.3      
