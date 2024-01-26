@@ -287,8 +287,8 @@ $(document).ready(function () {
 <h2>Reproducibility</h2>
 <p>4 things are required to be able to rerun our code:</p>
 <ol style="list-style-type: decimal">
-<li>TwinLife data: versions 2 and 6 of the dataset have to be requested
-from <a href="https://search.gesis.org/research_data/ZA6701">GESIS</a>.
+<li>TwinLife data: Must be requested from <a
+href="https://search.gesis.org/research_data/ZA6701">GESIS</a>.
 Alternatively you can run the tutorial code on the synthetic sample we
 provide on our <a href="https://osf.io/2r9sy/">OSF project</a>.</li>
 <li><a
@@ -300,17 +300,17 @@ the manuscript also have to be extracted.</li>
 <li>The census tables, which we provide on our <a
 href="https://osf.io/2r9sy/">OSF project</a>.</li>
 <li>To ensure the code works as expected, it’s best to have the same
-versions of R and the packages we use. This can be arranged by using the
-renv.lock file found in the main RProject folder to download the exact
-versions of the packages we used. Note that before this can bedone,
-extra effort is needed to get <em>brms</em> to work on your machine.
-That is, you might have to install the specific versions of
-<em>StanHeaders</em> and <em>rstan</em> (i.e., 2.26.28 and 2.32.3,
-respectively) we used directly from source before you can run
-<code>renv::restore()</code>. The package <code>remote</code> can be
-used for this. Here is a <a
-href="https://learnb4ss.github.io/learnB4SS/articles/install-brms.html">walk-through</a>
-for installing <code>brms</code> on different operating systems.</li>
+versions of R (4.2.2) and the packages we use. Since brms requires the
+most work to set up, it’s best to start there. Follow <a
+href="https://learnb4ss.github.io/learnB4SS/articles/install-brms.html">this
+walk-through</a> for installing <code>brms</code> on different operating
+systems (take care to install the right version of RTools if you’re on
+Windows!). Once you’ve done that, it’s probably safe to install the
+proper versions of the of rest of the packages by running
+<code>renv::restore()</code>. If <code>renv::restore()</code> fails to
+install any of the packages, try <code>remotes::install_version()</code>
+to install that specific version of the package and run
+<code>renv::restore()</code> again.</li>
 </ol>
 <p>Note that all code in our tutorial document can be executed based on
 materials we provide on our OSF repository.</p>

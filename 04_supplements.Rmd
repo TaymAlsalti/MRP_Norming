@@ -253,9 +253,10 @@ mrp_age_norms(ps_table = census,
 Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
 
 
-# Poststratification without prediction model
+# Poststratification without regularisation
+Weighting is often undertaken using simple averages instead of model predictions. Here we apply poststratification weights we calculated based on population data and use weights provided by TwinLife and compare the results to MRP and raw data.
 
-## Vs. MRP & Raw
+## Poststratification weights vs. MRP & Raw
 ### Ignoring empty subgroups
 ```{r}
 
@@ -379,7 +380,7 @@ means_ns_sds_and_ses %>% group_by(source) %>% summarise(means = mean(mean), ses 
 ```
 
 
-## Vs. MRP & Raw & Manual
+### Vs. MRP & Raw & Manual
 ```{r}
 means_sds_and_ses_MRP <- sim_pop_sample_with_draws  %>% 
   mutate(age_group = case_when(
@@ -490,7 +491,7 @@ means_ns_sds_and_ses_plot %>%
 
 ```
 
-# MRP vs. raw means vs. weighted means
+## TwinLife Weights
 
 Here we use the weights provided by the TwinLife panel study data custodians, described [here](https://pub.uni-bielefeld.de/record/2979229). We compare them with both raw  and MRP means.
 

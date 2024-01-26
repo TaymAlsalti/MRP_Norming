@@ -27,7 +27,7 @@ library(kableExtra)
 
 # TwinLife sample
 
-Note that you cannot run the code here unless you have requested and obtained the TwinLife data. You do not need to do this however, to repdouce the tutorial code in the RMarkdown document 02_tutorial.Rmd. The synthetic dataset we produce here is available on our OSF project and can be used for that purpose. The comparisons to the Raw estimates (Figures 5 and 6 in the manuscript, see document 03_norm_comparisons) can also be reproduced based on the synthetic dataset. The comparisons to the Manual norms cannot be reproduced as we did not have permission to share those norms.
+Note that you cannot run the code here unless you have requested and obtained the TwinLife data. You do not need to do this however, to reproduce the tutorial code in the RMarkdown document 02_tutorial.Rmd. The synthetic dataset we produce here is available on our OSF project and can be used for that purpose. The comparisons to the Raw estimates (Figures 3 and 4 in the manuscript, see document 03_norm_comparisons) can also be reproduced based on the synthetic dataset. The comparisons to the Manual norms cannot be made reproducible as we failed to obtain permission to share those values.
 
 ## Preprocessing
 
@@ -60,11 +60,10 @@ tl_1 <- haven::read_dta("../unshareable_data/raw/ZA6701_person_wid1_v7-1-0.dta")
                          age0100 >= 50 & age0100 <= 54 ~ '50-54',
                          age0100 >= 55 & age0100 <= 59 ~ '55-59',
                          age0100 >= 60 & age0100 <= 64 ~ '60-64',
-                         TRUE ~ NA_character_),
-  neuroticism = )
+                         TRUE ~ NA_character_))
   
 tl_2 <- tl_1 %>%
-  # since the migration variable in the census encodes information about both one's own and the parent's migration background and experience ("Migrationshintergrund und -erfahrung"), we start with creating a variable indicating with the person and/or parents is/are born abroad
+  # since the migration variable in the census encodes information about both one's own and the parent's migration background and experience ("Migrationshintergrund und -erfahrung"), we start by creating a variable indicating whether the person and/or their parents is/are born abroad
   # assume German citizenship lacking information about citizenship
   mutate(mig0520 = coalesce(mig0520, 1), 
          born_abroad = case_when(
@@ -109,9 +108,11 @@ tl <- tl_2 %>%
             # "Entfällt, da kein/e Schüler/-innen" is a category in the census so we gave kids who don't have a school type category and who specified as an answer to another question that they no longer go to school this category
             edu0100 == 3 ~ "ST7: No longer at school"),  # "ich gehe nicht mehr in die Schule"
          isced = as.factor(case_when(
-           # isced is coded starting with age 15, if the person is still at school, assume they will have a primary school certificate to be conservative
+           # in TwinLife,isced code is coded starting with age 15 but we use it starting with 19 (see code further below). if the person is still at school at age 19 or older, we assume they  have a primary school certificate ("ISCED 1: Primary")
             eca0108 == "3] -83: in school or training/not in school yet" ~ "ISCED 1: Primary",
+           # Exclude not codable 
             eca0108 == "9] -89: not codable" ~ NA_character_,
+           # Those are kids younger than 15
             eca0108 == "5] -95: doesn't apply (screened out)" ~ NA_character_,
            # we don't change any coding here, only translation/explanation
             eca0108 == "level 1" ~   "ISCED 1: Primary",
@@ -315,7 +316,7 @@ census_ISCED_19_79 <- census_ISCED %>%
 census <- census_school_type_11_18 %>% 
   bind_rows(census_ISCED_19_79) 
 
-save(census, file="data/preprocessed/census.Rda")
+# save(census, file="data/preprocessed/census.Rda")
 
 # print random 14 rows/cells/subgroups/combinations out of the total 6528 in the poststratification table
 census %>% slice_sample(n = 14) %>% kable %>% kable_styling(full_width = FALSE)

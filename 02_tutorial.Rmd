@@ -344,21 +344,21 @@ max_age_per_ST <- fitted_ST %>%
                      summarise(max_age = max(age, na.rm = TRUE))
 
 
-labeled_data <- fitted_ST %>%
+labels <- fitted_ST %>%
                 inner_join(max_age_per_ST, by = "school_type") %>%
                 filter(age == max_age)
 
 
 # colour palette from https://jacksonlab.agronomy.wisc.edu/2016/05/23/15-level-colorblind-friendly-palette/
-ggplot(data = fitted_ST, aes(x = age, y = Estimate, color = school_type)) +
+ggplot(data = fitted_ST, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, color = school_type, fill = school_type)) +
   scale_x_continuous(breaks = seq(12, 18, by = 2),
                    expand = expansion(add = c(0, 2))) +
   geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = Q20, ymax = Q80), alpha = 0.01) +
+  geom_ribbon(alpha = 0.2, linewidth = .01) + 
   labs(x = "Age", y = "CFT 20-R Score", colour = "School Type") +
-  geom_text_repel(data = labeled_data %>% arrange(school_type),
+  geom_text_repel(data = labels %>% arrange(school_type),
     aes(label = c(school_type[1:5], "", school_type[7])), family = "Times", seed = 810, xlim = c(18.3, 20)) +
-  geom_text_repel(data = labeled_data %>% arrange(school_type),
+  geom_text_repel(data = labels %>% arrange(school_type),
     aes(label = c("", "", "", "", "", school_type[6], "")), family = "Times", nudge_x = 1.2, seed = 810) + 
   theme(
     panel.grid.major.y = element_blank(),
@@ -367,7 +367,8 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, color = school_type)) +
     panel.grid.minor.x = element_blank(),
     legend.position = "none"
   ) +
-  scale_color_manual(values = c("#000000","#ff6db6","#009292","#6db6ff","#920000", "#490092","#006ddb"))
+  scale_color_manual(values = c("#009292","#000000","#ff6db6","#006ddb","#920000", "#490092","#6db6ff")) +
+  scale_fill_manual(values = c("#009292","#000000","#ff6db6","#006ddb","#920000", "#490092","#6db6ff"))
 ```
 
 
@@ -377,17 +378,17 @@ max_age_per_isced <- fitted_ISCED %>%
                      summarise(max_age = max(age, na.rm = TRUE))
 
 
-labeled_data <- fitted_ISCED %>%
+labels <- fitted_ISCED %>%
                 inner_join(max_age_per_isced, by = "isced") %>%
                 filter(age == max_age)
 
-ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, color = isced)) +
+ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, color = isced, fill = isced)) +
   scale_x_continuous(breaks = seq(19, 65, by = 9),
-                     expand = expansion(add = c(1, 21))) +
+                     expand = expansion(add = c(1, 21)))  +
   geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = Q20, ymax = Q80), alpha = 0.01) +
+  geom_ribbon(alpha = .3, linewidth = .5) +
   labs(x = "Age", y = "CFT 20-R Score", colour = "ISCED 1997 Code")  +
-  geom_text_repel(data = labeled_data %>%
+  geom_text_repel(data = labels %>%
            arrange(isced),
     aes(label = isced), family = "Times", seed = 810, xlim = c(65, 100)) + 
   theme(
@@ -397,8 +398,10 @@ ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, color = isced)) +
     panel.grid.minor.x = element_blank(),
     legend.position = "none"
   ) +
-  scale_color_manual(values = c("#b66dff","#6db6ff","#009292", "#920000","#924900","#490092","#24ff24","#000000"))
+  scale_color_manual(values = c("#b66dff","#6db6ff","#009292", "#920000","#924900","#490092","#24ff24","#000000")) +
+  scale_fill_manual(values = c("#b66dff","#6db6ff","#009292", "#920000","#924900","#490092","#24ff24","#000000"))
 ```
+
 
 
 ### Sigma spline
@@ -419,12 +422,13 @@ This is the P part of MRP.
 ```{r}
 set.seed(810)
 sim_pop_sample <- census %>% 
+  filter(age <= 65) %>% 
   sample_n(size = 100000, # total census_n in the PS table is 6773812
            weight = census_n, 
            replace = TRUE)
 ```
 
-This code achieves this by creating a fake sample (N = 100000) in which the subgroup sample sizes are proportional to the sizes of the subgroups in the poststratification table. For example if the subgroup consisting of the combination “age = 12, male = TRUE, educ = ST1, mig = none” represents 0.2% of the total population (sum of the ns of all subgroups in the poststratification table), then about 200 out of the 100000 fake participants in the simulated sample will have this specific combination of levels on the 4 predictors. 
+This code achieves this by creating a fake sample (N = 100000) in which the subgroup sample sizes are proportional to the sizes of the subgroups in the poststratification table. For example, if the subgroup consisting of the combination age = 12, male = TRUE, educ = Lower secondary, mig = Citizen: no migration background represents 0.2% of the total population (sum of the ns of all subgroups in the poststratification table census), then about 200 out of the 100,000 rows in sim_pop_sample will have this specific combination. replace was set to TRUE so that any given combination can be sampled more than once.
 
 
 ## Estimate CFT 20-R for those simulated participants
@@ -465,8 +469,7 @@ means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
   summarise(MRP_mean = mean(mean_prediction), 
             MRP_se_of_mean = sd(mean_prediction), 
             MRP_sd = sqrt(mean(sd_prediction^2)), 
-            MRP_se_of_sd = sd(sd_prediction)) %>% 
-  filter(age <= 65)
+            MRP_se_of_sd = sd(sd_prediction))
 means_sds_and_ses_MRP %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```
 

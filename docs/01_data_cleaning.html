@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-12-18" />
+<meta name="date" content="2024-01-22" />
 
 <title>Data preprocessing code</title>
 
@@ -358,7 +358,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Data preprocessing code</h1>
-<h4 class="date">2023-12-18</h4>
+<h4 class="date">2024-01-22</h4>
 
 </div>
 
@@ -378,13 +378,13 @@ library(kableExtra)</code></pre>
 <h1><span class="header-section-number">1</span> TwinLife sample</h1>
 <p>Note that you cannot run the code here unless you have requested and
 obtained the TwinLife data. You do not need to do this however, to
-repdouce the tutorial code in the RMarkdown document 02_tutorial.Rmd.
+reproduce the tutorial code in the RMarkdown document 02_tutorial.Rmd.
 The synthetic dataset we produce here is available on our OSF project
 and can be used for that purpose. The comparisons to the Raw estimates
-(Figures 5 and 6 in the manuscript, see document 03_norm_comparisons)
+(Figures 3 and 4 in the manuscript, see document 03_norm_comparisons)
 can also be reproduced based on the synthetic dataset. The comparisons
-to the Manual norms cannot be reproduced as we did not have permission
-to share those norms.</p>
+to the Manual norms cannot be made reproducible as we failed to obtain
+permission to share those values.</p>
 <div id="preprocessing" class="section level2" number="1.1">
 <h2><span class="header-section-number">1.1</span> Preprocessing</h2>
 <pre class="r"><code># Load dataset and define missing values as NA without losing the different types of missing values in the dataset
@@ -418,7 +418,7 @@ tl_1 &lt;- haven::read_dta(&quot;../unshareable_data/raw/ZA6701_person_wid1_v7-1
                          TRUE ~ NA_character_))
   
 tl_2 &lt;- tl_1 %&gt;%
-  # since the migration variable in the census encodes information about both one&#39;s own and the parent&#39;s migration background and experience (&quot;Migrationshintergrund und -erfahrung&quot;), we start with creating a variable indicating with the person and/or parents is/are born abroad
+  # since the migration variable in the census encodes information about both one&#39;s own and the parent&#39;s migration background and experience (&quot;Migrationshintergrund und -erfahrung&quot;), we start by creating a variable indicating whether the person and/or their parents is/are born abroad
   # assume German citizenship lacking information about citizenship
   mutate(mig0520 = coalesce(mig0520, 1), 
          born_abroad = case_when(
@@ -463,9 +463,11 @@ tl &lt;- tl_2 %&gt;%
             # &quot;Entfällt, da kein/e Schüler/-innen&quot; is a category in the census so we gave kids who don&#39;t have a school type category and who specified as an answer to another question that they no longer go to school this category
             edu0100 == 3 ~ &quot;ST7: No longer at school&quot;),  # &quot;ich gehe nicht mehr in die Schule&quot;
          isced = as.factor(case_when(
-           # isced is coded starting with age 15, if the person is still at school, assume they will have a primary school certificate to be conservative
+           # in TwinLife,isced code is coded starting with age 15 but we use it starting with 19 (see code further below). if the person is still at school at age 19 or older, we assume they  have a primary school certificate (&quot;ISCED 1: Primary&quot;)
             eca0108 == &quot;3] -83: in school or training/not in school yet&quot; ~ &quot;ISCED 1: Primary&quot;,
+           # Exclude not codable 
             eca0108 == &quot;9] -89: not codable&quot; ~ NA_character_,
+           # Those are kids younger than 15
             eca0108 == &quot;5] -95: doesn&#39;t apply (screened out)&quot; ~ NA_character_,
            # we don&#39;t change any coding here, only translation/explanation
             eca0108 == &quot;level 1&quot; ~   &quot;ISCED 1: Primary&quot;,
@@ -708,7 +710,7 @@ census_ISCED_19_79 &lt;- census_ISCED %&gt;%
 census &lt;- census_school_type_11_18 %&gt;% 
   bind_rows(census_ISCED_19_79) 
 
-save(census, file=&quot;data/preprocessed/census.Rda&quot;)
+# save(census, file=&quot;data/preprocessed/census.Rda&quot;)
 
 # print random 14 rows/cells/subgroups/combinations out of the total 6528 in the poststratification table
 census %&gt;% slice_sample(n = 14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
@@ -1109,7 +1111,7 @@ save(census_marginals, file=&quot;data/preprocessed/census_marginals.Rda&quot;)<
 ##  [64] highr_0.10           randomForest_4.7-1.1 e1071_1.7-13        
 ##  [67] truncnorm_1.0-9      rlang_1.1.2          pkgconfig_2.0.3     
 ##  [70] systemfonts_1.0.5    matrixStats_1.1.0    Rsolnp_1.16         
-##  [73] evaluate_0.23        lattice_0.20-45      labeling_0.4.3      
+##  [73] evaluate_0.23        lattice_0.22-5       labeling_0.4.3      
 ##  [76] codebook_0.9.2       synthpop_1.8-0       tidyselect_1.2.0    
 ##  [79] plyr_1.8.9           magrittr_2.0.3       R6_2.5.1            
 ##  [82] generics_0.1.3       multcomp_1.4-25      DBI_1.1.3           
