@@ -470,7 +470,7 @@ means_sds_and_ses_MRP <- sim_pop_sample_with_draws %>%
             MRP_se_of_mean = sd(mean_prediction), 
             MRP_sd = sqrt(mean(sd_prediction^2)), 
             MRP_se_of_sd = sd(sd_prediction))
-means_sds_and_ses_MRP %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
+means_sds_and_ses_MRP %>% head(14) %>% kable(digits = 2) %>% kable_styling(full_width = FALSE)
 ```
 
 This code chunk first aggregates by age and posterior draw (1000) to compute the mean and SD of CFT 20-R estimates across the 100000 simulated participants. Then it computes the means and SDs across the draws (which form the MRP means and SDs for each age group) and the SDs of the means and SDs calculated in the previous step, hence yielding the Bayesian SEs of the MRP means and SDs, respectively. Et voilà, an MRP corrected norm means and SDs! Here the 14 first rows are shown.
