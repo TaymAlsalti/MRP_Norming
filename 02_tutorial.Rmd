@@ -508,8 +508,7 @@ iqs_normalised <- sim_pop_sample_with_draws  %>%
          normal_transformed_score = qnorm((rank(raw_score) - 0.5) / n)) %>%
   mutate(iq_score = normal_transformed_score * 15 + 100) %>%
   group_by(age, raw_score) %>%
-  summarise(MRP_IQ_normalised = round(mean(iq_score)),
-            MRP_IQ_normalised_se = sd(iq_score))
+  summarise(MRP_IQ_normalised = round(mean(iq_score)))
 
 iqs_normalised %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```
