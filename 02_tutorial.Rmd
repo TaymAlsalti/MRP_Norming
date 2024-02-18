@@ -359,7 +359,16 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, colo
   geom_text_repel(data = labels %>% arrange(school_type),
     aes(label = c(school_type[1:5], "", school_type[7])), family = "Times", seed = 810, xlim = c(18.3, 20)) +
   geom_text_repel(data = labels %>% arrange(school_type),
-    aes(label = c("", "", "", "", "", school_type[6], "")), family = "Times", nudge_x = 1.2, seed = 810) + 
+    aes(label = c("", "", "", "", "", school_type[6], "")), family = "Times", nudge_x = 1.2, seed = 810) +
+                       # Und bist du erst mein ehlich Weib,
+                       # Dann bist du zu beneiden,
+                       # Dann lebst du in lauter Zeitvertreib,
+                       # In lauter Pläsier und Freuden.
+                       
+                       # Und wenn du schiltst und wenn du tobst,
+                       # Ich werd es geduldig leiden;
+                       # Doch wenn du mein ggplot nicht lobst,
+                       # Laß ich mich von dir scheiden.
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),

@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2024-02-13" />
+<meta name="date" content="2024-02-18" />
 
 <title>Supplementary analyses</title>
 
@@ -356,7 +356,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2024-02-13</h4>
+<h4 class="date">2024-02-18</h4>
 
 </div>
 
@@ -613,13 +613,13 @@ function</h2>
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.7            0.107     8.53         0.0902
+## 1       35.7            0.107     8.54         0.0880
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0701    8.14        0.0560</code></pre>
+## 1      37.4          0.0694    8.15        0.0569</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
@@ -705,7 +705,7 @@ means_ns_sds_and_ses %&gt;%
 <pre><code>## # A tibble: 3 × 3
 ##   source means   ses
 ##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
-## 1 MRP     35.6 0.317
+## 1 MRP     35.6 0.315
 ## 2 PS      36.9 0.800
 ## 3 Raw     36.8 0.845</code></pre>
 </div>
@@ -767,7 +767,7 @@ means_ns_sds_and_ses %&gt;%
 <pre><code>## # A tibble: 3 × 3
 ##   source means   ses
 ##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
-## 1 MRP     35.6 0.317
+## 1 MRP     35.6 0.315
 ## 2 P       35.8 0.826
 ## 3 Raw     36.8 0.845</code></pre>
 </div>
@@ -1158,13 +1158,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.195</code></pre>
+<pre><code>## [1] -1.194</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.609</code></pre>
+<pre><code>## [1] 1.608</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.01021</code></pre>
+<pre><code>## [1] -0.02474</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1426</code></pre>
+<pre><code>## [1] 0.1483</code></pre>
 </div>
 </div>
 <div id="one-person-per-family" class="section level1" number="4">
@@ -1289,13 +1289,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.092</code></pre>
+<pre><code>## [1] -1.09</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.752</code></pre>
+<pre><code>## [1] 1.751</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02026</code></pre>
+<pre><code>## [1] -0.018</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.2693</code></pre>
+<pre><code>## [1] 0.2687</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
 seem to be largely unchanged. Only the SEs slightly increased as would
 be expected.</p>
@@ -1424,13 +1424,13 @@ means_ns_sds_and_ses_plot %&gt;%
          dif_mrps_abs = abs(MRP1_mean - MRP2_mean))
 
 mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
-<pre><code>## [1] -1.059</code></pre>
+<pre><code>## [1] -1.057</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
-<pre><code>## [1] 1.518</code></pre>
+<pre><code>## [1] 1.516</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.01207</code></pre>
+<pre><code>## [1] -0.01154</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1149</code></pre>
+<pre><code>## [1] 0.1138</code></pre>
 </div>
 </div>
 <div id="session-info" class="section level1" number="6">
