@@ -51,7 +51,7 @@ tl_no_1st_twins <- tl %>%
 
 # Model predictions without poststratification
 
-In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), we superimposed another line for non-poststratified predictions on the plot seen in the Tutorial document. We did this using a function at an earlier stage of the project to facilitate comparing several models:
+In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), here we compare raw and MRP means to predictions from the regularised prediction model without poststratification (MR). We did this using a function at an earlier stage of the project to facilitate comparing several models:
 
 
 ## Function for plotting MRP results and comparing them with raw values and MR predictions

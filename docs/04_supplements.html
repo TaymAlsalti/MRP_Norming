@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2024-02-18" />
+<meta name="date" content="2024-02-21" />
 
 <title>Supplementary analyses</title>
 
@@ -356,7 +356,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Supplementary analyses</h1>
-<h4 class="date">2024-02-18</h4>
+<h4 class="date">2024-02-21</h4>
 
 </div>
 
@@ -400,10 +400,11 @@ class="section level1" number="1">
 without poststratification</h1>
 <p>In order to clearly see the contribution of poststratification as
 opposed to only making predictions based on the regression model (as is
-done in continuous norming and similar approaches for example), we
-superimposed another line for non-poststratified predictions on the plot
-seen in the Tutorial document. We did this using a function at an
-earlier stage of the project to facilitate comparing several models:</p>
+done in continuous norming and similar approaches for example), here we
+compare raw and MRP means to predictions from the regularised prediction
+model without poststratification (MR). We did this using a function at
+an earlier stage of the project to facilitate comparing several
+models:</p>
 <div
 id="function-for-plotting-mrp-results-and-comparing-them-with-raw-values-and-mr-predictions"
 class="section level2" number="1.1">
@@ -613,13 +614,13 @@ function</h2>
 ## # A tibble: 1 × 4
 ##   `MRP Mean` `MRP SE of Mean` `MRP SD` `MRP SE of SD`
 ##        &lt;dbl&gt;            &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;
-## 1       35.7            0.107     8.54         0.0880
+## 1       35.7            0.107     8.53         0.0883
 ## 
 ## $mr_overall_estimates
 ## # A tibble: 1 × 4
 ##   `MR Mean` `MR SE of Mean` `MR SD` `MR SE of SD`
 ##       &lt;dbl&gt;           &lt;dbl&gt;   &lt;dbl&gt;         &lt;dbl&gt;
-## 1      37.4          0.0694    8.15        0.0569</code></pre>
+## 1      37.4          0.0704    8.14        0.0560</code></pre>
 <p>Besides the obvious effect that poststratification has on means, it
 also smoothes SD estimates and considerably reduces SEs of both means
 and SDs.</p>
@@ -1162,9 +1163,9 @@ mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
 <pre><code>## [1] 1.608</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.02474</code></pre>
+<pre><code>## [1] 0.00271</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1483</code></pre>
+<pre><code>## [1] 0.1411</code></pre>
 </div>
 </div>
 <div id="one-person-per-family" class="section level1" number="4">
@@ -1293,9 +1294,9 @@ mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
 <pre><code>## [1] 1.751</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.018</code></pre>
+<pre><code>## [1] -0.01851</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.2687</code></pre>
+<pre><code>## [1] 0.2698</code></pre>
 <p>Despite shrinking the sample size from N = 10059 to 4044, the results
 seem to be largely unchanged. Only the SEs slightly increased as would
 be expected.</p>
@@ -1428,9 +1429,9 @@ mean(means_ns_sds_and_ses$dif_mrp_raw, na.rm=T)</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrp_raw_abs, na.rm=T)</code></pre>
 <pre><code>## [1] 1.516</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps)</code></pre>
-<pre><code>## [1] -0.01154</code></pre>
+<pre><code>## [1] -0.01023</code></pre>
 <pre class="r"><code>mean(means_ns_sds_and_ses$dif_mrps_abs)</code></pre>
-<pre><code>## [1] 0.1138</code></pre>
+<pre><code>## [1] 0.1141</code></pre>
 </div>
 </div>
 <div id="session-info" class="section level1" number="6">
