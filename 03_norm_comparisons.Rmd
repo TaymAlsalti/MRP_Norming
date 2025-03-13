@@ -1,0 +1,929 @@
+---
+title: "RPP vs. Alternative norming methods"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	error = TRUE,
+	fig.width = 8,
+	fig.height = 4
+)
+
+
+library(tidyverse)
+library(haven)
+library(ggrepel)
+library(kableExtra)
+library(rstan)
+library(kableExtra)
+
+
+
+
+
+options(scipen = 999,
+        digits = 4)
+
+theme_set(theme_minimal(base_size = 12, base_family = "Times"))
+
+load("../unshareable_data/preprocessed/tl.Rda")
+load("../unshareable_data/preprocessed/manual_norms.Rda")
+load("data/preprocessed/de_census/census.Rda")
+load("data/preprocessed/de_census/census_margins.Rda")
+
+source("age_norm_comparisons.R")
+```
+
+
+
+
+# RPP predictions vs. raw means
+## Compare sample to population demographics
+### Marginal
+One plot for age and one for the three other variables.
+
+```{r}
+# Custom sorting function
+custom_sort <- function(x) {
+  st_categories <- x[startsWith(x, "ST")]
+  isced_categories <- x[startsWith(x, "ISCED")]
+  other_categories <- x[!startsWith(x, "ST") & !startsWith(x, "ISCED")]
+  
+  factor(x, levels = c(sort(st_categories), sort(isced_categories), other_categories))
+}
+
+# get the marginal distributions from the census and the TL sample
+
+disparities_plot <- census %>% 
+  full_join(tl %>% 
+  group_by(age = age0100, male, educ, mig) %>% 
+  summarise(sample_n = n()) %>% 
+  mutate(sample_n = as.numeric(sample_n)), by = c("age", "male", "educ", "mig")) %>% 
+  mutate(sample_n = replace_na(sample_n, 0)) %>%
+  pivot_longer(cols = c(census_n:sample_n), names_to = "source", values_to = "n") %>% 
+  mutate(age = as.character(age),
+         male = as.character(male),
+         source = str_sub(source, 1, -3)) %>% 
+pivot_longer(cols = -c(n, source), names_to = "variable", values_to = "category") %>% 
+  group_by(source, variable, category) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(percentage = n/sum(n)*100) %>% 
+  filter(source == "sample") %>% 
+  bind_rows(census_margins) %>%
+  mutate(category = case_when(
+    category == "TRUE" ~ "Male",
+    category == "FALSE" ~ "Female",
+    TRUE ~ category)) %>% 
+  mutate(category = custom_sort(category))
+
+# plot age disparities
+disparities_plot %>%
+  filter(variable == "age") %>%
+  ggplot(aes(x = category, y = percentage, group = source, colour = source, label = round(percentage, digits = 1))) +
+  geom_line(linewidth = 1) +
+  facet_grid(cols = vars(variable), scales = "free", space = 'free', as.table = FALSE,
+             labeller = labeller(variable = function(variable) {
+               case_when(
+                 variable == "age" ~ "Age",
+                 TRUE ~ as.character(variable))})) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = c(1, 1.08),  #
+        legend.justification = c(1, 1), 
+        legend.background = element_rect(fill = "transparent", color = NA),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.x = element_line(linewidth = 0.3, linetype = "dashed")) +  # Changed size to linewidth
+  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  scale_colour_manual(values = c("#0072B5FF", "#BC3C29FF"), labels = function(x) str_to_title(x)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2))
+
+ggsave("figures/02_disparities_age.png", width = 8, height = 4)
+```
+
+
+```{r}
+disparities_plot %>%
+  filter(variable != "age") %>%
+  ggplot(aes(x = category, y = percentage, group = source, colour = source, label = round(percentage, digits = 1))) +
+  geom_line(linewidth = 1) +
+  # theme_minimal(base_size = 14, base_family = "Times") +
+  facet_grid(
+    cols = vars(variable),
+    scales = "free",
+    space = 'free',
+    as.table = FALSE,
+    labeller = labeller(variable = function(variable) {
+      case_when(
+        variable == "educ" ~ "School Type / ISCED 1997 Code",
+        variable == "male" ~ "Sex",
+        variable == "mig" ~ "Migration",
+        TRUE ~ as.character(variable))})) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = c(1, 1.1),  #
+        legend.justification = c(1, 1), 
+        legend.background = element_rect(fill = "transparent", color = NA),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3)) +  # Changed size to linewidth
+  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  scale_colour_manual(values = c("#0072B5FF", "#BC3C29FF"), labels = function(x) str_to_title(x)) +
+  geom_text_repel(family = "Times", seed = 14, point.padding = 2, direction = "y", hjust = 0)
+
+ggsave("figures/02_disparities_other_vars.png", width = 8, height = 4)
+```
+
+Besides the obvious age disparities due to the cohort design adopted to collect the data for the TwinLife sample, we also see that our sample is "overeducated" in the sense that for example we have too many kids who were going to the Gymnasium (ST4: upper secondary) and too few adults who have something similar to an Ausbildungsabschluss (ISCED 3b: upper secondary, vocational). Migrants and females are also overrepresented in the sample. 
+
+
+### Joint
+
+You can use this interactive table to browse disparities at the level of joint distributions, ordered after magnitude. Note that this table has 5184 rows (number of subgroups/combinations of the 4 variables we use). Most of these subgroups are empty in the sample. 
+
+
+```{r}
+census %>% 
+  full_join(tl %>% 
+  group_by(age0100, male, educ, mig) %>% 
+  summarise(sample_n = n()) %>% 
+  rename(age = "age0100") %>% 
+  mutate(sample_n = as.numeric(sample_n)), by = c("age", "male", "educ", "mig")) %>% 
+  # set the subgroups which are empty in the sample to 0 instead of NA
+  mutate(sample_n = replace_na(sample_n, 0)) %>% 
+  group_by(age, male, educ, mig) %>% 
+  summarise(census_n = sum(census_n),
+            sample_n = sum(sample_n)) %>% 
+  group_by(age) %>% 
+  mutate(census_percentage = census_n*100/sum(census_n),
+         sample_percentage = sample_n*100/sum(sample_n),
+         dif_percentage = census_percentage-sample_percentage,
+         relative_dif = dif_percentage*census_n/100,
+         age = as.integer(age)) %>% 
+  relocate(census_percentage, .after = "census_n") %>%
+  arrange(-relative_dif) %>% DT::datatable() %>% 
+  DT::formatRound(c('dif_percentage', 'relative_dif', 'census_percentage', 'sample_percentage'), digits = 1)
+```
+
+## Age group means, SDs, and SEs
+
+```{r}
+RPP_vs_raw <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, 
+  ps_table = census, 
+  # RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP"),
+   palette = c(
+  "#BC3C29FF",
+  "#0072B5FF"
+),  
+  output_file = "data/results/RPP_vs_raw.rds"
+  )
+
+RPP_vs_raw[-1]
+```
+
+
+```{r}
+RPP_vs_raw$means_plot <- RPP_vs_raw$means_plot + 
+  scale_x_continuous(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(0, 2)))
+ggsave("figures/04_RPP_vs_raw_vs_RP.png", RPP_vs_raw$means_plot, width = 8, height = 4)
+
+RPP_vs_raw$SDs_plot <- RPP_vs_raw$SDs_plot + 
+  scale_x_continuous(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(0, 2)))
+
+
+ggsave("figures/05_RPP_vs_raw_vs_RP.png", RPP_vs_raw$SDs_plot, width = 8, height = 4)
+```
+
+
+## Overall mean differences
+```{r}
+RPP_vs_raw$overall_estimates$Mean - mean(tl$cft)
+
+
+RPP_vs_raw$means_ns_sds_and_ses %>% pivot_wider(names_from = source, names_sep = "_", values_from = -age) %>% 
+  mutate(dif = mean_RPP - mean_Raw,
+         abs_dif = abs(mean_RPP - mean_Raw)) %>% 
+  summarise(mean(dif), mean(abs_dif))
+```
+
+On average an absolute difference of ~ fifth of an SD between raw and corrected means. 
+
+
+# RPP norms vs. manual norms vs. raw estimates
+
+Here we compare the RPP-based norms to the traditionally constructed norms reported in the CFT 20-R manual. We aggregate by the age groups as reported in the manual normal tables. Note that the manual means and SDs for ages 20 and older are based on the very same TwinLife sample we are using, they just use a different correction method that isn't described in enough detail to make it reproducible for us. 
+
+## Means
+
+```{r}
+sim_pop_sample_with_draws <- data.table::fread("data/results/sim_pop_sample_with_draws.csv.gz")
+
+means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>% 
+  group_by(age_group, .draw) %>%
+    summarise(mean_prediction = mean(.prediction), sd_prediction = sd(.prediction)) %>%
+    summarise(RPP_mean = mean(mean_prediction),
+              RPP_se_of_mean = sd(mean_prediction),
+              RPP_sd = sqrt(mean(sd_prediction^2)),
+              RPP_se_of_sd = sd(sd_prediction)) 
+
+
+
+means_sds_and_ses_tl <- tl %>% 
+  filter(!is.na(age_group)) %>%
+  group_by(age_group) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n)) 
+
+
+
+means_sds_and_ses <- means_sds_and_ses_RPP %>%
+  left_join(means_sds_and_ses_tl, by = "age_group") %>% 
+  left_join(manual_norms, by = "age_group") %>% 
+  filter(!is.na(Raw_n))
+
+means_sds_and_ses_plot <- means_sds_and_ses  %>% 
+  pivot_longer(-age_group, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+# means and CIs
+means_sds_and_ses_plot %>%
+  ggplot(aes(x = age_group, y = mean, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) + 
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3))  +
+  scale_colour_manual(values = c("#20854EFF", "#BC3C29FF", "#0072B5FF")) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "60-64"),
+    aes(label = c("RPP", "Raw", "")), 
+    family = "Times", seed = 810, nudge_x = .5, hjust = 0) + 
+  labs(x = "Age Group", y = "Mean CFT 20-R Score") +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample")), 
+    family = "Times", seed = 810, nudge_y = 2.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample")), 
+    family = "Times", seed = 810, nudge_y = -2.5) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  )  + 
+  geom_vline(xintercept = 7.5)
+
+ggsave("figures/06_vs_Manual_means.png", width = 8, height = 4)
+```
+
+## SDs
+```{r}
+means_sds_and_ses_plot %>%
+  ggplot(aes(x = age_group, y = sd, group = source, colour = source)) +
+  scale_x_discrete(expand = expansion(add = c(0, 2))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
+                  fatten = 6,
+                  linewidth = 1.5,
+                  position = position_dodge(width = 0.3))  +
+  scale_colour_manual(values = c("#20854EFF", "#BC3C29FF", "#0072B5FF")) +
+    geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "60-64"),
+    aes(label = c("RPP", "Raw", "")), 
+    family = "Times", seed = 810, nudge_x = .5, hjust = 0) + 
+  labs(x = "Age Group", y = "Mean CFT 20-R Score") +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "14"),
+    aes(label = c("", "", "Manual, school sample")), 
+    family = "Times", seed = 810, nudge_y = -.5, nudge_x = -.5) +
+  geom_text_repel(
+    data = means_sds_and_ses_plot %>% filter(age_group == "40-44"),
+    aes(label = c("", "", "Manual, TwinLife sample")), 
+    family = "Times", seed = 810, nudge_y = .5) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) + 
+  geom_vline(xintercept = 7.5) + 
+  labs(x = "Age Group", y = "CFT 20-R Score SD")
+
+ggsave("figures/07_vs_Manual_SDs.png", width = 8, height = 4)
+```
+
+
+
+## IQ calculations
+
+Rather than calculating IQs for all possible CFT 20-R scores (0-56), we restrict our calculations to those which occur in our data.
+
+### Linearly transformed IQs
+
+```{r}
+iq <- function(cft_score, mean, sd) {
+  iq_score <- ((cft_score - mean) / sd) * 15 + 100
+  return(iq_score)
+}
+
+
+iqs_linear <- tl %>% 
+  filter(!is.na(age_group)) %>% 
+  select(age_group, raw_score = cft) %>% 
+  left_join(means_sds_and_ses, by = "age_group") %>%
+  group_by(age_group) %>% 
+  mutate(RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+         Manual_IQ_linear = iq(raw_score, Manual_mean, Manual_sd)) %>% 
+  group_by(age_group, raw_score) %>% 
+  summarise(RPP_IQ_linear = round(mean(RPP_IQ_linear)),
+            Manual_IQ_linear = round(mean(Manual_IQ_linear)),
+            IQ_linear_dif = RPP_IQ_linear - Manual_IQ_linear,
+            IQ_linear_dif_abs = abs(RPP_IQ_linear - Manual_IQ_linear))
+  
+```
+
+
+### Normalised (area transformed / normal rank transformed) IQs
+
+```{r}
+iqs_normalised <- sim_pop_sample_with_draws %>%
+  filter(!is.na(age_group)) %>%
+  group_by(age_group, .draw) %>%
+  mutate(n = n(),
+         normal_transformed_score = qnorm((rank(.prediction) - 0.5) / n)) %>%
+  mutate(iq_score = normal_transformed_score * 15 + 100) %>%
+  group_by(age_group, raw_score = .prediction) %>%
+  summarise(RPP_IQ_normalised = round(mean(iq_score)),
+            RPP_IQ_normalised_se = sd(iq_score))
+```
+
+### Some aggregated comparisons between RPP and Manual IQs
+
+```{r}
+iq_table <- iqs_linear %>% 
+  left_join(iqs_normalised, by = c("age_group", "raw_score")) %>% 
+  mutate(IQ_RPP_abs_dif = abs(RPP_IQ_linear - RPP_IQ_normalised),
+         Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) 
+
+
+mean(iq_table$IQ_linear_dif_abs)
+max(iq_table$IQ_linear_dif_abs)
+mean(iq_table$IQ_RPP_abs_dif)
+
+iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif_abs))
+```
+
+### Selection of 9 IQs
+```{r}
+t <- tibble("Manual Normalised IQ" = c(62, 92, 135, 70, 97, 134, 76, 100, 130))
+
+iq_table %>% 
+  select(age_group, raw_score, "RPP Normalised IQ" = RPP_IQ_normalised, "RPP Linear IQ" = RPP_IQ_linear, "Manual Linear IQ" = Manual_IQ_linear) %>% 
+  filter((age_group == "16" & raw_score %in% c(22, 37, 53)) |
+         (age_group == "30-34" & raw_score %in% c(19, 37, 52)) |
+         (age_group == "60-64" & raw_score %in% c(12, 30, 46))) %>% 
+  bind_cols(t) %>% 
+  relocate("Manual Normalised IQ", .before = "RPP Linear IQ") %>% 
+    kable()
+```
+
+
+
+# RPP norms vs. continuous norming + raking
+## Fit cNorm model
+Following the vignette [here](https://cran.r-project.org/web/packages/cNORM/vignettes/WeightedRegression.html).
+
+```{r, warning=TRUE}
+library(cNORM)
+
+## Norm sample
+
+norm.data <- tl %>% select(age = age0100, educ, male, mig, cft) %>% 
+  as.data.frame() %>% mutate(age = as.numeric(age))
+
+
+## Generate population margins
+load("data/preprocessed/de_census/census_margins.Rda")
+
+
+# Both dfs have to be class `data.frame`, `tibble` is no-go.
+margins <- as.data.frame(census_margins %>%
+  mutate(var = variable,
+         level = category,
+         prop = percentage/100) %>% 
+  select(var, level, prop))
+
+
+## Calculate raking weights
+weights <- computeWeights(data = norm.data, population.margins = margins)
+
+
+## Norming model
+norm.model <- cnorm(raw = norm.data$cft,
+                    group = norm.data$age,
+                    weights = weights,
+                    scale = "IQ")
+
+summary(norm.model)
+```
+
+
+## Extract IQ predictions and compare results
+
+```{r}
+# get means and sds for calculating iqs
+means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(.prediction), 
+            RPP_sd = sd(.prediction)) 
+
+```
+
+### For the sample on which the models were fit.
+```{r}
+
+iqs_norming_sample <- norm.data %>% 
+  select(age, raw_score = cft) %>% 
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  group_by(age) %>%
+  mutate(RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+         cNorm_IQ = predictNorm(raw = raw_score, 
+                                A = age,
+                                model = norm.model),
+         dif = RPP_IQ_linear - cNorm_IQ,
+         absolute_dif = abs(RPP_IQ_linear - cNorm_IQ)) %>% 
+  ungroup()
+
+# overall_comparison 
+iqs_norming_sample  %>% 
+  summarise(mean_RPP_IQ = mean(RPP_IQ_linear),
+            mean_cNorm_IQ = mean(cNorm_IQ),
+            mean_dif = mean(dif),
+            max_dif = max(dif),
+            mean_absolute_dif = mean(absolute_dif),
+            RMS_dif = sqrt(mean(dif^2))) %>% kable()
+
+
+```
+
+
+### For a random sample from the poststratified simulated sample
+```{r}
+
+iqs_random_sample <- sim_pop_sample_with_draws %>%  
+  group_by(.row) %>%
+  slice(1) %>%
+  select(age, raw_score = .prediction) %>% 
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  group_by(age) %>%
+  mutate(RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+         cNorm_IQ = predictNorm(raw = raw_score, 
+                                A = age,
+                                model = norm.model),
+         dif = RPP_IQ_linear - cNorm_IQ,
+         absolute_dif = abs(RPP_IQ_linear - cNorm_IQ)) %>% 
+  ungroup()
+
+
+# overall_comparison 
+iqs_random_sample %>% 
+  summarise(mean_RPP_IQ = mean(RPP_IQ_linear),
+            mean_cNorm_IQ = mean(cNorm_IQ),
+            mean_dif = mean(dif),
+            max_dif = max(dif),
+            mean_absolute_dif = mean(absolute_dif),
+            RMS_dif = sqrt(mean(dif^2))) %>% kable()
+
+
+```
+
+
+
+### Plots
+#### Age group IQs based on the norming sample
+```{r}
+means_ns_sds_and_ses <- iqs_norming_sample %>% 
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(RPP_IQ_linear),
+            RPP_sd = sd(RPP_IQ_linear),
+            cNorm_mean = mean(cNorm_IQ),
+            cNorm_sd = sd(cNorm_IQ)) %>% 
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 5))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean , ymax = mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c(
+  "#E18727FF",
+  "#0072B5FF"
+
+)) +
+  labs(x = "Age", y = "IQ")
+
+ggsave("figures/08_RPP_vs_cNorm.png", width = 8, height = 4)
+```
+
+```{r}
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 5))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd , ymax = sd), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c(
+  "#E18727FF",
+  "#0072B5FF"
+
+)) +
+  labs(x = "Age", y = "SD")
+```
+
+
+
+#### Mean difference, mean absolute difference, and RMS difference  
+```{r}
+# Put them in a named list
+df_list <- list(
+  "Norming sample"   = iqs_norming_sample,
+  "Simulated poststratified sample"     = iqs_random_sample
+)
+
+# Create a single table with all results
+combined <- df_list %>%
+  imap_dfr(~ {
+    # .x is the data frame, .y is the name in the list (e.g. "norming_sample")
+    
+    # 1) No tail filtering:
+    no_filter <- .x %>%
+      summarise(
+        mean_dif          = mean(dif),
+        mean_absolute_dif = mean(absolute_dif),
+        RMS_dif           = sqrt(mean(dif^2))
+      ) %>%
+      pivot_longer(
+        cols      = everything(),
+        names_to  = "value_type",
+        values_to = "value"
+      ) %>%
+      mutate(
+        at_tails = FALSE,
+        source   = .y
+      )
+    
+    # 2) With tail filtering:
+    with_filter <- .x %>%
+      filter(between(RPP_IQ_linear, 65, 75) | between(RPP_IQ_linear, 125, 135)) %>%
+      summarise(
+        mean_dif          = mean(dif),
+        mean_absolute_dif = mean(absolute_dif),
+        RMS_dif           = sqrt(mean(dif^2))
+      ) %>%
+      pivot_longer(
+        cols      = everything(),
+        names_to  = "value_type",
+        values_to = "value"
+      ) %>%
+      mutate(
+        at_tails = TRUE,
+        source   = .y
+      )
+    
+    # Combine the no-filter and filtered results:
+    bind_rows(no_filter, with_filter)
+  })
+
+
+combined <- combined %>%
+  mutate(
+    value_type = factor(
+      value_type,
+      levels = c("mean_dif", "mean_absolute_dif", "RMS_dif"),
+      labels = c("Mean difference", 
+                 "Mean absolute difference", 
+                 "Root mean squared difference")
+    )
+  )
+
+# Create the plot
+ggplot(combined, aes(x = source, y = value, fill = at_tails)) +
+  geom_col(position = position_dodge()) +
+  # Facet in the order set in the factor above
+  facet_wrap(~ value_type, scales = "free_y") +
+  labs(
+    x = "Source",
+    y = "Value"
+  ) +
+  # Use manual color scale with the requested colors
+  scale_fill_manual(
+    name = "At tails",
+    values = c("FALSE" = "#24ff24", "TRUE" = "#490092")
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text  = element_text(face = "bold")  # emphasize facet labels
+  ) + scale_y_continuous(limits = c(-1, 6))
+
+
+```
+
+
+### Compare prediction errors
+```{r}
+getNormScoreSE(norm.model, type = 1)
+
+sim_pop_sample_with_draws %>%  
+  select(age, raw_score = .prediction, .draw) %>% 
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  group_by(age) %>%
+  mutate(RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd)) %>% 
+  ungroup() %>% 
+  group_by(.draw) %>%
+    summarise(mean_prediction = mean(RPP_IQ_linear)) %>%
+    summarise(RPP_SE = sd(mean_prediction)) %>% as.numeric()
+```
+Unclear if these values are comparable.
+
+
+# Poststratification without regularisation
+Weighting is often undertaken using simple averages instead of model predictions. Here we apply poststratification weights we calculated based on population data and use weights provided by TwinLife and compare the results to RPP and raw data.
+
+## Means plot
+```{r}
+means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(mean_prediction), 
+            RPP_se_of_mean = sd(mean_prediction), 
+            RPP_sd = sqrt(mean(sd_prediction^2)), 
+            RPP_se_of_sd = sd(sd_prediction)) 
+
+
+
+means_sds_and_ses_tl_ps <- tl %>% 
+  mutate(age = age0100) %>% 
+  left_join((census %>% 
+               mutate(PS_w = census_n/sum(census_n))), by = c("age", "male", "mig", "educ")) %>% 
+  # set PS weights of cells that exist in the sample but not in the census to 0
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %>% 
+  group_by(age) %>% 
+  summarise(Raw_n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
+            PS_mean = weighted.mean(cft, PS_w, na.rm = T), 
+            PS_sd = sqrt(weighted.mean((cft - PS_mean)^2, PS_w, na.rm = T)), 
+            PS_se_of_mean = PS_sd/sqrt(Raw_n))
+
+means_ns_sds_and_ses <- means_sds_and_ses_RPP %>% 
+  left_join(means_sds_and_ses_tl_ps, by = "age")  %>%
+  pivot_longer(-c(age), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+means_ns_sds_and_ses %>% 
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 4))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses 
+    %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), 
+    family = "Times", seed = 810, nudge_x = 1, hjust = 0)  +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c(
+  "#7876B1FF",
+  "#BC3C29FF",
+  "#0072B5FF"
+
+)) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+ggsave("figures/09_RPP_vs_raw_PS.png", width = 8, height = 4)
+```
+
+
+
+
+## Overall differences
+```{r}
+means_ns_sds_and_ses %>% group_by(source) %>% summarise(mean = mean(mean), se = mean(se_of_mean)) 
+```
+
+# RPP norms vs. weighted means and sds using TwinLife weights
+
+Here we use the weights provided by the TwinLife panel study data custodians, described [here](https://pub.uni-bielefeld.de/record/2979229). We compare them with both raw  and RPP means.
+
+## Get the design and non-response weights from the weights dataset
+```{r}
+tl_w_ws <- tl %>% 
+  left_join((haven::read_dta("../unshareable_data/raw/ZA6701_weights_v7-1-0.dta") %>% 
+              select(c(fid, svw0100, svw0200))), by = "fid") %>% 
+  # rename the weights
+  mutate(dw = svw0100, # design weights
+         nrw = svw0200, # non-response weights
+         dnrw = svw0100*svw0200) # total weights (both weights together)
+```
+
+## Mean differences
+
+```{r}
+
+means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
+  group_by(age, .draw) %>% 
+  summarise(mean_prediction = mean(.prediction), 
+            sd_prediction = sd(.prediction)) %>%
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(mean_prediction), 
+            RPP_se_of_mean = sd(mean_prediction), 
+            RPP_sd = sqrt(mean(sd_prediction^2)), 
+            RPP_se_of_sd = sd(sd_prediction)) 
+
+
+means_sds_and_ses_tl <- tl_w_ws %>% 
+  group_by(age = age0100) %>% 
+  summarise(n = n(), 
+            Raw_mean = mean(cft, na.rm = T), 
+            Raw_sd = sd(cft, na.rm = T), 
+            Raw_se_of_mean = Raw_sd/sqrt(n),
+            Design_mean = weighted.mean(cft, dw, na.rm = T), 
+            Design_sd = sqrt(weighted.mean((cft - Design_mean)^2, dw, na.rm = T)), 
+            Design_se_of_mean = Design_sd/sqrt(n),
+            Nonresponse_mean = weighted.mean(cft, nrw, na.rm = T), 
+            Nonresponse_sd = sqrt(weighted.mean((cft - Nonresponse_mean)^2, nrw, na.rm = T)), 
+            Nonresponse_se_of_mean = Nonresponse_sd/sqrt(n)) 
+
+means_ns_sds_and_ses <- means_sds_and_ses_RPP %>% 
+  left_join(means_sds_and_ses_tl, by = "age") %>%
+  pivot_longer(-c(age, n), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 9))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean - 1.96*se_of_mean, ymax = mean + 1.96*se_of_mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c(
+  "#7876B1FF",
+  "#6F99ADFF",
+  "#BC3C29FF",
+  "#0072B5FF"
+
+)) +
+  labs(x = "Age", y = "Mean CFT 20-R Score")
+
+
+ggsave("figures/10_RPP_vs_TL.png", width = 8, height = 4)
+```
+
+No large differences to raw means.
+
+
+
+```{r}
+means_ns_sds_and_ses %>%
+  group_by(source) %>% 
+  summarise(mean = mean(mean), se = mean(se_of_mean))
+```
+Overall, non response weighting also recognised an overestimation and corrected for it, but not  as much as RPP.
+
+
+
+
+## SD differences
+
+```{r}
+means_ns_sds_and_ses %>%
+  ggplot(aes(x = as.factor(age), y = sd, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 9))) +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = sd - 1.96*se_of_sd, ymax = sd + 1.96*se_of_sd), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), 
+    family = "Times", seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  ) +
+  scale_colour_manual(values = c(
+  "#7876B1FF",
+  "#6F99ADFF",
+  "#BC3C29FF",
+  "#0072B5FF"
+
+)) + labs(x = "Age", y = "CFT 20-R Score SD")
+```
+
+```{r}
+means_ns_sds_and_ses %>%
+  group_by(source) %>% 
+  summarise(sd = sqrt(mean(sd^2))) %>% 
+  arrange(sd)
+```
+
+No large differences in SDs.
+
+
+
+
+
+
+
+```{r}
+sessionInfo()
+```
+
+
+
+

@@ -1,6 +1,5 @@
 name: MRP Norming Project Website
-source: "02_code"
-output_dir: "03_knitted_docs"
+output_dir: docs
 navbar:
   left:
   - text: Home
@@ -44,3 +43,4 @@ exclude:
 - '*.rds'
 - archive
 - data
+- figures
