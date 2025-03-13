@@ -1,0 +1,46 @@
+name: MRP Norming Project Website
+source: "02_code"
+output_dir: "03_knitted_docs"
+navbar:
+  left:
+  - text: Home
+    href: "index.html"
+    
+  - text: Data preprocessing
+    href: "01_data_cleaning.html"  
+    
+  - text: Model selection
+    href: "02_model_selection.html"
+    
+  - text: Norm comparisons
+    href: "03_norm_comparisons.html"   
+    
+  - text: Additional analyses
+    href: "04_supplements.html"
+
+  - text: MRP Norming Tutorial
+    href: "05_tutorial.html"
+    
+
+  right:
+  - text: ''
+    icon: fa-github
+    href: https://github.com/TaymAlsalti/MRP_Norming
+output:
+  html_document:
+    css: styles.css
+    theme: cosmo
+    highlight: textmate 
+    self_contained: true
+exclude:
+- '*.rda'
+- '*.pdf'
+- '*.dta'
+- '*.csv'
+- '*.csl'
+- '*.bibtex'
+- 'styles.css'
+- "renv.lock"
+- '*.rds'
+- archive
+- data
