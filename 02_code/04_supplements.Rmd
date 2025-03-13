@@ -1,0 +1,336 @@
+---
+title: "Additional analyses"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = TRUE,
+	include = TRUE,
+	error = TRUE,
+	fig.width = 8,
+	fig.height = 4
+)
+
+
+library(tidyverse)
+library(haven)
+library(ggrepel)
+library(brms)
+library(tidybayes)
+library(rstan)
+
+
+options(mc.cores = 4,
+        brms.backend = "cmdstanr")
+
+options(scipen = 999,
+        digits = 4)
+
+# windowsFonts(Times = windowsFont("Times New Roman"))
+theme_set(theme_minimal(base_size = 12, base_family = "Times"))
+
+load("../../unshareable_data/preprocessed/tl.Rda")
+load("../01_data/preprocessed/de_census/census.Rda")
+
+source("age_norm_comparisons.R")
+
+```
+
+# Model predictions without poststratification
+
+In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), here we compare raw and RPP means to predictions from the regularised prediction model without poststratification (RP). We did this using a function at an earlier stage of the project to facilitate comparing several models:
+
+
+
+## Fit/load the prediction model
+```{r}
+brm_MAIN_skew_s_by_educ_mig_male_int <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
+      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = "skew_normal",
+      chains = 4, 
+      seed = 810,
+      file = "../../unshareable_data/brms/cft/brm_MAIN_skew_s_by_educ_mig_male_int",
+      data = tl) %>% 
+  add_criterion("loo")
+
+```
+
+## Compare
+```{r}
+
+
+RPP_vs_raw_vs_RP <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, 
+  ps_table = census, 
+  RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP", "RP"),
+   palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  "#E18727FF"
+),
+  output_file = "../01_data/results/RPP_vs_raw_vs_RP.rds"
+  )
+
+ggsave("../04_figures/S10_RPP_vs_raw_vs_RP.png", RPP_vs_raw_vs_RP$means_plot, width = 8, height = 4)
+
+
+RPP_vs_raw_vs_RP[-1]
+
+```
+
+Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
+
+
+
+# One person per family
+
+Since the TwinLife sample is composed of families, one could argue that the dependence among estimates of family members violates the i.i.d assumption and leads to underestimation of variance. To check the robustness of our results against this violation, we ran the same RPP but with only one person chosen randomly out of each family, thus eliminating the dependency. 
+
+## Fit/load the prediction model
+```{r}
+
+set.seed(14)
+
+tl_1_per_fid <- tl %>%
+  group_by(fid) %>%
+  sample_n(1)
+
+brm_skew_s_by_educ_mig_male_int_1_per_fid <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
+      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = "skew_normal",
+      chains = 4, 
+      seed = 810,
+      file = "../../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_1_per_fid",
+      data = tl_1_per_fid) %>% 
+  add_criterion("loo")
+
+brm_skew_s_by_educ_mig_male_int_1_per_fid
+```
+
+## Compare
+```{r}
+
+
+main_vs_1_per_fam <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_1_per_fid,
+  ps_table = census, 
+  # RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP, main", "RPP, 1/fam"),
+   palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  "#6F99ADFF"
+),  
+  output_file = "../01_data/results/main_vs_1_per_fam.rds"
+  )
+
+ggsave( "../04_figures/S07_main_vs_1_per_fam.png", main_vs_1_per_fam$means_plot, width = 8, height = 4)
+
+
+main_vs_1_per_fam[-1]
+
+
+
+
+```
+
+
+
+
+# Excluding participants with ambivalent educational attainment category
+
+Some participants were assigned an education category that combines two degrees with variable ISCED levels: "university of applied sciences, university of cooperative education". While a degree from a university of applied sciences (Fachhochschule) would put one in ISCED level 5a, a degree from a university of cooperative education (Berufsakademie) is equivalent to ISCED level 5b. TwinLife assigns all people who have this ambivalent category to ISCED 5a. Here we test the robustness of our results against excluding those 357 participants.
+
+
+## Fit/load the prediction model
+```{r}
+
+tl_no_berufsakad_with_fachhochschule <- tl %>% 
+  filter(!(eca0108 == "level 5a" & eca0230 == 8))
+
+brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
+      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = "skew_normal",
+      chains = 4, 
+      seed = 810,
+      file = "../../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule",
+      data = tl_no_berufsakad_with_fachhochschule) %>% 
+  add_criterion("loo")
+
+
+brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule
+```
+
+## Compare
+```{r}
+
+
+main_vs_mod_isced <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule,
+  ps_table = census, 
+  # RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP, main", "RPP, no BeAk/FHS"),
+  palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  "#6F99ADFF"
+),  
+  output_file = "../01_data/results/main_vs_mod_isced.rds"
+  )
+
+ggsave( "../04_figures/S08_main_vs_mod_isced.png", main_vs_mod_isced$means_plot, width = 8, height = 4)
+
+
+main_vs_mod_isced[-1]
+
+
+```
+
+
+# Excluding participants with missing migration background information
+## Fit/load the prediction model
+```{r}
+
+tl_no_missing_mig <- tl %>% 
+  filter(complete.cases(mig0520, mig2000, mig3100, mig3200))
+
+brm_skew_s_by_educ_mig_male_in_no_missing_mig <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
+      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = "skew_normal",
+      chains = 4, 
+      seed = 810,
+      file = "../../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_no_missing_mig",
+      data = tl_no_missing_mig) %>% 
+  add_criterion("loo")
+
+brm_skew_s_by_educ_mig_male_in_no_missing_mig
+```
+
+## Compare
+
+```{r}
+
+main_vs_complete_mig <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_in_no_missing_mig,
+  ps_table = census, 
+  # RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP, main", "RPP, no missing mig"),
+  palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  "#6F99ADFF"
+), 
+  output_file = "../01_data/results/main_vs_complete_mig.rds"
+  )
+
+ggsave( "../04_figures/S09_main_vs_complete_mig.png", main_vs_complete_mig$means_plot, width = 8, height = 4)
+
+
+main_vs_complete_mig[-1]
+
+
+```
+
+# Model fit to N = 1000 random sample from TL
+## Fit/load the prediction model
+```{r}
+set.seed(810)
+tl_sample <- tl %>% sample_n(1000)
+
+brm_skew_s_by_educ_mig_male_int_sample <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
+      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = "skew_normal",
+      chains = 4, 
+      seed = 810,
+      file = "../../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_sample",
+      data = tl_sample) %>% 
+  add_criterion("loo")
+
+brm_skew_s_by_educ_mig_male_int_sample
+```
+
+## Compare
+### vs. Raw and Main
+```{r}
+
+main_vs_n_1000_sample <- age_norm_comparisons(
+  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_sample,
+  ps_table = census, 
+  # RP = c("census", "norming_sample"),
+  ps_variables = c("age", "educ", "mig", "male"), 
+  re_formula = NULL,
+  sim_size = 100000,
+  labels = c( "Raw", "RPP, main", "RPP, on N=1000 sample"),
+  palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  "#7876B1FF"
+), 
+  output_file = "../01_data/results/main_vs_n_1000_sample.rds"
+  )
+
+ggsave( "../04_figures/S11_main_vs_n_1000_sample.png", main_vs_n_1000_sample$means_plot, width = 8, height = 4)
+
+
+main_vs_n_1000_sample[-1]
+
+```
+
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

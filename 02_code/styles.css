@@ -1,0 +1,45 @@
+body {
+  counter-reset: counter-rchunks;
+}
+
+div.main-container {
+  padding-left: 3.5em;
+}
+
+pre.r {
+  counter-increment: counter-rchunks;
+  position: relative;
+  overflow: visible;
+}
+
+pre.r::before {
+  content: '[' counter(counter-rchunks) ']:';
+  display: inline-block;
+  position: absolute;
+  left: -3.5em;
+  color: rgb(48, 63, 159);
+}
+
+/* Whole document: */
+body{
+  font-family: "Times New Roman";
+  font-size: 11pt;
+}
+/* Headers */
+h1{
+  font-size: 18pt;
+  text-align: center;
+  font-weight: bold
+}
+h2{
+  font-size: 16.5pt;
+  text-indent: 2em
+}
+h3{
+  font-size: 14pt;
+  text-indent: 4em
+}
+h4{
+  font-size: 12.5pt;
+  text-indent: 6em
+}
