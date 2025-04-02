@@ -8,6 +8,27 @@ output:
     toc_depth: 3
     toc_float: true
 ---
+<style>
+.main-container {
+  max-width: 1400px !important;  /* Adjust the width as needed */
+}
+
+pre, code {
+  white-space: pre-wrap;  /* Ensures that long lines wrap */
+  word-wrap: break-word;  /* Breaks long words if necessary */
+}
+
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important; /* Add horizontal scrollbar if content overflows */
+  white-space: pre-line !important; /* Convert line breaks to spaces */
+  word-wrap: break-word !important; /* Break long words if necessary */
+  word-break: break-all !important; /* Break words to fit the container */
+  font-size: 14px !important; /* Adjust font size if needed */
+}
+
+</style>
 
 ```{r setup, message = FALSE}
 knitr::opts_chunk$set(
@@ -17,7 +38,12 @@ knitr::opts_chunk$set(
 	error = TRUE
 )
 
-options(scipen = 999, digits = 7)
+knitr::opts_chunk$set(fig.ext = 'svg')
+
+
+options(scipen = 999,
+        digits = 4,
+        width = 120)
 
 
 library(tidyverse)
@@ -149,8 +175,10 @@ save(tl, file="../unshareable_data/preprocessed/tl.Rda")
 
 tl %>% group_by(ptyp) %>% as_factor() %>% count()
 ```
+
+
 ## plots
-```{r}
+```{r, "cft plot"}
 ggplot(tl, aes(x = cft)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
   labs(x = "CFT",
@@ -158,7 +186,7 @@ ggplot(tl, aes(x = cft)) +
   theme_minimal()
 ```
 
-```{r}
+```{r, "age plot"}
 ggplot(tl, aes(x = age0100)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
   labs(x = "age",

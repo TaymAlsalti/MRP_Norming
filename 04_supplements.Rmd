@@ -8,6 +8,27 @@ output:
     toc_depth: 3
     toc_float: true
 ---
+<style>
+.main-container {
+  max-width: 1400px !important;  /* Adjust the width as needed */
+}
+
+pre, code {
+  white-space: pre-wrap;  /* Ensures that long lines wrap */
+  word-wrap: break-word;  /* Breaks long words if necessary */
+}
+
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important; /* Add horizontal scrollbar if content overflows */
+  white-space: pre-line !important; /* Convert line breaks to spaces */
+  word-wrap: break-word !important; /* Break long words if necessary */
+  word-break: break-all !important; /* Break words to fit the container */
+  font-size: 14px !important; /* Adjust font size if needed */
+}
+
+</style>
 
 ```{r setup, message = FALSE}
 knitr::opts_chunk$set(
@@ -28,11 +49,12 @@ library(tidybayes)
 library(rstan)
 
 
-options(mc.cores = 4,
-        brms.backend = "cmdstanr")
 
-options(scipen = 999,
-        digits = 4)
+options(mc.cores = 4,
+        brms.backend = "cmdstanr",
+        scipen = 999,
+        digits = 4,
+        width = 120)
 
 # windowsFonts(Times = windowsFont("Times New Roman"))
 theme_set(theme_minimal(base_size = 12, base_family = "Times"))
@@ -46,22 +68,21 @@ source("age_norm_comparisons.R")
 
 # Model predictions without poststratification
 
-In order to clearly see the contribution of poststratification as opposed to only making predictions based on the regression model (as is done in continuous norming and similar approaches for example), here we compare raw and RPP means to predictions from the regularised prediction model without poststratification (RP). We did this using a function at an earlier stage of the project to facilitate comparing several models:
-
+Most continuous norming methods do not involve any weighting – relying only on the regression model to potentially estimates improve. The figures below show how our norming results would look without poststratifiying the regularised model’s prediction. Regularisation led to smoother and more precise mean estimates in each age group as compared to raw means even before poststratification. However, the regularised prediction model’s main function in RPP is facilitating poststratification’s work (i.e., the part that corrects for nonrepresentativeness). It is poststratification that causes estimates to actually differ on average from their raw counterparts. In our case, the model recognised the positive effect of education on CFT 20-R scores, and the poststratification corrected for the sample’s overrepresentation of more highly educated individuals as compared to the population. This underlies the difference between RP and RPP.
 
 
 ## Fit/load the prediction model
 ```{r}
-brm_MAIN_skew_s_by_educ_mig_male_int <-
+
+
+brm_MAIN_nor_ints_no_educ_male <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
-      family = "skew_normal",
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_skew_s_by_educ_mig_male_int",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male",
       data = tl) %>% 
   add_criterion("loo")
 
@@ -72,12 +93,11 @@ brm_MAIN_skew_s_by_educ_mig_male_int <-
 
 
 RPP_vs_raw_vs_RP <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, 
-  ps_table = census, 
+  brm_MAIN_nor_ints_no_educ_male, 
   RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons
+),
   labels = c( "Raw", "RPP", "RP"),
    palette = c(
   "#BC3C29FF",
@@ -87,14 +107,16 @@ RPP_vs_raw_vs_RP <- age_norm_comparisons(
   output_file = "data/results/RPP_vs_raw_vs_RP.rds"
   )
 
-ggsave("figures/S10_RPP_vs_raw_vs_RP.png", RPP_vs_raw_vs_RP$means_plot, width = 8, height = 4)
+
 
 
 RPP_vs_raw_vs_RP[-1]
 
 ```
 
-Besides the obvious effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
+Besides the effect that poststratification has on means, it also smoothes SD estimates and considerably reduces SEs of both means and SDs.
+
+
 
 
 
@@ -105,26 +127,25 @@ Since the TwinLife sample is composed of families, one could argue that the depe
 ## Fit/load the prediction model
 ```{r}
 
+
 set.seed(14)
 
 tl_1_per_fid <- tl %>%
   group_by(fid) %>%
   sample_n(1)
 
-brm_skew_s_by_educ_mig_male_int_1_per_fid <-
+brm_MAIN_nor_ints_no_educ_male_1_per_fid <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
-      family = "skew_normal",
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_1_per_fid",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_1_per_fid",
       data = tl_1_per_fid) %>% 
   add_criterion("loo")
 
-brm_skew_s_by_educ_mig_male_int_1_per_fid
+brm_MAIN_nor_ints_no_educ_male_1_per_fid
 ```
 
 ## Compare
@@ -132,12 +153,11 @@ brm_skew_s_by_educ_mig_male_int_1_per_fid
 
 
 main_vs_1_per_fam <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_1_per_fid,
-  ps_table = census, 
-  # RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
+  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_1_per_fid,
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
   labels = c( "Raw", "RPP, main", "RPP, 1/fam"),
    palette = c(
   "#BC3C29FF",
@@ -147,7 +167,8 @@ main_vs_1_per_fam <- age_norm_comparisons(
   output_file = "data/results/main_vs_1_per_fam.rds"
   )
 
-ggsave( "figures/S07_main_vs_1_per_fam.png", main_vs_1_per_fam$means_plot, width = 8, height = 4)
+ggsave( "figures/S09_main_vs_1_per_fam.jpeg", main_vs_1_per_fam$means_plot, width = 8, height = 4)
+ggsave( "figures/S09_main_vs_1_per_fam_percentile.jpeg", main_vs_1_per_fam$percentile_plot, width = 8, height = 4)
 
 
 main_vs_1_per_fam[-1]
@@ -168,24 +189,23 @@ Some participants were assigned an education category that combines two degrees 
 ## Fit/load the prediction model
 ```{r}
 
+
 tl_no_berufsakad_with_fachhochschule <- tl %>% 
   filter(!(eca0108 == "level 5a" & eca0230 == 8))
 
-brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule <-
+brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
-      family = "skew_normal",
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule",
       data = tl_no_berufsakad_with_fachhochschule) %>% 
   add_criterion("loo")
 
 
-brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule
+brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule
 ```
 
 ## Compare
@@ -193,12 +213,11 @@ brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule
 
 
 main_vs_mod_isced <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_no_berufsakad_with_fachhochschule,
-  ps_table = census, 
-  # RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
+  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule,
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
   labels = c( "Raw", "RPP, main", "RPP, no BeAk/FHS"),
   palette = c(
   "#BC3C29FF",
@@ -208,7 +227,8 @@ main_vs_mod_isced <- age_norm_comparisons(
   output_file = "data/results/main_vs_mod_isced.rds"
   )
 
-ggsave( "figures/S08_main_vs_mod_isced.png", main_vs_mod_isced$means_plot, width = 8, height = 4)
+ggsave( "figures/S03_main_vs_mod_isced.jpeg", main_vs_mod_isced$means_plot, width = 8, height = 4)
+ggsave( "figures/S03_main_vs_mod_isced_percentile.jpeg", main_vs_mod_isced$percentile_plot, width = 8, height = 4)
 
 
 main_vs_mod_isced[-1]
@@ -224,20 +244,18 @@ main_vs_mod_isced[-1]
 tl_no_missing_mig <- tl %>% 
   filter(complete.cases(mig0520, mig2000, mig3100, mig3200))
 
-brm_skew_s_by_educ_mig_male_in_no_missing_mig <-
+brm_MAIN_nor_ints_no_educ_male_no_missing_mig <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
-      family = "skew_normal",
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_no_missing_mig",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_missing_mig",
       data = tl_no_missing_mig) %>% 
   add_criterion("loo")
 
-brm_skew_s_by_educ_mig_male_in_no_missing_mig
+brm_MAIN_nor_ints_no_educ_male_no_missing_mig
 ```
 
 ## Compare
@@ -245,12 +263,11 @@ brm_skew_s_by_educ_mig_male_in_no_missing_mig
 ```{r}
 
 main_vs_complete_mig <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_in_no_missing_mig,
-  ps_table = census, 
-  # RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
+  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_missing_mig,
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
   labels = c( "Raw", "RPP, main", "RPP, no missing mig"),
   palette = c(
   "#BC3C29FF",
@@ -260,7 +277,8 @@ main_vs_complete_mig <- age_norm_comparisons(
   output_file = "data/results/main_vs_complete_mig.rds"
   )
 
-ggsave( "figures/S09_main_vs_complete_mig.png", main_vs_complete_mig$means_plot, width = 8, height = 4)
+ggsave( "figures/S02_main_vs_complete_mig.jpeg", main_vs_complete_mig$means_plot, width = 8, height = 4)
+ggsave( "figures/S02_main_vs_complete_mig_percentile.jpeg", main_vs_complete_mig$percentile_plot, width = 8, height = 4)
 
 
 main_vs_complete_mig[-1]
@@ -271,23 +289,22 @@ main_vs_complete_mig[-1]
 # Model fit to N = 1000 random sample from TL
 ## Fit/load the prediction model
 ```{r}
+
 set.seed(810)
 tl_sample <- tl %>% sample_n(1000)
 
-brm_skew_s_by_educ_mig_male_int_sample <-
+brm_MAIN_nor_ints_no_educ_male_sample <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
-      family = "skew_normal",
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_sample",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_sample",
       data = tl_sample) %>% 
   add_criterion("loo")
 
-brm_skew_s_by_educ_mig_male_int_sample
+brm_MAIN_nor_ints_no_educ_male_sample
 ```
 
 ## Compare
@@ -295,13 +312,12 @@ brm_skew_s_by_educ_mig_male_int_sample
 ```{r}
 
 main_vs_n_1000_sample <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_sample,
-  ps_table = census, 
-  # RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
-  labels = c( "Raw", "RPP, main", "RPP, on N=1000 sample"),
+  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_sample,
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
+  labels = c( "Raw", "RPP, full sample", "RPP, N=1000 sample"),
   palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -309,8 +325,6 @@ main_vs_n_1000_sample <- age_norm_comparisons(
 ), 
   output_file = "data/results/main_vs_n_1000_sample.rds"
   )
-
-ggsave( "figures/S11_main_vs_n_1000_sample.png", main_vs_n_1000_sample$means_plot, width = 8, height = 4)
 
 
 main_vs_n_1000_sample[-1]

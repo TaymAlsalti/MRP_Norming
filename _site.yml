@@ -27,9 +27,12 @@ navbar:
     href: https://github.com/TaymAlsalti/MRP_Norming
 output:
   html_document:
-    css: styles.css
     theme: cosmo
     highlight: textmate 
+    number_sections: true
+    toc: true
+    toc_depth: 4
+    toc_float: true
     self_contained: true
 exclude:
 - '*.rda'

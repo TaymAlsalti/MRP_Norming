@@ -2,7 +2,7 @@
 title: "RPP/MRP Norming Project Website"
 ---
 
-Welcome! The first 4 documents belong to the methods/demo [paper](), while the tutorial document belong to the tutorial [paper](). Here's what's needed to run the code:
+Welcome! The first 4 documents belong to the methods/demo [paper](), while the tutorial document belongs to the tutorial [paper](https://osf.io/fcm3n). Here's what's needed to run the code:
 
 
 ## TwinLife CFT 20-R analyses

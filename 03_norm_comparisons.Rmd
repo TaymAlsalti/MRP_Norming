@@ -5,9 +5,30 @@ output:
   html_document:
     number_sections: true
     toc: true
-    toc_depth: 3
+    toc_depth: 4
     toc_float: true
 ---
+<style>
+.main-container {
+  max-width: 1400px !important;  /* Adjust the width as needed */
+}
+
+pre, code {
+  white-space: pre-wrap;  /* Ensures that long lines wrap */
+  word-wrap: break-word;  /* Breaks long words if necessary */
+}
+
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important; /* Add horizontal scrollbar if content overflows */
+  white-space: pre-line !important; /* Convert line breaks to spaces */
+  word-wrap: break-word !important; /* Break long words if necessary */
+  word-break: break-all !important; /* Break words to fit the container */
+  font-size: 14px !important; /* Adjust font size if needed */
+}
+
+</style>
 
 ```{r setup, message = FALSE}
 knitr::opts_chunk$set(
@@ -23,16 +44,21 @@ knitr::opts_chunk$set(
 library(tidyverse)
 library(haven)
 library(ggrepel)
+library(scales)
 library(kableExtra)
 library(rstan)
 library(kableExtra)
+library(gamlss)
+library(gamlss.tr)
+library(ggnewscale)
 
 
 
-
-
-options(scipen = 999,
-        digits = 4)
+options(mc.cores = 4,
+        brms.backend = "cmdstanr",
+        scipen = 999,
+        digits = 4,
+        width = 120)
 
 theme_set(theme_minimal(base_size = 12, base_family = "Times"))
 
@@ -40,6 +66,7 @@ load("../unshareable_data/preprocessed/tl.Rda")
 load("../unshareable_data/preprocessed/manual_norms.Rda")
 load("data/preprocessed/de_census/census.Rda")
 load("data/preprocessed/de_census/census_margins.Rda")
+
 
 source("age_norm_comparisons.R")
 ```
@@ -52,7 +79,7 @@ source("age_norm_comparisons.R")
 ### Marginal
 One plot for age and one for the three other variables.
 
-```{r}
+```{r, fig.width=9, fig.height=3}
 # Custom sorting function
 custom_sort <- function(x) {
   st_categories <- x[startsWith(x, "ST")]
@@ -103,20 +130,22 @@ disparities_plot %>%
         panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank(),
         panel.grid.major.x = element_line(linewidth = 0.3, linetype = "dashed")) +  # Changed size to linewidth
-  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  labs(x = "", y = "", colour = "", label = "Percentage") +  # Removed "Percentage" from y-axis label
+  scale_y_continuous(breaks = seq(0, 100, by = 2), labels = label_percent(scale = 1)) +  # Set breaks and percentage labels
   scale_colour_manual(values = c("#0072B5FF", "#BC3C29FF"), labels = function(x) str_to_title(x)) +
   scale_x_discrete(breaks = seq(11, 65, by = 2))
 
-ggsave("figures/02_disparities_age.png", width = 8, height = 4)
+ggsave("figures/02_disparities_age.jpeg", width = 9, height = 3)
 ```
 
 
 ```{r}
+
+
 disparities_plot %>%
   filter(variable != "age") %>%
   ggplot(aes(x = category, y = percentage, group = source, colour = source, label = round(percentage, digits = 1))) +
   geom_line(linewidth = 1) +
-  # theme_minimal(base_size = 14, base_family = "Times") +
   facet_grid(
     cols = vars(variable),
     scales = "free",
@@ -135,11 +164,13 @@ disparities_plot %>%
         panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank(),
         panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3)) +  # Changed size to linewidth
-  labs(x = "Category", y = "Percentage", colour = "", label = "Percentage") +
+  labs(x = "Category", y = "", colour = "", label = "Percentage") +  # Changed y-axis label to empty
+  scale_y_continuous(labels = label_percent(scale = 1)) +  # Use percentage labels
   scale_colour_manual(values = c("#0072B5FF", "#BC3C29FF"), labels = function(x) str_to_title(x)) +
-  geom_text_repel(family = "Times", seed = 14, point.padding = 2, direction = "y", hjust = 0)
+  geom_text_repel(family = "Times", seed = 14, point.padding = 4, direction = "y", hjust = 0, size = 3)
 
-ggsave("figures/02_disparities_other_vars.png", width = 8, height = 4)
+
+ggsave("figures/02_disparities_other_vars.jpeg", width = 8, height = 4)
 ```
 
 Besides the obvious age disparities due to the cohort design adopted to collect the data for the TwinLife sample, we also see that our sample is "overeducated" in the sense that for example we have too many kids who were going to the Gymnasium (ST4: upper secondary) and too few adults who have something similar to an Ausbildungsabschluss (ISCED 3b: upper secondary, vocational). Migrants and females are also overrepresented in the sample. 
@@ -173,17 +204,20 @@ census %>%
   DT::formatRound(c('dif_percentage', 'relative_dif', 'census_percentage', 'sample_percentage'), digits = 1)
 ```
 
-## Age group means, SDs, and SEs
+## Age group means, SDs, and SEs and percentile curves
 
-```{r}
+```{r, "RPP_vs_raw"}
+
+brm_MAIN_nor_ints_no_educ_male <- readRDS("../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male.rds", )
+
+
+
 RPP_vs_raw <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, 
-  ps_table = census, 
-  # RP = c("census", "norming_sample"),
-  ps_variables = c("age", "educ", "mig", "male"), 
-  re_formula = NULL,
-  sim_size = 100000,
+  brm_MAIN_nor_ints_no_educ_male, 
   labels = c( "Raw", "RPP"),
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons (clip/censor/bound and round)
+),
    palette = c(
   "#BC3C29FF",
   "#0072B5FF"
@@ -196,17 +230,11 @@ RPP_vs_raw[-1]
 
 
 ```{r}
-RPP_vs_raw$means_plot <- RPP_vs_raw$means_plot + 
-  scale_x_continuous(breaks = seq(11, 65, by = 2),
-                   expand = expansion(add = c(0, 2)))
-ggsave("figures/04_RPP_vs_raw_vs_RP.png", RPP_vs_raw$means_plot, width = 8, height = 4)
 
-RPP_vs_raw$SDs_plot <- RPP_vs_raw$SDs_plot + 
-  scale_x_continuous(breaks = seq(11, 65, by = 2),
-                   expand = expansion(add = c(0, 2)))
+ggsave("figures/04_RPP_vs_raw_vs_RP.jpeg", RPP_vs_raw$means_plot, width = 8, height = 4)
 
 
-ggsave("figures/05_RPP_vs_raw_vs_RP.png", RPP_vs_raw$SDs_plot, width = 8, height = 4)
+ggsave("figures/05_RPP_vs_raw_vs_RP.jpeg", RPP_vs_raw$SDs_plot, width = 8, height = 4)
 ```
 
 
@@ -294,7 +322,7 @@ means_sds_and_ses_plot %>%
   )  + 
   geom_vline(xintercept = 7.5)
 
-ggsave("figures/06_vs_Manual_means.png", width = 8, height = 4)
+ggsave("figures/06_vs_Manual_means.jpeg", width = 8, height = 4)
 ```
 
 ## SDs
@@ -332,7 +360,7 @@ means_sds_and_ses_plot %>%
   geom_vline(xintercept = 7.5) + 
   labs(x = "Age Group", y = "CFT 20-R Score SD")
 
-ggsave("figures/07_vs_Manual_SDs.png", width = 8, height = 4)
+ggsave("figures/07_vs_Manual_SDs.jpeg", width = 8, height = 4)
 ```
 
 
@@ -385,15 +413,17 @@ iqs_normalised <- sim_pop_sample_with_draws %>%
 ```{r}
 iq_table <- iqs_linear %>% 
   left_join(iqs_normalised, by = c("age_group", "raw_score")) %>% 
-  mutate(IQ_RPP_abs_dif = abs(RPP_IQ_linear - RPP_IQ_normalised),
+  mutate(IQ_RPP_dif = RPP_IQ_linear - RPP_IQ_normalised,
+         IQ_RPP_abs_dif = abs(RPP_IQ_linear - RPP_IQ_normalised),
          Manual_kids_sample = ifelse(age_group %in% c("11", "12", "13", "14", "15", "16", "17-19"), TRUE, FALSE)) 
 
 
 mean(iq_table$IQ_linear_dif_abs)
+mean(iq_table$IQ_linear_dif)
 max(iq_table$IQ_linear_dif_abs)
 mean(iq_table$IQ_RPP_abs_dif)
 
-iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif_abs))
+iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif), mean(IQ_linear_dif_abs))
 ```
 
 ### Selection of 9 IQs
@@ -412,7 +442,7 @@ iq_table %>%
 
 
 
-# RPP norms vs. continuous norming + raking
+# RPP norms vs. cNorm + raking
 ## Fit cNorm model
 Following the vignette [here](https://cran.r-project.org/web/packages/cNORM/vignettes/WeightedRegression.html).
 
@@ -561,7 +591,7 @@ means_ns_sds_and_ses  %>%
 )) +
   labs(x = "Age", y = "IQ")
 
-ggsave("figures/08_RPP_vs_cNorm.png", width = 8, height = 4)
+
 ```
 
 ```{r}
@@ -682,22 +712,1088 @@ ggplot(combined, aes(x = source, y = value, fill = at_tails)) +
 
 ```
 
-
-### Compare prediction errors
-```{r}
-getNormScoreSE(norm.model, type = 1)
-
-sim_pop_sample_with_draws %>%  
-  select(age, raw_score = .prediction, .draw) %>% 
-  left_join(means_sds_and_ses_RPP, by = "age") %>%
-  group_by(age) %>%
-  mutate(RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd)) %>% 
-  ungroup() %>% 
-  group_by(.draw) %>%
-    summarise(mean_prediction = mean(RPP_IQ_linear)) %>%
-    summarise(RPP_SE = sd(mean_prediction)) %>% as.numeric()
+```{r, }
+cnorm_percentiles <- (plotPercentiles(norm.model, percentiles = c(0.01, 0.05, 0.5, 0.95, 0.99)))$data %>% 
+  filter(complete.cases(value) & type == "Predicted") %>% 
+  rename(age = group,
+         Raw_score = value) %>%
+  mutate(Source = "cNorm + R",
+         age = round(age),
+         Raw_score = round(Raw_score),
+    percentile_value = case_when(
+      percentile == "PR1" ~ 0.01,
+      percentile == "PR5" ~ 0.05,
+      percentile == "PR50" ~ 0.50,
+      percentile == "PR95" ~ 0.95,
+      percentile == "PR99" ~ 0.99,
+      TRUE ~ NA_real_  # Handle any unexpected values
+    ),
+    percentile_label = case_when(
+      percentile == "PR1" ~ "1st percentile",
+      percentile == "PR5" ~ "5th percentile",
+      percentile == "PR50" ~ "50th percentile",
+      percentile == "PR95" ~ "95th percentile",
+      percentile == "PR99" ~ "99th percentile",
+      TRUE ~ NA_character_  # Handle any unexpected values
+    )
+  ) %>% 
+    select(-type, -percentile) 
+  
 ```
-Unclear if these values are comparable.
+
+
+
+
+#### Percentile plot
+```{r}
+RPP_percentiles <- RPP_vs_raw$percentile_plot$data
+
+
+
+combined_percentiles <- RPP_percentiles %>% bind_rows(cnorm_percentiles)
+
+color_values <- c("RPP" = "#0072B5FF", "cNorm + R" = "#E18727FF")
+
+combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "cNorm + R"))
+
+
+
+baseMaxLabelLen <- max(nchar(combined_percentiles$line_label), na.rm = TRUE)
+myExpandRight2 <- baseMaxLabelLen / 1.7
+max_age_val <- max(combined_percentiles$age, na.rm = TRUE)
+
+
+ggplot(combined_percentiles, aes(x = age, y = Raw_score,
+                                 color = Source,
+                                 group = interaction(Source, percentile_label))) +
+  geom_step(linewidth = 1, linetype = 1) +
+  scale_x_continuous(
+    breaks = seq(min(combined_percentiles$age), max_age_val, by = 2),
+    expand = expansion(add = c(1, myExpandRight2))
+  ) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_text(
+    data = combined_percentiles %>% filter(age == max_age_val, show_text, !is.na(line_label)),
+    aes(label = line_label),
+    nudge_x = 1,
+    hjust = 0,
+    family = "Times"
+  ) +
+  labs(x = "Age", y = "Test score", color = "") +
+  theme(
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3),
+    legend.position    = "top"
+  )
+
+ggsave("figures/08_RPP_vs_cNorm.jpeg", width = 8, height = 4)
+```
+
+# RPP vs. GAMLSS + MRP
+Most of the code in this section is from de [Vries et al.'s (2025)](https://psycnet.apa.org/doi/10.1037/met0000752) [supplementary materials](https://osf.io/uwjb2/files/osfstorage).
+## Fit GAMLLS model
+### Polynomial model selection
+Assuming no interactions and homoscedasticity, like in de [Vries et al. (2025)](https://psycnet.apa.org/doi/10.1037/met0000752).
+
+```{r}
+source("BB_free_order_functions.R")
+
+tl_select <- select(tl, cft, age, educ, mig, male) %>% mutate_at(vars(-cft, -age), ~as.factor(.))
+
+fbselectBB(mydata = tl_select, 
+           score = tl_select$cft,
+           age = tl_select$age, 
+           max_score=56, 
+           re_structure = "+random(educ)+random(mig)+random(male)")
+
+# Fit the selected model
+max_score = 56 # maximum test score
+tl_select$Score <- cbind(tl_select$cft, max_score - tl_select$cft) # reformat the scores to suit the BB distribution
+GAMLSS_MRP_model <-gamlss(Score ~ poly(age, 5) + random(educ) + random(mig) + random(male), sigma.formula = ~1, family = "BB", data = tl_select, method = RS(1000), pb = max_score)
+```
+
+
+### Alternative GAMLSS model with splines and sigma prediction
+```{r}
+
+GAMLSS_MRP_model_spline_sigma <- gamlss(
+  formula = Score ~ random(male) +
+    random(mig) + 
+    random(mig:male) +  
+    random(mig:educ) +  
+    pb(age, by = educ), 
+  sigma.formula = ~
+    random(male) +
+    random(mig) +       
+    random(educ) +      
+    pb(age),
+  family = "BB",
+  method = RS(1000),
+  data = tl_select
+)
+
+
+term.plot(
+  object     = GAMLSS_MRP_model_spline_sigma,   # your fitted gamlss() model
+  what       = "mu",         # or "sigma" if you want the sigma part
+  # partial    = TRUE,         # plot partial effects
+  # rug        = TRUE,         # show rug of observed data
+  ask        = FALSE,        # to avoid prompting between plots
+  data       = tl_select            # the data set
+)
+
+BIC(GAMLSS_MRP_model_spline_sigma, GAMLSS_MRP_model) 
+AIC(GAMLSS_MRP_model_spline_sigma, GAMLSS_MRP_model) 
+
+
+```
+
+Conflicting conclusions from BIC and AIC.
+
+
+## Extract IQ predictions and percentiles
+### For selected polynomial model
+
+```{r}
+ages <- seq(11,65,1) # ages for which to predict the test score distribution
+
+pop_age <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp <- predictAll(GAMLSS_MRP_model, newdata = pop_age, type = "response") # Predict distributional parameters all age values values and all adjustment variables
+
+
+
+population_data <- census %>% group_by(male, educ, mig) %>% 
+  summarise(census_n = sum(census_n)) %>% 
+  ungroup() %>% 
+  mutate(Proportion = census_n/sum(census_n)) %>% 
+  mutate(male = as.factor(male)) %>% 
+  select(-census_n)
+
+pop_age <- left_join(pop_age, population_data, by = c("educ", "mig", "male"))  # Append the predictions with population percentages of the adjustment variables from population data
+
+Min_score <- 0 # Minimum (adjusted) raw test score for which to calculate percentiles
+Max_score <- 56 # Maximum (adjusted) raw test score for which to calculate percentiles
+step_size <- 1 
+
+CDF_matrix_mrp <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) # Create empty matrix to store the percentiles; columns = raw test scores & rows = age value & adjustment variable combinations
+for (i in 1:nrow(pop_age)){ # for each score, age and adjustment variable combination, estimate the corresponding percentile. Multiply by population proportion of adjustment variable (will marginalize out later)
+  CDF_matrix_mrp[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp$mu[i], sigma = est.values.mrp$sigma[i], bd = max_score)*pop_age$Proportion[i] # lower.tail = FALSE when a higher test score must correspond to a lower rather than higher percentile. 
+}
+CDF_matrix_mrp <- aggregate(CDF_matrix_mrp, list(age = pop_age$age), sum) # Marginalize out the adjustment variables: sum over the previous weighted percentiles to obtain the MRP estimate for the CDF.
+for (i in (2:58)){ # Change column names to correspond to the test scores, not 'V1', 'V2' (V1 corresponded to the minimum score of 0, V32 to the maximum score of 31.)
+  names(CDF_matrix_mrp)[i] <- i-2
+}
+
+
+# Continuity correction, because the discrete percentiles of the BB distribution are converted to a continuous scale (Z-scores)
+CDF_matrix_mrp_cc <- CDF_matrix_mrp # define a new matrix CDF_matrix_mrp_cc containing continuity corrected percentiles.
+CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)] <- 0.5*CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp_cc)),CDF_matrix_mrp_cc[,2:(ncol(CDF_matrix_mrp_cc)-1)])
+
+# Trim outer percentiles to avoid errors in conversion to Z-scores (i.e., NaNs in qnorm). 
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix <- qnorm(as.matrix(CDF_matrix_mrp[,-1])) # [,-1]: remove the first column: Age.
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix <- cbind(CDF_matrix_mrp[1],z_matrix) # add age again
+
+```
+
+### For alternative model
+
+```{r}
+
+
+pop_age <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp2 <- predictAll(GAMLSS_MRP_model_spline_sigma, newdata = pop_age, type = "response")
+
+
+# the model fails to predict a mu for some subcategories, so we remove them
+valid <- !is.na(est.values.mrp2$mu)
+pop_age <- pop_age[valid, ]
+est.values.mrp2 <- lapply(est.values.mrp2, function(x) x[valid])
+
+
+pop_age <- left_join(pop_age, population_data, by = c("educ", "mig", "male"))  # Append the predictions with population percentages of the adjustment variables from population data
+
+CDF_matrix_mrp2 <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) # Create empty matrix to store the percentiles; columns = raw test scores & rows = age value & adjustment variable combinations
+for (i in 1:nrow(pop_age)){ # for each score, age and adjustment variable combination, estimate the corresponding percentile. Multiply by population proportion of adjustment variable (will marginalize out later)
+  CDF_matrix_mrp2[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp2$mu[i], sigma = est.values.mrp2$sigma[i], bd = max_score)*pop_age$Proportion[i] # lower.tail = FALSE when a higher test score must correspond to a lower rather than higher percentile. 
+}
+CDF_matrix_mrp2 <- aggregate(CDF_matrix_mrp2, list(age = pop_age$age), sum) # Marginalize out the adjustment variables: sum over the previous weighted percentiles to obtain the MRP estimate for the CDF.
+for (i in (2:58)){ # Change column names to correspond to the test scores, not 'V1', 'V2' (V1 corresponded to the minimum score of 0, V32 to the maximum score of 31.)
+  names(CDF_matrix_mrp2)[i] <- i-2
+}
+
+
+# Continuity correction, because the discrete percentiles of the BB distribution are converted to a continuous scale (Z-scores)
+CDF_matrix_mrp2_cc <- CDF_matrix_mrp2 # define a new matrix CDF_matrix_mrp2_cc containing continuity corrected percentiles.
+CDF_matrix_mrp2_cc[,2:ncol(CDF_matrix_mrp2_cc)] <- 0.5*CDF_matrix_mrp2_cc[,2:ncol(CDF_matrix_mrp2_cc)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp2_cc)),CDF_matrix_mrp2_cc[,2:(ncol(CDF_matrix_mrp2_cc)-1)])
+
+# Trim outer percentiles to avoid errors in conversion to Z-scores (i.e., NaNs in qnorm). 
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix2 <- qnorm(as.matrix(CDF_matrix_mrp2[,-1])) # [,-1]: remove the first column: Age.
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
+```
+
+
+### Plots
+#### Percentiles
+```{r}
+cdf_df <- as.data.frame(CDF_matrix_mrp)
+names(cdf_df)[-1] <- as.integer(names(cdf_df)[-1])  # convert "0", "1", ..., "56" to numeric
+
+cdf_df2 <- as.data.frame(CDF_matrix_mrp2)
+names(cdf_df2)[-1] <- as.integer(names(cdf_df2)[-1])  # convert "0", "1", ..., "56" to numeric
+
+
+cdf_long <- cdf_df %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+cdf_long2 <- cdf_df2 %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+# Interpolate raw scores at e6ach target percentile per age
+target_p <- c(0.01, 0.05, 0.5, 0.95, 0.99)
+
+GAMLSS_MRP_percentiles <- cdf_long %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "Simple GAMLSS + MRP",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "Complex GAMLSS + MRP",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+
+combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+
+combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "Simple GAMLSS + MRP", "Complex GAMLSS + MRP"))
+
+
+
+color_values <- c("RPP" = "#0072B5FF", "Simple GAMLSS + MRP" = "#E18727FF", "Complex GAMLSS + MRP" = "#FFDC91FF")
+
+ggplot(combined_percentiles, aes(x = age, y = Raw_score,
+                                 color = Source,
+                                 group = interaction(Source, percentile_label))) +
+  geom_step(linewidth = 1, linetype = 1) +
+  scale_x_continuous(
+    breaks = seq(min(combined_percentiles$age), 65, by = 2),
+    expand = expansion(add = c(1, 8))
+  ) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_text(
+    data = combined_percentiles %>% filter(age == 65, show_text, !is.na(line_label)),
+    aes(label = line_label),
+    nudge_x = 1,
+    hjust = 0,
+    family = "Times"
+  ) +
+  labs(x = "Age", y = "Test score", color = "") +
+  theme(
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3),
+    legend.position    = "top"
+  )
+
+ggsave("figures/09_RPP_vs_GAMLSS_MRP.jpeg", width = 8, height = 4)
+
+```
+
+#### IQ means
+```{r}
+z_df <- as.data.frame(z_matrix)
+names(z_df)[-1] <- as.integer(names(z_df)[-1])  
+
+z_df2 <- as.data.frame(z_matrix2)
+names(z_df2)[-1] <- as.integer(names(z_df2)[-1])  
+
+
+z_long <- z_df %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_MRP_IQ)
+
+z_long2 <- z_df2 %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_s_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_s_MRP_IQ)
+
+iqs_norming_sample <- tl %>% 
+  select(age = age0100, raw_score = cft) %>%
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  left_join(z_long, by = c("age", "raw_score")) %>%
+  left_join(z_long2, by = c("age", "raw_score")) %>%
+  group_by(age) %>%
+  mutate(
+    RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+    dif           = RPP_IQ_linear - GAMLSS_MRP_IQ,
+    absolute_dif  = abs(dif)
+  ) %>% ungroup()
+
+
+
+# overall_comparison to BB selected model
+iqs_norming_sample  %>% 
+  summarise(mean_RPP_IQ = mean(RPP_IQ_linear),
+            mean_GAMLSS_IQ = mean(GAMLSS_MRP_IQ),
+            mean_dif = mean(dif),
+            max_dif = max(dif),
+            mean_absolute_dif = mean(absolute_dif),
+            RMS_dif = sqrt(mean(dif^2))) %>% kable()
+
+
+means_ns_sds_and_ses <- iqs_norming_sample %>% 
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(RPP_IQ_linear),
+            RPP_sd = sd(RPP_IQ_linear),
+            "Simple GAMLSS + MRP_mean" = mean(GAMLSS_MRP_IQ),
+            "Complex GAMLSS + MRP_mean" = mean(GAMLSS_s_MRP_IQ)) %>% 
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+
+
+
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 17))) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean , ymax = mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 65) %>% arrange(source),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 1, hjust = 0, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  )+
+  labs(x = "Age", y = "IQ")
+```
+
+
+## Does including age in the poststratification weights make a difference?
+Spoiler: yes.
+
+```{r}
+
+ages <- seq(11,65,1) # ages for which to predict the test score distribution
+
+pop_age <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp <- predictAll(GAMLSS_MRP_model_spline_sigma, newdata = pop_age, type = "response") # Predict distributional parameters all age values values and all adjustment variables
+
+valid <- !is.na(est.values.mrp$mu)
+pop_age <- pop_age[valid, ]
+est.values.mrp <- lapply(est.values.mrp, function(x) x[valid])
+
+
+# Include age in the population data grouping
+population_data <- census %>% group_by(age, male, educ, mig) %>% 
+  summarise(census_n = sum(census_n)) %>% 
+  ungroup() %>% 
+  group_by(age) %>% 
+  mutate(Proportion = census_n/sum(census_n)) %>% 
+  ungroup() %>% 
+  mutate(male = as.factor(male)) %>% 
+  select(-census_n)
+
+pop_age <- left_join(pop_age, population_data, by = c("age", "educ", "mig", "male")) %>% 
+  mutate(Proportion = if_else(is.na(Proportion), 0, Proportion)) # Append the predictions with population percentages
+
+Min_score <- 0 # Minimum (adjusted) raw test score for which to calculate percentiles
+Max_score <- 56 # Maximum (adjusted) raw test score for which to calculate percentiles
+step_size <- 1 
+
+CDF_matrix_mrp <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) 
+for (i in 1:nrow(pop_age)){ 
+  CDF_matrix_mrp[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp$mu[i], sigma = est.values.mrp$sigma[i], bd = max_score)*pop_age$Proportion[i] 
+}
+
+# Since we already have age-specific population weights, we can directly aggregate by age
+CDF_matrix_mrp <- aggregate(CDF_matrix_mrp, list(age = pop_age$age), sum) 
+
+for (i in (2:58)){ 
+  names(CDF_matrix_mrp)[i] <- i-2
+}
+
+# Continuity correction
+CDF_matrix_mrp_cc <- CDF_matrix_mrp 
+CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)] <- 0.5*CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp_cc)),CDF_matrix_mrp_cc[,2:(ncol(CDF_matrix_mrp_cc)-1)])
+
+# Trim outer percentiles
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix <- qnorm(as.matrix(CDF_matrix_mrp[,-1])) 
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix <- cbind(CDF_matrix_mrp[1],z_matrix) # add age again
+
+
+pop_age <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp2 <- predictAll(GAMLSS_MRP_model_spline_sigma, newdata = pop_age, type = "response")
+
+
+
+population_data <- census %>% group_by(male, educ, mig) %>% 
+  summarise(census_n = sum(census_n)) %>% 
+  ungroup() %>% 
+  mutate(Proportion = census_n/sum(census_n)) %>% 
+  mutate(male = as.factor(male)) %>% 
+  select(-census_n)
+
+
+# the model fails to predict a mu for some subcategories, so we remove them
+valid <- !is.na(est.values.mrp2$mu)
+pop_age <- pop_age[valid, ]
+est.values.mrp2 <- lapply(est.values.mrp2, function(x) x[valid])
+
+
+pop_age <- left_join(pop_age, population_data, by = c("educ", "mig", "male"))  # Append the predictions with population percentages of the adjustment variables from population data
+
+CDF_matrix_mrp2 <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) # Create empty matrix to store the percentiles; columns = raw test scores & rows = age value & adjustment variable combinations
+for (i in 1:nrow(pop_age)){ # for each score, age and adjustment variable combination, estimate the corresponding percentile. Multiply by population proportion of adjustment variable (will marginalize out later)
+  CDF_matrix_mrp2[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp2$mu[i], sigma = est.values.mrp2$sigma[i], bd = max_score)*pop_age$Proportion[i] # lower.tail = FALSE when a higher test score must correspond to a lower rather than higher percentile. 
+}
+CDF_matrix_mrp2 <- aggregate(CDF_matrix_mrp2, list(age = pop_age$age), sum) # Marginalize out the adjustment variables: sum over the previous weighted percentiles to obtain the MRP estimate for the CDF.
+for (i in (2:58)){ # Change column names to correspond to the test scores, not 'V1', 'V2' (V1 corresponded to the minimum score of 0, V32 to the maximum score of 31.)
+  names(CDF_matrix_mrp2)[i] <- i-2
+}
+
+
+# Continuity correction, because the discrete percentiles of the BB distribution are converted to a continuous scale (Z-scores)
+CDF_matrix_mrp2_cc <- CDF_matrix_mrp2 # define a new matrix CDF_matrix_mrp2_cc containing continuity corrected percentiles.
+CDF_matrix_mrp2_cc[,2:ncol(CDF_matrix_mrp2_cc)] <- 0.5*CDF_matrix_mrp2_cc[,2:ncol(CDF_matrix_mrp2_cc)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp2_cc)),CDF_matrix_mrp2_cc[,2:(ncol(CDF_matrix_mrp2_cc)-1)])
+
+# Trim outer percentiles to avoid errors in conversion to Z-scores (i.e., NaNs in qnorm). 
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix2 <- qnorm(as.matrix(CDF_matrix_mrp2[,-1])) # [,-1]: remove the first column: Age.
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
+```
+
+### Percentiles plot
+```{r}
+
+
+cdf_df <- as.data.frame(CDF_matrix_mrp)
+names(cdf_df)[-1] <- as.integer(names(cdf_df)[-1])  # convert "0", "1", ..., "56" to numeric
+
+cdf_df2 <- as.data.frame(CDF_matrix_mrp2)
+names(cdf_df2)[-1] <- as.integer(names(cdf_df2)[-1])  # convert "0", "1", ..., "56" to numeric
+
+
+cdf_long <- cdf_df %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+cdf_long2 <- cdf_df2 %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+# Interpolate raw scores at e6ach target percentile per age
+target_p <- c(0.01, 0.05, 0.5, 0.95, 0.99)
+
+GAMLSS_MRP_percentiles <- cdf_long %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "PS with age",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "PS without age",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+
+combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+
+combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "PS with age", "PS without age"))
+
+color_values <- c("RPP" = "#0072B5FF", "PS with age" = "#E18727FF", "PS without age" = "#FFDC91FF")
+
+
+ggplot(combined_percentiles, aes(x = age, y = Raw_score,
+                                 color = Source,
+                                 group = interaction(Source, percentile_label))) +
+  geom_step(linewidth = 1, linetype = 1) +
+  scale_x_continuous(
+    breaks = seq(min(combined_percentiles$age), 65, by = 2),
+    expand = expansion(add = c(1, 8))
+  ) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_text(
+    data = combined_percentiles %>% filter(age == 65, show_text, !is.na(line_label)),
+    aes(label = line_label),
+    nudge_x = 1,
+    hjust = 0,
+    family = "Times"
+  ) +
+  labs(x = "Age", y = "Test score", color = "") +
+  theme(
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3),
+    legend.position    = "top"
+  )
+
+ggsave("figures/S08_RPP_vs_GAMLSS_MRP_PS.jpeg", width = 8, height = 4)
+
+```
+
+### Plot Age group IQs based on the norming sample
+```{r}
+
+z_df <- as.data.frame(z_matrix)
+names(z_df)[-1] <- as.integer(names(z_df)[-1])  
+
+z_df2 <- as.data.frame(z_matrix2)
+names(z_df2)[-1] <- as.integer(names(z_df2)[-1])  
+
+
+z_long <- z_df %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_MRP_IQ)
+
+z_long2 <- z_df2 %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_s_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_s_MRP_IQ)
+
+iqs_norming_sample <- tl %>% 
+  select(age = age0100, raw_score = cft) %>%
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  left_join(z_long, by = c("age", "raw_score")) %>%
+  left_join(z_long2, by = c("age", "raw_score")) %>%
+  group_by(age) %>%
+  mutate(
+    RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+    dif           = RPP_IQ_linear - GAMLSS_MRP_IQ,
+    absolute_dif  = abs(dif)
+  ) %>% ungroup()
+
+
+
+# overall_comparison to BB selected model
+iqs_norming_sample  %>% 
+  summarise(mean_RPP_IQ = mean(RPP_IQ_linear),
+            mean_GAMLSS_IQ = mean(GAMLSS_MRP_IQ),
+            mean_dif = mean(dif),
+            max_dif = max(dif),
+            mean_absolute_dif = mean(absolute_dif),
+            RMS_dif = sqrt(mean(dif^2)))
+
+
+means_ns_sds_and_ses <- iqs_norming_sample %>% 
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(RPP_IQ_linear),
+            RPP_sd = sd(RPP_IQ_linear),
+            "PS with age_mean" = mean(GAMLSS_MRP_IQ),
+            "PS without age_mean" = mean(GAMLSS_s_MRP_IQ)) %>% 
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+
+
+
+
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 1))) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean , ymax = mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 43 & source == "RPP"),
+    aes(label = source), family = "Times", seed = 810, nudge_y = -1, point.padding = 0, direction = "y") +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 30 & source == "PS with age"),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 9, point.padding = 1, direction = "y") +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 29 & source == "PS without age"),
+    aes(label = source), family = "Times", seed = 810, nudge_y = 5, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  )+
+  labs(x = "Age", y = "IQ")
+
+
+```
+
+## Does including educ as a main effect make a dif?
+Spoiler: no
+
+```{r}
+
+
+GAMLSS_MRP_model_spline_sigma2 <- gamlss(
+  formula = Score ~ random(male) +
+    random(mig) +
+    random(mig:male) +
+    random(mig:educ) +
+    random(educ) + # also tried educ as fixed effect, very similar results
+    pb(age, by = educ),
+  sigma.formula = ~
+    random(male) +
+    random(mig) +
+    random(educ) +
+    pb(age),
+  family = "BB",
+  method = RS(1000),
+  data = tl_select
+)
+
+ages <- seq(11,65,1) # ages for which to predict the test score distribution
+
+pop_age <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp <- predictAll(GAMLSS_MRP_model_spline_sigma, newdata = pop_age, type = "response") # Predict distributional parameters all age values values and all adjustment variables
+
+valid <- !is.na(est.values.mrp$mu)
+pop_age <- pop_age[valid, ]
+est.values.mrp <- lapply(est.values.mrp, function(x) x[valid])
+
+
+# Include age in the population data grouping
+population_data <- census %>% group_by(age, male, educ, mig) %>% 
+  summarise(census_n = sum(census_n)) %>% 
+  ungroup() %>% 
+  group_by(age) %>% 
+  mutate(Proportion = census_n/sum(census_n)) %>% 
+  ungroup() %>% 
+  mutate(male = as.factor(male)) %>% 
+  select(-census_n)
+
+pop_age <- left_join(pop_age, population_data, by = c("age", "educ", "mig", "male")) %>% 
+  mutate(Proportion = if_else(is.na(Proportion), 0, Proportion)) # Append the predictions with population percentages
+
+Min_score <- 0 # Minimum (adjusted) raw test score for which to calculate percentiles
+Max_score <- 56 # Maximum (adjusted) raw test score for which to calculate percentiles
+step_size <- 1 
+
+CDF_matrix_mrp <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) 
+for (i in 1:nrow(pop_age)){ 
+  CDF_matrix_mrp[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp$mu[i], sigma = est.values.mrp$sigma[i], bd = max_score)*pop_age$Proportion[i] 
+}
+
+# Since we already have age-specific population weights, we can directly aggregate by age
+CDF_matrix_mrp <- aggregate(CDF_matrix_mrp, list(age = pop_age$age), sum) 
+
+for (i in (2:58)){ 
+  names(CDF_matrix_mrp)[i] <- i-2
+}
+
+# Continuity correction
+CDF_matrix_mrp_cc <- CDF_matrix_mrp 
+CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)] <- 0.5*CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp_cc)),CDF_matrix_mrp_cc[,2:(ncol(CDF_matrix_mrp_cc)-1)])
+
+# Trim outer percentiles
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp[,-1][which(CDF_matrix_mrp[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix <- qnorm(as.matrix(CDF_matrix_mrp[,-1])) 
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix <- apply(z_matrix, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix <- cbind(CDF_matrix_mrp[1],z_matrix) # add age again
+
+ages2 <- seq(11,65,1) # ages for which to predict the test score distribution
+
+pop_age2 <- expand.grid(age = ages, educ = levels(tl_select$educ), mig = levels(tl_select$mig), male = levels(tl_select$male)) # dataframe with all ages 
+
+est.values.mrp2 <- predictAll(GAMLSS_MRP_model_spline_sigma2, newdata = pop_age2, type = "response") # Predict distributional parameters all age values values and all adjustment variables
+
+valid2 <- !is.na(est.values.mrp2$mu)
+pop_age2 <- pop_age2[valid2, ]
+est.values.mrp2 <- lapply(est.values.mrp2, function(x) x[valid])
+
+
+# Include age in the population data grouping
+population_data2 <- census %>% group_by(age, male, educ, mig) %>% 
+  summarise(census_n = sum(census_n)) %>% 
+  ungroup() %>% 
+  group_by(age) %>% 
+  mutate(Proportion = census_n/sum(census_n)) %>% 
+  ungroup() %>% 
+  mutate(male = as.factor(male)) %>% 
+  select(-census_n)
+
+pop_age2 <- left_join(pop_age2, population_data2, by = c("age", "educ", "mig", "male")) %>% 
+  mutate(Proportion = if_else(is.na(Proportion), 0, Proportion)) # Append the predictions with population percentages
+
+Min_score2 <- 0 # Minimum (adjusted) raw test score for which to calculate percentiles
+Max_score2 <- 56 # Maximum (adjusted) raw test score for which to calculate percentiles
+step_size2 <- 1 
+
+CDF_matrix_mrp2 <- matrix(NA, ncol = (Max_score - Min_score)/step_size + 1, nrow = nrow(pop_age)) 
+for (i in 1:nrow(pop_age2)){ 
+  CDF_matrix_mrp2[i,] <- pBB(seq(from = Min_score, to = Max_score, by = step_size), mu = est.values.mrp2$mu[i], sigma = est.values.mrp2$sigma[i], bd = max_score)*pop_age2$Proportion[i] 
+}
+
+# Since we already have age-specific population weights, we can directly aggregate by age
+CDF_matrix_mrp2 <- aggregate(CDF_matrix_mrp2, list(age = pop_age2$age), sum) 
+
+for (i in (2:58)){ 
+  names(CDF_matrix_mrp2)[i] <- i-2
+}
+
+# Continuity correction
+CDF_matrix_mrp_cc2 <- CDF_matrix_mrp2 
+CDF_matrix_mrp_cc2[,2:ncol(CDF_matrix_mrp_cc2)] <- 0.5*CDF_matrix_mrp_cc[,2:ncol(CDF_matrix_mrp_cc2)]+0.5*cbind(rep(0,nrow(CDF_matrix_mrp_cc2)),CDF_matrix_mrp_cc2[,2:(ncol(CDF_matrix_mrp_cc2)-1)])
+
+# Trim outer percentiles
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] < 0.0001, arr.ind = TRUE)] <- 0.0001
+CDF_matrix_mrp2[,-1][which(CDF_matrix_mrp2[,-1] > 0.9999, arr.ind = TRUE)] <- 0.9999
+
+# Transform estimated percentiles to estimated normalized z-scores
+z_matrix2 <- qnorm(as.matrix(CDF_matrix_mrp2[,-1])) 
+
+# Restrict the normalized z-scores to the range [-3; +3]
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x > 3, 3, x)})
+z_matrix2 <- apply(z_matrix2, 1, function(x) {ifelse(x < -3, -3, x)})
+
+z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
+
+```
+
+
+### Percentiles plot
+```{r}
+
+
+cdf_df <- as.data.frame(CDF_matrix_mrp)
+names(cdf_df)[-1] <- as.integer(names(cdf_df)[-1])  # convert "0", "1", ..., "56" to numeric
+
+cdf_df2 <- as.data.frame(CDF_matrix_mrp2)
+names(cdf_df2)[-1] <- as.integer(names(cdf_df2)[-1])  # convert "0", "1", ..., "56" to numeric
+
+
+cdf_long <- cdf_df %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+cdf_long2 <- cdf_df2 %>%
+  pivot_longer(-age, names_to = "Raw_score", values_to = "percentile") %>%
+  mutate(Raw_score = as.numeric(Raw_score))
+
+# Interpolate raw scores at e6ach target percentile per age
+target_p <- c(0.01, 0.05, 0.5, 0.95, 0.99)
+
+GAMLSS_MRP_percentiles <- cdf_long %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "Without educ",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
+  group_by(age) %>%
+  arrange(percentile, .by_group = TRUE) %>%
+  reframe(
+    p = target_p,
+    Raw_score = round(approx(x = percentile, y = Raw_score, xout = target_p, ties = "ordered")$y),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Source = "With educ",
+    percentile_label = case_when(
+      abs(p - 0.01) < 1e-8 ~ "1st percentile",
+      abs(p - 0.05) < 1e-8 ~ "5th percentile",
+      abs(p - 0.5)  < 1e-8 ~ "50th percentile",
+      abs(p - 0.95) < 1e-8 ~ "95th percentile",
+      abs(p - 0.99) < 1e-8 ~ "99th percentile"
+    ),
+    show_text = FALSE,
+    line_label = percentile_label
+  ) %>%
+  select(age, Raw_score, Source, percentile_label, show_text, line_label)
+
+
+combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+
+combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "Without educ", "With educ"))
+
+color_values <- c("RPP" = "#0072B5FF", "Without educ" = "#E18727FF", "With educ" = "#FFDC91FF")
+
+
+ggplot(combined_percentiles, aes(x = age, y = Raw_score,
+                                 color = Source,
+                                 group = interaction(Source, percentile_label))) +
+  geom_step(linewidth = 1, linetype = 1) +
+  scale_x_continuous(
+    breaks = seq(min(combined_percentiles$age), 65, by = 2),
+    expand = expansion(add = c(1, 8))
+  ) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_text(
+    data = combined_percentiles %>% filter(age == 65, show_text, !is.na(line_label)),
+    aes(label = line_label),
+    nudge_x = 1,
+    hjust = 0,
+    family = "Times"
+  ) +
+  labs(x = "Age", y = "Test score", color = "") +
+  theme(
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", linewidth = 0.3),
+    legend.position    = "top"
+  )
+
+
+```
+
+### Plot Age group IQs based on the norming sample
+```{r}
+
+z_df <- as.data.frame(z_matrix)
+names(z_df)[-1] <- as.integer(names(z_df)[-1])  
+
+z_df2 <- as.data.frame(z_matrix2)
+names(z_df2)[-1] <- as.integer(names(z_df2)[-1])  
+
+
+z_long <- z_df %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_MRP_IQ)
+
+z_long2 <- z_df2 %>%
+  pivot_longer(-age, names_to = "raw_score", values_to = "z") %>%
+  mutate(
+    raw_score = as.integer(raw_score),
+    GAMLSS_s_MRP_IQ = round(100 + 15 * z, 1)  # Convert Z to IQ
+  ) %>%
+  select(age, raw_score, GAMLSS_s_MRP_IQ)
+
+iqs_norming_sample <- tl %>% 
+  select(age = age0100, raw_score = cft) %>%
+  left_join(means_sds_and_ses_RPP, by = "age") %>%
+  left_join(z_long, by = c("age", "raw_score")) %>%
+  left_join(z_long2, by = c("age", "raw_score")) %>%
+  group_by(age) %>%
+  mutate(
+    RPP_IQ_linear = iq(raw_score, RPP_mean, RPP_sd),
+    dif           = RPP_IQ_linear - GAMLSS_MRP_IQ,
+    absolute_dif  = abs(dif)
+  ) %>% ungroup()
+
+
+
+# overall_comparison to BB selected model
+iqs_norming_sample  %>% 
+  summarise(mean_RPP_IQ = mean(RPP_IQ_linear),
+            mean_GAMLSS_IQ = mean(GAMLSS_MRP_IQ),
+            mean_dif = mean(dif),
+            max_dif = max(dif),
+            mean_absolute_dif = mean(absolute_dif),
+            RMS_dif = sqrt(mean(dif^2)))
+
+
+means_ns_sds_and_ses <- iqs_norming_sample %>% 
+  group_by(age) %>% 
+  summarise(RPP_mean = mean(RPP_IQ_linear),
+            RPP_sd = sd(RPP_IQ_linear),
+            "Without educ_mean" = mean(GAMLSS_MRP_IQ),
+            "With educ_mean" = mean(GAMLSS_s_MRP_IQ)) %>% 
+  pivot_longer(-age, names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+
+
+
+
+
+
+means_ns_sds_and_ses  %>%
+  ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
+  scale_x_discrete(breaks = seq(11, 65, by = 2),
+                   expand = expansion(add = c(1, 1))) +
+  scale_color_manual(values = color_values, name = "") +
+  geom_line(linewidth = 1) +
+  geom_pointrange(shape = 18, 
+                  aes(ymin = mean , ymax = mean), 
+                  fatten = 3,
+                  linewidth = 1,
+                  position = position_dodge(width = 0.3)) +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 43 & source == "RPP"),
+    aes(label = source), family = "Times", seed = 810, nudge_y = -1, point.padding = 0, direction = "y") +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 30 & source == "Without educ"),
+    aes(label = source), family = "Times", seed = 810, nudge_x = 9, point.padding = 1, direction = "y") +
+  geom_text_repel(
+    data = means_ns_sds_and_ses %>% filter(age == 29 & source == "With educ"),
+    aes(label = source), family = "Times", seed = 810, nudge_y = 5, point.padding = 1, direction = "y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(linetype = "dashed", size = 0.3),
+    legend.position = "none"
+  )+
+  labs(x = "Age", y = "IQ")
+
+
+```
 
 
 # Poststratification without regularisation
@@ -705,6 +1801,8 @@ Weighting is often undertaken using simple averages instead of model predictions
 
 ## Means plot
 ```{r}
+library(survey)
+
 means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
   group_by(age, .draw) %>% 
   summarise(mean_prediction = mean(.prediction), 
@@ -715,22 +1813,36 @@ means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
             RPP_sd = sqrt(mean(sd_prediction^2)), 
             RPP_se_of_sd = sd(sd_prediction)) 
 
+means_sds_and_ses_tl_ps <- tl %>%
+  mutate(age = age0100) %>%
+  left_join((census %>%
+               mutate(PS_w = census_n / sum(census_n))), by = c("age", "male", "mig", "educ")) %>%
+  # Set PS weights of cells that exist in the sample but not in the census to 0
+  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w))
 
 
-means_sds_and_ses_tl_ps <- tl %>% 
-  mutate(age = age0100) %>% 
-  left_join((census %>% 
-               mutate(PS_w = census_n/sum(census_n))), by = c("age", "male", "mig", "educ")) %>% 
-  # set PS weights of cells that exist in the sample but not in the census to 0
-  mutate(PS_w = ifelse(is.na(PS_w), 0, PS_w)) %>% 
-  group_by(age) %>% 
-  summarise(Raw_n = n(), 
-            Raw_mean = mean(cft, na.rm = T), 
-            Raw_sd = sd(cft, na.rm = T), 
-            Raw_se_of_mean = Raw_sd/sqrt(Raw_n),
-            PS_mean = weighted.mean(cft, PS_w, na.rm = T), 
-            PS_sd = sqrt(weighted.mean((cft - PS_mean)^2, PS_w, na.rm = T)), 
-            PS_se_of_mean = PS_sd/sqrt(Raw_n))
+design_ps <- svydesign(ids = ~1, # No clustering
+                       weights = ~PS_w, # Use renormalized poststratification weights
+                       data = means_sds_and_ses_tl_ps)
+
+
+means_sds_and_ses_tl_ps <- means_sds_and_ses_tl_ps %>%
+  group_by(age) %>%
+  summarise(
+    Raw_n = n(),
+    Raw_mean = mean(cft, na.rm = TRUE),
+    Raw_sd = sd(cft, na.rm = TRUE),
+    Raw_se_of_mean = Raw_sd / sqrt(Raw_n),
+    
+    # Weighted statistics using poststratification weights
+    PS_mean = svymean(~cft, design = subset(design_ps, !is.na(cft) & age == cur_group()$age))[1], # Weighted mean
+    PS_sd = sqrt(svyvar(~cft, design = subset(design_ps, !is.na(cft) & age == cur_group()$age)))[1], # Weighted SD
+    PS_se_of_mean = SE(svymean(~cft, design = subset(design_ps, !is.na(cft) & age == cur_group()$age))) # SE of weighted mean
+  ) %>%
+  ungroup() %>%
+  mutate_at(vars(-age), ~ as.numeric(.))
+
+
 
 means_ns_sds_and_ses <- means_sds_and_ses_RPP %>% 
   left_join(means_sds_and_ses_tl_ps, by = "age")  %>%
@@ -767,7 +1879,7 @@ means_ns_sds_and_ses %>%
 )) +
   labs(x = "Age", y = "Mean CFT 20-R Score")
 
-ggsave("figures/09_RPP_vs_raw_PS.png", width = 8, height = 4)
+ggsave("figures/10_RPP_vs_raw_PS.jpeg", width = 8, height = 4)
 ```
 
 
@@ -784,13 +1896,32 @@ Here we use the weights provided by the TwinLife panel study data custodians, de
 
 ## Get the design and non-response weights from the weights dataset
 ```{r}
-tl_w_ws <- tl %>% 
-  left_join((haven::read_dta("../unshareable_data/raw/ZA6701_weights_v7-1-0.dta") %>% 
-              select(c(fid, svw0100, svw0200))), by = "fid") %>% 
-  # rename the weights
+
+
+tl_w_ws <- tl %>%
+  left_join((read_dta("../unshareable_data/raw/ZA6701_weights_v7-1-0.dta") %>%
+              select(c(fid, svw0100, svw0200))), by = "fid") %>%
+  # Rename the weights
   mutate(dw = svw0100, # design weights
-         nrw = svw0200, # non-response weights
-         dnrw = svw0100*svw0200) # total weights (both weights together)
+         nrw = svw0200) # non-response weights
+
+# Renormalize the weights in the subsample (tl_w_ws)
+tl_w_ws <- tl_w_ws %>%
+  mutate(
+    dw_renormalized = dw * (1000 / mean(dw, na.rm = TRUE)), # Renormalize design weights
+    nrw_renormalized = nrw * (1000 / mean(nrw, na.rm = TRUE)) # Renormalize non-response weights
+  )
+
+
+# Design weights
+design_dw <- svydesign(ids = ~1, # No clustering
+                       weights = ~dw_renormalized, # Use renormalized design weights
+                       data = tl_w_ws)
+
+# Non-response weights
+design_nrw <- svydesign(ids = ~1, # No clustering
+                        weights = ~nrw_renormalized, # Use renormalized non-response weights
+                        data = tl_w_ws)
 ```
 
 ## Mean differences
@@ -808,22 +1939,31 @@ means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
             RPP_se_of_sd = sd(sd_prediction)) 
 
 
-means_sds_and_ses_tl <- tl_w_ws %>% 
-  group_by(age = age0100) %>% 
-  summarise(n = n(), 
-            Raw_mean = mean(cft, na.rm = T), 
-            Raw_sd = sd(cft, na.rm = T), 
-            Raw_se_of_mean = Raw_sd/sqrt(n),
-            Design_mean = weighted.mean(cft, dw, na.rm = T), 
-            Design_sd = sqrt(weighted.mean((cft - Design_mean)^2, dw, na.rm = T)), 
-            Design_se_of_mean = Design_sd/sqrt(n),
-            Nonresponse_mean = weighted.mean(cft, nrw, na.rm = T), 
-            Nonresponse_sd = sqrt(weighted.mean((cft - Nonresponse_mean)^2, nrw, na.rm = T)), 
-            Nonresponse_se_of_mean = Nonresponse_sd/sqrt(n)) 
+
+means_sds_and_ses_tl <- tl_w_ws %>%
+  group_by(age = age0100) %>%
+  summarise(
+    Raw_n = n(),
+    Raw_mean = mean(cft, na.rm = TRUE),
+    Raw_sd = sd(cft, na.rm = TRUE),
+    Raw_se_of_mean = Raw_sd / sqrt(Raw_n),
+    
+    # Weighted statistics using design weights
+    Design_mean = svymean(~cft, design = subset(design_dw, !is.na(cft) & age0100 == cur_group()$age))[1], # Weighted mean
+    Design_sd = sqrt(svyvar(~cft, design = subset(design_dw, !is.na(cft) & age0100 == cur_group()$age)))[1], # Weighted SD
+    Design_se_of_mean = SE(svymean(~cft, design = subset(design_dw, !is.na(cft) & age0100 == cur_group()$age))), # SE of weighted mean
+    
+    # Weighted statistics using non-response weights
+    Nonresponse_mean = svymean(~cft, design = subset(design_nrw, !is.na(cft) & age0100 == cur_group()$age))[1], # Weighted mean
+    Nonresponse_sd = sqrt(svyvar(~cft, design = subset(design_nrw, !is.na(cft) & age0100 == cur_group()$age)))[1], # Weighted SD
+    Nonresponse_se_of_mean = SE(svymean(~cft, design = subset(design_nrw, !is.na(cft) & age0100 == cur_group()$age))) # SE of weighted mean
+  ) %>%
+  ungroup() %>%
+  mutate_at(vars(-age), ~ as.numeric(.))
 
 means_ns_sds_and_ses <- means_sds_and_ses_RPP %>% 
   left_join(means_sds_and_ses_tl, by = "age") %>%
-  pivot_longer(-c(age, n), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
+  pivot_longer(-c(age, Raw_n), names_to = c("source", ".value"), names_pattern = "([^_]*)_(.*)")
 
 means_ns_sds_and_ses  %>%
   ggplot(aes(x = as.factor(age), y = mean, group = source, colour = source)) +
@@ -855,7 +1995,7 @@ means_ns_sds_and_ses  %>%
   labs(x = "Age", y = "Mean CFT 20-R Score")
 
 
-ggsave("figures/10_RPP_vs_TL.png", width = 8, height = 4)
+ggsave("figures/11_RPP_vs_TL.jpeg", width = 8, height = 4)
 ```
 
 No large differences to raw means.

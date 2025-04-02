@@ -1,4 +1,4 @@
-This is GitHub repository hosting the code and most of the material belonging to the manuscript [Using Multilevel Regression and Poststratification to Efficiently Derive Accurate Norms](https://osf.io/preprints/psyarxiv/fcm3n/). 
+This is GitHub repository hosting the code and most of the material belonging to the manuscript [A case study on norming an intelligence test using Regularised Prediction and Poststratification from a Total Survey Error perspective](osf.io/preprints/psyarxiv/wnbes). 
 
 
 # Reproducibility

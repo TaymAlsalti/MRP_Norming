@@ -10,9 +10,9 @@
 
 
 
-<meta name="date" content="2025-03-13" />
+<meta name="date" content="2025-04-02" />
 
-<title>MRP norming tutorial</title>
+<title>RPP norming tutorial</title>
 
 <script src="site_libs/header-attrs-2.27/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
@@ -66,7 +66,6 @@ if (window.hljs) {
 
 
 
-<link rel="stylesheet" href="styles.css" type="text/css" />
 
 
 
@@ -360,12 +359,33 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">MRP norming tutorial</h1>
-<h4 class="date">2025-03-13</h4>
+<h1 class="title toc-ignore">RPP norming tutorial</h1>
+<h4 class="date">2025-04-02</h4>
 
 </div>
 
 
+<style>
+.main-container {
+  max-width: 1400px !important;  /* Adjust the width as needed */
+}
+
+pre, code {
+  white-space: pre-wrap;  /* Ensures that long lines wrap */
+  word-wrap: break-word;  /* Breaks long words if necessary */
+}
+
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important; /* Add horizontal scrollbar if content overflows */
+  white-space: pre-line !important; /* Convert line breaks to spaces */
+  word-wrap: break-word !important; /* Break long words if necessary */
+  word-break: break-all !important; /* Break words to fit the container */
+  font-size: 14px !important; /* Adjust font size if needed */
+}
+
+</style>
 <pre class="r"><code>knitr::opts_chunk$set(
     message = FALSE,
     warning = T,
@@ -388,10 +408,10 @@ library(rstan)
 
 # depending on the platform on which you want to run the brm you might need this or not. We ran the models on a Linux-operated server
 options(mc.cores = 4,
-        brms.backend = &quot;cmdstanr&quot;)
-
-options(scipen = 999,
-        digits = 4)
+        brms.backend = &quot;cmdstanr&quot;,
+        scipen = 999,
+        digits = 4,
+        width = 120)
 
 # windowsFonts(Times = windowsFont(&quot;Times New Roman&quot;))
 theme_set(theme_minimal(base_size = 12, base_family = &quot;Times&quot;))
@@ -401,7 +421,8 @@ theme_set(theme_minimal(base_size = 12, base_family = &quot;Times&quot;))
 sb_data &lt;- readRDS(&quot;data/preprocessed/wordsum/sb_data.rds&quot;)
 census_sb &lt;- readRDS(&quot;data/preprocessed/us_census/census_sb.rds&quot;)
 
-# MRP/RPP function
+
+# RPP/RPP function
 source(&quot;age_norm_comparisons.R&quot;)</code></pre>
 <div id="data-preprocessing" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Data preprocessing</h1>
@@ -681,6 +702,583 @@ census_sb &lt;- census_sb %&gt;%
   ungroup()
 
 saveRDS(census_sb, &quot;data/preprocessed/us_census/census_sb.rds&quot;)</code></pre>
+<pre class="r"><code>census_sb %&gt;% head(14) %&gt;% kable(digits = 2) %&gt;% kable_styling(full_width = FALSE)</code></pre>
+<table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;">
+age
+</th>
+<th style="text-align:left;">
+female
+</th>
+<th style="text-align:left;">
+educ
+</th>
+<th style="text-align:left;">
+income_brackets
+</th>
+<th style="text-align:left;">
+race
+</th>
+<th style="text-align:left;">
+hispan
+</th>
+<th style="text-align:left;">
+region_residence
+</th>
+<th style="text-align:left;">
+region_birth
+</th>
+<th style="text-align:left;">
+degfield_branch
+</th>
+<th style="text-align:left;">
+marst
+</th>
+<th style="text-align:left;">
+occ_category
+</th>
+<th style="text-align:right;">
+census_n
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+abroad
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+n/a: unemployed
+</td>
+<td style="text-align:right;">
+321
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+abroad
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+sales and office occupations
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+management, business, science, and arts occupations
+</td>
+<td style="text-align:right;">
+122
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+n/a: unemployed
+</td>
+<td style="text-align:right;">
+2776
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+production, transportation, and material moving occupations
+</td>
+<td style="text-align:right;">
+305
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+sales and office occupations
+</td>
+<td style="text-align:right;">
+400
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+service occupations
+</td>
+<td style="text-align:right;">
+567
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+middle atlantic division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+n/a: unemployed
+</td>
+<td style="text-align:right;">
+31
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+new england division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+sales and office occupations
+</td>
+<td style="text-align:right;">
+35
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+pacific division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+service occupations
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+south atlantic division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+n/a: unemployed
+</td>
+<td style="text-align:right;">
+123
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+south atlantic division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+sales and office occupations
+</td>
+<td style="text-align:right;">
+67
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+west north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+production, transportation, and material moving occupations
+</td>
+<td style="text-align:right;">
+21
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+21
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+1 year of college
+</td>
+<td style="text-align:left;">
+&lt; $1,000
+</td>
+<td style="text-align:left;">
+black/african american
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+east north central division
+</td>
+<td style="text-align:left;">
+west north central division
+</td>
+<td style="text-align:left;">
+n/a
+</td>
+<td style="text-align:left;">
+never married/single
+</td>
+<td style="text-align:left;">
+sales and office occupations
+</td>
+<td style="text-align:right;">
+22
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="check-that-the-two-sources-have-the-same-variable-categories"
 class="section level2" number="1.3">
@@ -707,7 +1305,7 @@ anti_join(cat_sizes_census, cat_sizes_sb, by = &quot;Category&quot;)</code></pre
 <div id="distributional-disparities" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Distributional
 disparities</h1>
-<p>Before applying MRP to correct estimates (be it for norming or other
+<p>Before applying RPP to correct estimates (be it for norming or other
 purposes), it’s worthwhile to check if there are any differences between
 the sample and the population (on which we have data from the census)
 with respect to the variables we wish to use for the correction.</p>
@@ -758,10 +1356,9 @@ disparities_plot %&gt;%
 <pre><code>## Warning: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
 ## ℹ Please use the `linewidth` argument instead.
 ## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-4-1.svg" width="960" /></p>
-<pre class="r"><code># ggsave(&quot;p.png&quot;, height = 2, width = 10)</code></pre>
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-5-1.svg" width="960" /></p>
+<pre class="r"><code># ggsave(&quot;p.jpeg&quot;, height = 2, width = 10)</code></pre>
 <pre class="r"><code>disparities_plot %&gt;%
   mutate(category = case_when(
     variable == &quot;educ&quot; ~ factor(category, levels = c(&quot;high school or less&quot;, &quot;1 year of college&quot;, &quot;2 years of college&quot;, &quot;4 years of college&quot;, &quot;5+ years of college&quot;)),
@@ -787,20 +1384,17 @@ disparities_plot %&gt;%
         plot.margin = margin(0, 0, 0, .05, &quot;cm&quot;)) + 
   labs(x = &quot;Category&quot;, y = &quot;Percentage&quot;, colour = &quot;&quot;, label = &quot;Percentage&quot;) +
   scale_colour_manual(values = c(&quot;#0072B5FF&quot;, &quot;#BC3C29FF&quot;), labels = function(x) str_to_title(x))</code></pre>
-<pre><code>## Warning: A numeric `legend.position` argument in `theme()` was deprecated in ggplot2
-## 3.5.0.
+<pre><code>## Warning: A numeric `legend.position` argument in `theme()` was deprecated in ggplot2 3.5.0.
 ## ℹ Please use the `legend.position.inside` argument of `theme()` instead.
 ## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-5-1.svg" width="864" /></p>
-<pre class="r"><code># ggsave(&quot;p.png&quot;, height = 3, width = 9)</code></pre>
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-6-1.svg" width="864" /></p>
+<pre class="r"><code># ggsave(&quot;p.jpeg&quot;, height = 3, width = 9)</code></pre>
 </div>
 <div id="regularised-prediction-model" class="section level1"
 number="3">
 <h1><span class="header-section-number">3</span> Regularised prediction
 model</h1>
-<p>This is the MR part of MRP.</p>
 <div id="model-comparison" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Model comparison</h2>
 <p>Terms of this form <code>(1 | variable)</code> represent random
@@ -866,8 +1460,7 @@ interactions</h3>
   add_criterion(&quot;loo&quot;)
 
 brm_1</code></pre>
-<pre><code>## Warning: There were 76 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 76 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
 ##   Links: mu = identity; sigma = log 
@@ -878,20 +1471,13 @@ brm_1</code></pre>
 ##          total post-warmup draws = 4000
 ## 
 ## Smoothing Spline Hyperparameters:
-##                                 Estimate Est.Error l-95% CI u-95% CI Rhat
-## sds(sageeduc1yearofcollege_1)       1.73      1.63     0.06     6.02 1.00
-## sds(sageeduc2yearsofcollege_1)      1.61      1.40     0.06     5.39 1.00
-## sds(sageeduc4yearsofcollege_1)      1.62      1.65     0.05     6.15 1.00
-## sds(sageeduc5Pyearsofcollege_1)     1.86      1.29     0.11     5.06 1.00
-## sds(sageeduchighschoolorless_1)     1.29      1.16     0.06     4.19 1.00
-## sds(sigma_sage_1)                   1.14      0.88     0.07     3.30 1.00
-##                                 Bulk_ESS Tail_ESS
-## sds(sageeduc1yearofcollege_1)       2623     2568
-## sds(sageeduc2yearsofcollege_1)      2025     2283
-## sds(sageeduc4yearsofcollege_1)      1583     2159
-## sds(sageeduc5Pyearsofcollege_1)     1896     1219
-## sds(sageeduchighschoolorless_1)     2372     2386
-## sds(sigma_sage_1)                   1392     1883
+##                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sds(sageeduc1yearofcollege_1)       1.73      1.63     0.06     6.02 1.00     2623     2568
+## sds(sageeduc2yearsofcollege_1)      1.61      1.40     0.06     5.39 1.00     2025     2283
+## sds(sageeduc4yearsofcollege_1)      1.62      1.65     0.05     6.15 1.00     1583     2159
+## sds(sageeduc5Pyearsofcollege_1)     1.86      1.29     0.11     5.06 1.00     1896     1219
+## sds(sageeduchighschoolorless_1)     1.29      1.16     0.06     4.19 1.00     2372     2386
+## sds(sigma_sage_1)                   1.14      0.88     0.07     3.30 1.00     1392     1883
 ## 
 ## Multilevel Hyperparameters:
 ## ~degfield_branch (Number of levels: 5) 
@@ -1115,38 +1701,25 @@ brm_1</code></pre>
 ## sd(Intercept)     0.22      0.15     0.01     0.55 1.00      936     1752
 ## 
 ## Regression Coefficients:
-##                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
-## Intercept                       7.24      1.34     4.57     9.96 1.00     1996
-## sigma_Intercept                 0.35      0.51    -0.68     1.41 1.00     1567
-## femaleTRUE                      0.06      1.34    -3.03     2.56 1.00     1818
-## hispanTRUE                     -0.10      1.45    -3.18     2.77 1.00     1820
-## sigma_hispanTRUE               -0.09      0.17    -0.44     0.24 1.00     2803
-## sigma_femaleTRUE               -0.21      0.11    -0.43     0.00 1.00     2035
-## sage:educ1yearofcollege_1       3.09      5.89    -9.10    15.33 1.00     2390
-## sage:educ2yearsofcollege_1      0.26      4.83   -10.49     9.65 1.00     2201
-## sage:educ4yearsofcollege_1      2.35      5.25    -9.67    11.55 1.01     1468
-## sage:educ5Pyearsofcollege_1     2.74      4.68    -7.73    12.21 1.00     2654
-## sage:educhighschoolorless_1    -0.18      3.90    -9.18     6.73 1.00     2214
-## sigma_sage_1                    0.53      2.62    -4.32     6.49 1.00     1967
-##                             Tail_ESS
-## Intercept                       1393
-## sigma_Intercept                 1254
-## femaleTRUE                      1180
-## hispanTRUE                      1308
-## sigma_hispanTRUE                2277
-## sigma_femaleTRUE                2636
-## sage:educ1yearofcollege_1       2177
-## sage:educ2yearsofcollege_1      1749
-## sage:educ4yearsofcollege_1      1239
-## sage:educ5Pyearsofcollege_1     2229
-## sage:educhighschoolorless_1     1854
-## sigma_sage_1                    2108
+##                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept                       7.24      1.34     4.57     9.96 1.00     1996     1393
+## sigma_Intercept                 0.35      0.51    -0.68     1.41 1.00     1567     1254
+## femaleTRUE                      0.06      1.34    -3.03     2.56 1.00     1818     1180
+## hispanTRUE                     -0.10      1.45    -3.18     2.77 1.00     1820     1308
+## sigma_hispanTRUE               -0.09      0.17    -0.44     0.24 1.00     2803     2277
+## sigma_femaleTRUE               -0.21      0.11    -0.43     0.00 1.00     2035     2636
+## sage:educ1yearofcollege_1       3.09      5.89    -9.10    15.33 1.00     2390     2177
+## sage:educ2yearsofcollege_1      0.26      4.83   -10.49     9.65 1.00     2201     1749
+## sage:educ4yearsofcollege_1      2.35      5.25    -9.67    11.55 1.01     1468     1239
+## sage:educ5Pyearsofcollege_1     2.74      4.68    -7.73    12.21 1.00     2654     2229
+## sage:educhighschoolorless_1    -0.18      3.90    -9.18     6.73 1.00     2214     1854
+## sigma_sage_1                    0.53      2.62    -4.32     6.49 1.00     1967     2108
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_1)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-6-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-7-1.svg" width="768" /></p>
 <p>Many large sd estimates for the random intercepts but most CI bounds,
 especially for interactions, either include 0 or approach it, indicating
 that the data are not large enough to estimate interaction effects.</p>
@@ -1154,11 +1727,15 @@ that the data are not large enough to estimate interaction effects.</p>
 <div id="without-interactions" class="section level3" number="3.1.2">
 <h3><span class="header-section-number">3.1.2</span> Without
 interactions</h3>
-<pre class="r"><code>brm_2 &lt;- brm(bf(wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
-                   sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
+<pre class="r"><code>brm_2 &lt;- brm(bf(
+  wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
+  sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
                    ),
-    seed = 14,
-    chains = 4,
+    family = gaussian(), # default
+    seed = 14, # default
+    iter = 2000, # default
+    chains = 4, # default 
+    control = list(adapt_delta = 0.8), # default
     file = &quot;data/brms/wordsum/sb/brm_2&quot;,
     data = sb_data) %&gt;%
   add_criterion(&quot;loo&quot;)
@@ -1167,8 +1744,7 @@ interactions</h3>
 
 
 brm_2</code></pre>
-<pre><code>## Warning: There were 47 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 47 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
 ##   Links: mu = identity; sigma = log 
@@ -1239,7 +1815,7 @@ brm_2</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_2)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-7-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-8-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_1, brm_2)</code></pre>
 <pre><code>##       elpd_diff se_diff
 ## brm_2   0.0       0.0  
@@ -1335,7 +1911,7 @@ brm_2_boosted</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_2_boosted)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-8-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-9-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_2, brm_2_boosted)</code></pre>
 <pre><code>##               elpd_diff se_diff
 ## brm_2          0.0       0.0   
@@ -1357,8 +1933,7 @@ model</h3>
   add_criterion(&quot;loo&quot;)
 
 brm_3</code></pre>
-<pre><code>## Warning: There were 38 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 38 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
 ##   Links: mu = identity; sigma = log 
@@ -1430,10 +2005,9 @@ brm_3</code></pre>
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_3)</code></pre>
 <pre><code>## Warning: Censored responses are not shown in &#39;pp_check&#39;.</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-9-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_1, brm_2, brm_3)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not
-## match)</code></pre>
+<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
 <pre><code>##       elpd_diff se_diff
 ## brm_2   0.0       0.0  
 ## brm_3  -0.3       4.2  
@@ -1454,8 +2028,7 @@ slightly larger sds but they’re also associated with larger errors.</p>
   add_criterion(&quot;loo&quot;)
 
 brm_4</code></pre>
-<pre><code>## Warning: There were 3 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 3 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: cumulative 
 ##   Links: mu = logit; disc = log 
@@ -1535,10 +2108,9 @@ brm_4</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_4)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-11-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_1, brm_2, brm_3, brm_4)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not
-## match)</code></pre>
+<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
 <pre><code>##       elpd_diff se_diff
 ## brm_4   0.0       0.0  
 ## brm_2 -19.0       5.8  
@@ -1547,7 +2119,7 @@ brm_4</code></pre>
 <p>The ordinal model fits the data better and has only 3 divergent
 transitions, probably because it accounts for the discrete and bounded
 nature of the outcome, but we stick with normal because it does not
-matter for the final MRP results (see below).</p>
+matter for the final RPP results (see below).</p>
 </div>
 <div id="negative-binomial-model" class="section level3" number="3.1.5">
 <h3><span class="header-section-number">3.1.5</span> Negative binomial
@@ -1563,9 +2135,8 @@ model</h3>
   add_criterion(&quot;loo&quot;)
 
 brm_5</code></pre>
-<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be
-## careful when analysing the results! We recommend running more iterations and/or
-## setting stronger priors.</code></pre>
+<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be careful when analysing the results! We
+## recommend running more iterations and/or setting stronger priors.</code></pre>
 <pre><code>##  Family: negbinomial 
 ##   Links: mu = log; shape = log 
 ## Formula: wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets) 
@@ -1644,11 +2215,9 @@ brm_5</code></pre>
   add_criterion(&quot;loo&quot;)
 
 brm_5_v2</code></pre>
-<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be
-## careful when analysing the results! We recommend running more iterations and/or
-## setting stronger priors.</code></pre>
-<pre><code>## Warning: There were 110 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be careful when analysing the results! We
+## recommend running more iterations and/or setting stronger priors.</code></pre>
+<pre><code>## Warning: There were 110 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: negbinomial 
 ##   Links: mu = log; shape = identity 
@@ -1702,10 +2271,8 @@ brm_5_v2</code></pre>
 ## sage_1        -0.27      0.44    -0.81     0.41  Inf        4       NA
 ## 
 ## Further Distributional Parameters:
-##               Estimate        Est.Error        l-95% CI         u-95% CI Rhat
-## shape 2927981250000.00 3338800168506.79 195235000000.00 8643200000000.00  Inf
-##       Bulk_ESS Tail_ESS
-## shape        4       NA
+##               Estimate        Est.Error        l-95% CI         u-95% CI Rhat Bulk_ESS Tail_ESS
+## shape 2927981250000.00 3338800168506.79 195235000000.00 8643200000000.00  Inf        4       NA
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -1723,9 +2290,8 @@ brm_5_v2</code></pre>
 
 
 brm_5_more_iters</code></pre>
-<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be
-## careful when analysing the results! We recommend running more iterations and/or
-## setting stronger priors.</code></pre>
+<pre><code>## Warning: Parts of the model have not converged (some Rhats are &gt; 1.05). Be careful when analysing the results! We
+## recommend running more iterations and/or setting stronger priors.</code></pre>
 <pre><code>##  Family: negbinomial 
 ##   Links: mu = log; shape = log 
 ## Formula: wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets) 
@@ -1808,8 +2374,7 @@ brm_5_more_iters</code></pre>
   add_criterion(&quot;loo&quot;)
 
 brm_6</code></pre>
-<pre><code>## Warning: There were 77 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 77 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: poisson 
 ##   Links: mu = log 
@@ -1866,23 +2431,216 @@ brm_6</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>loo_compare(brm_2, brm_4, brm_6)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not
-## match)</code></pre>
+<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
 <pre><code>##       elpd_diff se_diff
 ## brm_4    0.0       0.0 
 ## brm_2  -19.0       5.8 
 ## brm_6 -124.8      10.9</code></pre>
 <p>Bad fit compared to normal and ordinal models.</p>
 </div>
+<div id="binomial-model" class="section level3" number="3.1.7">
+<h3><span class="header-section-number">3.1.7</span> Binomial model</h3>
+<pre class="r"><code>brm_7 &lt;- brm(bf(wordsum | trials(10) ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)),
+    family = binomial(),  
+    seed = 14,
+    chains = 4,
+    iter = 2000,
+    file = &quot;data/brms/wordsum/sb/brm_7&quot;,
+    data = sb_data) %&gt;%
+  add_criterion(&quot;loo&quot;)
+
+pp_check(brm_7)</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-16-1.svg" width="768" /></p>
+<pre class="r"><code>brm_7</code></pre>
+<pre><code>## Warning: There were 41 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
+<pre><code>##  Family: binomial 
+##   Links: mu = logit 
+## Formula: wordsum | trials(10) ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets) 
+##    Data: sb_data (Number of observations: 478) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Smoothing Spline Hyperparameters:
+##             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sds(sage_1)     0.95      0.81     0.05     3.14 1.00     1122     2289
+## 
+## Multilevel Hyperparameters:
+## ~degfield_branch (Number of levels: 5) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.31      0.22     0.08     0.85 1.00     1409     1929
+## 
+## ~educ (Number of levels: 5) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.29      0.21     0.06     0.78 1.00     1189     1572
+## 
+## ~income_brackets (Number of levels: 11) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.13      0.07     0.02     0.29 1.00     1145     1243
+## 
+## ~marst (Number of levels: 3) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.51      0.50     0.09     2.01 1.00     1138     1214
+## 
+## ~occ_category (Number of levels: 6) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.15      0.14     0.01     0.51 1.00     1182     1294
+## 
+## ~race (Number of levels: 4) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.20      0.22     0.02     0.83 1.00     1057     1493
+## 
+## ~region_birth (Number of levels: 10) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.07      0.06     0.00     0.21 1.00     1690     2341
+## 
+## ~region_residence (Number of levels: 9) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.11      0.07     0.01     0.28 1.01     1261     1762
+## 
+## Regression Coefficients:
+##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept      1.04      0.46     0.08     1.96 1.00     1511     1599
+## hispanTRUE    -0.12      0.10    -0.32     0.07 1.00     5931     3012
+## femaleTRUE    -0.04      0.07    -0.19     0.10 1.00     7558     3102
+## sage_1        -0.46      2.15    -5.85     2.67 1.00     1539     1368
+## 
+## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>loo_compare(brm_2, brm_4, brm_7)</code></pre>
+<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
+<pre><code>##       elpd_diff se_diff
+## brm_4   0.0       0.0  
+## brm_2 -19.0       5.8  
+## brm_7 -19.9      10.2</code></pre>
+<p>Binomial doesn’t seem to be too bad a fit.</p>
 </div>
-<div id="some-model-exploration" class="section level2" number="3.2">
+<div id="beta-model" class="section level3" number="3.1.8">
+<h3><span class="header-section-number">3.1.8</span> Beta model</h3>
+<pre class="r"><code>library(tidyverse)
+library(brms)
+options(mc.cores = 20,
+        threads = threading(5, static = TRUE),
+        brms.backend = &quot;cmdstanr&quot;)
+sb_data &lt;- readRDS(&quot;data/preprocessed/wordsum/sb_data.rds&quot;) 
+rstan::rstan_options(auto_write = TRUE)
+
+sb_data &lt;- sb_data %&gt;% mutate(wordsum_prop = wordsum / 11) %&gt;% filter(wordsum_prop != 0) # exclude one person with a score of 0
+
+brm_8 &lt;- brm(bf(wordsum_prop ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
+                phi ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)),
+    family = Beta(),  
+    seed = 14,
+    chains = 4,
+    iter = 2000,
+    file = &quot;data/brms/wordsum/sb/brm_8&quot;,
+    data = sb_data) %&gt;%
+  add_criterion(&quot;loo&quot;)
+
+brm_8</code></pre>
+<pre><code>## Warning: There were 44 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
+<pre><code>##  Family: beta 
+##   Links: mu = logit; phi = log 
+## Formula: wordsum_prop ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets) 
+##          phi ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets)
+##    Data: sb_data (Number of observations: 477) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Smoothing Spline Hyperparameters:
+##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sds(sage_1)         0.57      0.55     0.02     2.01 1.00     1387     2166
+## sds(phi_sage_1)     0.92      0.83     0.05     3.19 1.00     1788     2577
+## 
+## Multilevel Hyperparameters:
+## ~degfield_branch (Number of levels: 5) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.25      0.18     0.05     0.73 1.00     1224      818
+## sd(phi_Intercept)     0.17      0.18     0.01     0.61 1.00     2017     2063
+## 
+## ~educ (Number of levels: 5) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.23      0.16     0.06     0.64 1.00     1523     2130
+## sd(phi_Intercept)     0.20      0.21     0.01     0.71 1.00     1443     2017
+## 
+## ~income_brackets (Number of levels: 11) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.08      0.05     0.01     0.21 1.00     1053     1709
+## sd(phi_Intercept)     0.12      0.09     0.01     0.34 1.00     1867     2221
+## 
+## ~marst (Number of levels: 3) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.36      0.38     0.05     1.48 1.00     1679     2437
+## sd(phi_Intercept)     0.81      0.75     0.16     2.93 1.00     1883     2180
+## 
+## ~occ_category (Number of levels: 6) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.19      0.15     0.01     0.56 1.00     1163     1323
+## sd(phi_Intercept)     0.23      0.22     0.01     0.82 1.00     1572     2318
+## 
+## ~race (Number of levels: 4) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.13      0.15     0.00     0.52 1.00     1454     1838
+## sd(phi_Intercept)     0.24      0.29     0.01     1.01 1.00     1727     2568
+## 
+## ~region_birth (Number of levels: 10) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.05      0.04     0.00     0.15 1.00     1846     2331
+## sd(phi_Intercept)     0.17      0.12     0.01     0.45 1.00     1462     1987
+## 
+## ~region_residence (Number of levels: 9) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.06      0.05     0.00     0.17 1.00     1610     2264
+## sd(phi_Intercept)     0.26      0.15     0.03     0.62 1.00     1209     1450
+## 
+## Regression Coefficients:
+##                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept          0.73      0.35    -0.03     1.40 1.00     1779     1771
+## phi_Intercept      2.13      0.65     0.61     3.32 1.00     1850     1830
+## hispanTRUE        -0.08      0.08    -0.24     0.09 1.00     5119     2858
+## femaleTRUE        -0.06      0.06    -0.18     0.07 1.00     5449     3078
+## phi_hispanTRUE     0.14      0.20    -0.26     0.51 1.00     5334     2730
+## phi_femaleTRUE     0.20      0.15    -0.10     0.49 1.00     4912     2298
+## sage_1             0.09      1.49    -3.74     2.30 1.00     1795     1432
+## phi_sage_1         0.63      2.45    -4.77     6.14 1.00     2278     1869
+## 
+## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>pp_check(brm_8)</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
+<p>Can’t loo_compare because we’re missing one data point, but pp_check
+doesn’t look too bad.</p>
+</div>
+<div id="beta-binomial-model" class="section level3" number="3.1.9">
+<h3><span class="header-section-number">3.1.9</span> Beta-binomial
+model</h3>
+<pre class="r"><code># brm_9 &lt;- brm(bf(wordsum | trials(10) ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)),
+#                 # phi ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets))
+#     family = beta_binomial(),
+#     seed = 14,
+#     chains = 4,
+#     iter = 2000,
+#     file = &quot;data/brms/wordsum/sb/brm_9&quot;,
+#     data = sb_data) %&gt;%
+#   add_criterion(&quot;loo&quot;)
+# 
+# pp_check(brm_9)
+# brm_9
+# loo_compare(brm_2, brm_4, brm_9)</code></pre>
+<p>Took too long and kept crashing.</p>
+</div>
+</div>
+<div id="some-model-exploration-of-the-selected-model"
+class="section level2" number="3.2">
 <h2><span class="header-section-number">3.2</span> Some model
-exploration</h2>
+exploration of the selected model</h2>
 <div id="summary" class="section level3" number="3.2.1">
 <h3><span class="header-section-number">3.2.1</span> Summary</h3>
 <pre class="r"><code>brm_2</code></pre>
-<pre><code>## Warning: There were 47 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 47 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
 ##   Links: mu = identity; sigma = log 
@@ -1966,21 +2724,29 @@ on Wordsum than females.</p>
 <h3><span class="header-section-number">3.2.2</span> Check model
 fit</h3>
 <pre class="r"><code>pp_check(brm_2) </code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-16-1.svg" width="768" /></p>
-<pre class="r"><code>y &lt;- sb_data$wordsum
-yrep &lt;- posterior_predict(brm_2, newdata = sb_data)
-ppc_pit_ecdf(y, yrep, prob = 0.99, plot_diff = FALSE)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
-<pre class="r"><code>ppc_pit_ecdf(y, yrep, prob = 0.99, plot_diff = TRUE)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-17-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-20-1.svg" width="768" /></p>
+<div id="within-age-groups" class="section level4" number="3.2.2.1">
+<h4><span class="header-section-number">3.2.2.1</span> Within age
+groups</h4>
+<pre class="r"><code>t &lt;- sb_data %&gt;% mutate(age_group = if_else(age &gt; 40, &quot;&gt; 40&quot;, &quot;=&lt; 40&quot;))
+
+
+yrep &lt;- posterior_predict(brm_2, newdata = t, ndraws = 1000)
+
+
+p &lt;- ppc_pit_ecdf_grouped(t$wordsum, yrep, group = as.factor(t$age_group), prob = 0.99, plot_diff = F)
+
+p</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-21-1.svg" width="768" /></p>
 <p>Some deviations at the right tail but not too bad.</p>
+</div>
 </div>
 <div id="r2" class="section level3" number="3.2.3">
 <h3><span class="header-section-number">3.2.3</span> R2</h3>
 <pre class="r"><code>loo_R2(brm_2)</code></pre>
 <pre><code>## Warning: Some Pareto k diagnostic values are too high. See help(&#39;pareto-k-diagnostic&#39;) for details.</code></pre>
-<pre><code>##    Estimate Est.Error     Q2.5  Q97.5
-## R2   0.0696   0.02918 0.009481 0.1256</code></pre>
+<pre><code>##    Estimate Est.Error    Q2.5  Q97.5
+## R2  0.06909   0.02901 0.01199 0.1247</code></pre>
 <p>The included predictors do not explain a lot of variance (~7%), so
 not a lot of adjustment can happen even if there are differences between
 the sample and the population.</p>
@@ -1989,7 +2755,7 @@ the sample and the population.</p>
 </div>
 <div id="poststratifcation" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Poststratifcation</h1>
-<p>This is the P part of MRP.</p>
+<p>This is the P part of RPP.</p>
 <div
 id="simulate-a-sample-with-the-same-joint-distribution-as-the-census"
 class="section level2" number="4.1">
@@ -2034,20 +2800,22 @@ respectively), to those scale limits.</p>
 <div id="age-group-means-and-sds" class="section level2" number="5.1">
 <h2><span class="header-section-number">5.1</span> Age group means and
 SDs</h2>
-<p>Here we aggregate the intelligence scores by age and compute the MRP
+<p>Here we aggregate the intelligence scores by age and compute the RPP
 corrected means and SDs (+ their SEs) for each age group:</p>
 <pre class="r"><code>sim_pop_sample_with_draws &lt;- data.table::fread(&quot;data/results/wordsum/sim_pop_sample_with_draws.csv.gz&quot;)
 
-means_sds_and_ses_MRP &lt;- sim_pop_sample_with_draws %&gt;% 
+means_sds_and_ses_RPP &lt;- sim_pop_sample_with_draws %&gt;% 
   group_by(age, .draw) %&gt;% 
   summarise(mean_prediction = mean(.prediction), 
             sd_prediction = sd(.prediction)) %&gt;%
   group_by(age) %&gt;% 
-  summarise(MRP_mean = mean(mean_prediction), 
-            MRP_se_of_mean = sd(mean_prediction), 
-            MRP_sd = sqrt(mean(sd_prediction^2)), 
-            MRP_se_of_sd = sd(sd_prediction))
-means_sds_and_ses_MRP %&gt;% head(14) %&gt;% kable(digits = 2) %&gt;% kable_styling(full_width = FALSE)</code></pre>
+  summarise(RPP_mean = mean(mean_prediction), 
+            RPP_se_of_mean = sd(mean_prediction), 
+            RPP_sd = sqrt(mean(sd_prediction^2)), 
+            RPP_se_of_sd = sd(sd_prediction))
+
+
+means_sds_and_ses_RPP %&gt;% head(14) %&gt;% kable(digits = 2) %&gt;% kable_styling(full_width = FALSE)</code></pre>
 <table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -2055,16 +2823,16 @@ means_sds_and_ses_MRP %&gt;% head(14) %&gt;% kable(digits = 2) %&gt;% kable_styl
 age
 </th>
 <th style="text-align:right;">
-MRP_mean
+RPP_mean
 </th>
 <th style="text-align:right;">
-MRP_se_of_mean
+RPP_se_of_mean
 </th>
 <th style="text-align:right;">
-MRP_sd
+RPP_sd
 </th>
 <th style="text-align:right;">
-MRP_se_of_sd
+RPP_se_of_sd
 </th>
 </tr>
 </thead>
@@ -2312,9 +3080,9 @@ MRP_se_of_sd
 <p>This code chunk first aggregates by age and posterior draw (1000) to
 compute the mean and SD of Wordsum estimates across the 100000 simulated
 participants. Then it computes the means and SDs across the draws (which
-form the MRP means and SDs for each age group) and the SDs of the means
+form the RPP means and SDs for each age group) and the SDs of the means
 and SDs calculated in the previous step, hence yielding the Bayesian SEs
-of the MRP means and SDs, respectively.</p>
+of the RPP means and SDs, respectively.</p>
 </div>
 <div id="age-norm-tables" class="section level2" number="5.2">
 <h2><span class="header-section-number">5.2</span> Age norm tables</h2>
@@ -2335,13 +3103,13 @@ t &lt;- function(raw_score, mean, sd) {
 }
 
 iqs_linear &lt;- sim_pop_sample_with_draws %&gt;% 
-  left_join(select(means_sds_and_ses_MRP, c(MRP_mean, MRP_sd, age)), by = &quot;age&quot;) %&gt;%
+  left_join(select(means_sds_and_ses_RPP, c(RPP_mean, RPP_sd, age)), by = &quot;age&quot;) %&gt;%
   group_by(age) %&gt;% 
   mutate(wordsum_score = .prediction,
-         MRP_IQ = iq(wordsum_score, MRP_mean, MRP_sd),
-         MRP_T = t(wordsum_score, MRP_mean, MRP_sd)) %&gt;% 
+         RPP_IQ = iq(wordsum_score, RPP_mean, RPP_sd),
+         RPP_T = t(wordsum_score, RPP_mean, RPP_sd)) %&gt;% 
   group_by(age, wordsum_score) %&gt;% 
-  summarise(MRP_IQ = round(mean(MRP_IQ)))
+  summarise(RPP_IQ = round(mean(RPP_IQ)))
 
 iqs_linear %&gt;% head(14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
 <table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
@@ -2354,7 +3122,7 @@ age
 wordsum_score
 </th>
 <th style="text-align:right;">
-MRP_IQ
+RPP_IQ
 </th>
 </tr>
 </thead>
@@ -2530,8 +3298,8 @@ transformed / normal rank transformed) IQs</h3>
   mutate(iq_score = normal_transformed_score * 15 + 100,
          T_score = normal_transformed_score * 10 + 50) %&gt;%
   group_by(age, wordsum_score) %&gt;%
-  summarise(MRP_IQ = round(mean(iq_score)),
-            MRP_T = round(mean(T_score)))
+  summarise(RPP_IQ = round(mean(iq_score)),
+            RPP_T = round(mean(T_score)))
 
 iqs_normalised %&gt;% head(14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
 <table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
@@ -2544,10 +3312,10 @@ age
 wordsum_score
 </th>
 <th style="text-align:right;">
-MRP_IQ
+RPP_IQ
 </th>
 <th style="text-align:right;">
-MRP_T
+RPP_T
 </th>
 </tr>
 </thead>
@@ -2762,7 +3530,7 @@ function values to standard Gaussian quantiles and then to IQs/Ts.</p>
   mutate(n = n(),
          percentile = (rank(wordsum_score) - 0.5) / n) %&gt;%
   group_by(age, wordsum_score) %&gt;%
-  summarise(MRP_percentile = mean(percentile))
+  summarise(RPP_percentile = mean(percentile))
 
 percentiles %&gt;% head(14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
 <table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
@@ -2775,7 +3543,7 @@ age
 wordsum_score
 </th>
 <th style="text-align:right;">
-MRP_percentile
+RPP_percentile
 </th>
 </tr>
 </thead>
@@ -2945,8 +3713,8 @@ number="6">
 comparisons</h1>
 <p>Here we use the home-made <code>age_norm_comparisons</code> function
 to do some robustness checks and other analyses.</p>
-<div id="mrp-vs-raw-vs-mr" class="section level2" number="6.1">
-<h2><span class="header-section-number">6.1</span> MRP vs Raw vs MR</h2>
+<div id="rpp-vs-raw-vs-rp" class="section level2" number="6.1">
+<h2><span class="header-section-number">6.1</span> RPP vs Raw vs RP</h2>
 <pre class="r"><code>prediction_transform = list(
   function(x) round(pmax(0, pmin(10, x))) # for handling normal predictons (that go out of wordsum bounds)
 )
@@ -2958,7 +3726,8 @@ sb_raw_vs_rpp_rp &lt;- age_norm_comparisons(
   RP = c(&quot;census&quot;, &quot;norming_sample&quot;),
   ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
   sim_size = 100000,
-  labels = c(labels = c(&quot;Raw&quot;, &quot;MRP&quot;, &quot;MR&quot;)),
+  prediction_transform = prediction_transform,
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP&quot;, &quot;RP&quot;)),
    palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -2969,40 +3738,42 @@ sb_raw_vs_rpp_rp &lt;- age_norm_comparisons(
   # &quot;#FFDC91FF&quot;,
   # &quot;#EE4C97FF&quot;
 ),
-  output_file = &quot;data/results/wordsum/sb_raw_vs_mrp_mr.rds&quot;
+  output_file = &quot;data/results/wordsum/sb_raw_vs_rpp_rp.rds&quot;
   )
 
 
 sb_raw_vs_rpp_rp[-1]</code></pre>
 <pre><code>## $overall_estimates
-## # A tibble: 2 × 5
+## # A tibble: 3 × 5
 ##    Mean SE_of_Mean    SD SE_of_SD Model    
 ##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    
-## 1  7.04     0.118   1.81   0.0878 RPP_brm_2
-## 2  7.31     0.0760  1.78   0.0634 RP_brm_2 
+## 1  7.30    NA       1.71  NA      Raw      
+## 2  7.01     0.113   1.75   0.0726 RPP_brm_2
+## 3  7.25     0.0733  1.70   0.0514 RP_brm_2 
 ## 
 ## $means_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-25-1.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_pointrange()`).</code></pre>
-<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-25-2.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-25-3.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-4.svg" width="768" /></p>
 <p>As can be expected given the small associations between the
 adjustment variables and the outcome, most of the adjustment to the age
 group means were the result of the regularisation rather than the
 poststratification. Nevertheless, poststratification led to a downward
 adjustment of ~.3 points, indicating that Wordsum scores in this
-Prolific sample are higher than in the broader US population.</p>
+Prolific sample are higher than in the broader US population. The
+percentile plot also indicates that the poststratification introduced
+additional consistency in the estimates across age groups.</p>
 <div id="differences-in-iqs" class="section level3" number="6.1.1">
 <h3><span class="header-section-number">6.1.1</span> Differences in
 IQs</h3>
@@ -3032,8 +3803,8 @@ RP_iqs_normalised &lt;- sim_norming_sample_with_draws  %&gt;%
   mutate(iq_score = normal_transformed_score * 15 + 100,
          T_score = normal_transformed_score * 10 + 50) %&gt;%
   group_by(age, wordsum_score = .prediction) %&gt;%
-  summarise(MR_IQ = round(mean(iq_score)),
-            MR_T = round(mean(T_score)))
+  summarise(RP_IQ = round(mean(iq_score)),
+            RP_T = round(mean(T_score)))
 
 
 
@@ -3053,22 +3824,22 @@ iqs &lt;- iqs_normalised %&gt;%
   left_join(raw_iqs_normalised, by = c(&quot;age&quot;, &quot;wordsum_score&quot;)) 
 
 
-mean(iqs$MRP_IQ-iqs$MR_IQ)</code></pre>
-<pre><code>## [1] 1.969</code></pre>
-<pre class="r"><code>mean(abs(iqs$MRP_IQ-iqs$MR_IQ))</code></pre>
-<pre><code>## [1] 2.364</code></pre>
-<pre class="r"><code>max(iqs$MRP_IQ-iqs$MR_IQ)</code></pre>
-<pre><code>## [1] 12</code></pre>
-<pre class="r"><code>mean(iqs$MRP_IQ-iqs$Raw_IQ, na.rm = T)</code></pre>
-<pre><code>## [1] 1.606</code></pre>
-<pre class="r"><code>mean(abs(iqs$MRP_IQ-iqs$Raw_IQ), na.rm = T)</code></pre>
-<pre><code>## [1] 4.901</code></pre>
-<pre class="r"><code>max(iqs$MRP_IQ-iqs$Raw_IQ, na.rm = T)</code></pre>
+mean(iqs$RPP_IQ-iqs$RP_IQ)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>mean(abs(iqs$RPP_IQ-iqs$RP_IQ))</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>max(iqs$RPP_IQ-iqs$RP_IQ)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>mean(iqs$RPP_IQ-iqs$Raw_IQ, na.rm = T)</code></pre>
+<pre><code>## [1] 1.736</code></pre>
+<pre class="r"><code>mean(abs(iqs$RPP_IQ-iqs$Raw_IQ), na.rm = T)</code></pre>
+<pre><code>## [1] 4.877</code></pre>
+<pre class="r"><code>max(iqs$RPP_IQ-iqs$Raw_IQ, na.rm = T)</code></pre>
 <pre><code>## [1] 20</code></pre>
-<p>MRP IQs were on average 1.6 IQ points larger than raw ones (absolute
+<p>RPP IQs were on average 1.6 IQ points larger than raw ones (absolute
 difference 4.9, max difference 20). Again illustrating that
 poststratification made an incremental difference beyond the
-regularisation, MRP IQs were almost 2 points larger than MR ones (max =
+regularisation, RPP IQs were almost 2 points larger than RP ones (max =
 12).</p>
 </div>
 </div>
@@ -3088,7 +3859,7 @@ sb_ord_nor &lt;- age_norm_comparisons(
   ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
   prediction_transform  = prediction_transform,
   sim_size = 100000,
-  labels = c(labels = c(&quot;Raw&quot;, &quot;MRP, normal&quot;, &quot;MRP, ordinal&quot;)),
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, ordinal&quot;)),
    palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -3105,38 +3876,149 @@ sb_ord_nor &lt;- age_norm_comparisons(
 
 sb_ord_nor[-1]</code></pre>
 <pre><code>## $overall_estimates
-## # A tibble: 2 × 5
+## # A tibble: 3 × 5
 ##    Mean SE_of_Mean    SD SE_of_SD Model    
 ##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    
-## 1  7.01      0.112  1.75   0.0721 RPP_brm_2
-## 2  6.97      0.126  1.83   0.0959 RPP_brm_4
+## 1  7.30     NA      1.71  NA      Raw      
+## 2  7.01      0.113  1.75   0.0721 RPP_brm_2
+## 3  6.98      0.126  1.83   0.0960 RPP_brm_4
 ## 
 ## $means_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-27-1.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_pointrange()`).</code></pre>
-<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-27-2.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-27-3.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-4.svg" width="768" /></p>
+</div>
+<div id="normal-vs.-binomial" class="section level2" number="6.3">
+<h2><span class="header-section-number">6.3</span> Normal
+vs. binomial</h2>
+<pre class="r"><code>prediction_transform = list(
+  function(x) round(pmax(0, pmin(10, x))), # for handling normal predictons
+  function(x) x  # leave binomial predicitons as is
+)
+
+
+sb_nor_bin &lt;- age_norm_comparisons(
+  brm_2, brm_7, 
+  ps_table = census_sb, 
+  # RP = c(&quot;census&quot;, &quot;norming_sample&quot;),
+  ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
+  prediction_transform  = prediction_transform,
+  sim_size = 100000,
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, binomial&quot;)),
+   palette = c(
+  &quot;#BC3C29FF&quot;,
+  &quot;#0072B5FF&quot;,
+  &quot;#20854EFF&quot;
+  # &quot;#7876B1FF&quot;,
+  # &quot;#6F99ADFF&quot;
+  # &quot;#E18727FF&quot;
+  # &quot;#FFDC91FF&quot;,
+  # &quot;#EE4C97FF&quot;
+),
+  output_file = &quot;data/results/wordsum/sb_nor_bin.rds&quot;
+  )
+
+
+sb_nor_bin[-1]</code></pre>
+<pre><code>## $overall_estimates
+## # A tibble: 3 × 5
+##    Mean SE_of_Mean    SD SE_of_SD Model    
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    
+## 1  7.30     NA      1.71  NA      Raw      
+## 2  7.01      0.113  1.75   0.0722 RPP_brm_2
+## 3  7.03      0.107  1.60   0.0446 RPP_brm_7
+## 
+## $means_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-1.svg" width="768" /></p>
+<pre><code>## 
+## $SDs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-2.svg" width="768" /></p>
+<pre><code>## 
+## $SEs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-4.svg" width="768" /></p>
 <p>Barely any difference in means, although ordinal predictions are
 somewhat more dispersed.</p>
 </div>
+<div id="normal-vs.-beta" class="section level2" number="6.4">
+<h2><span class="header-section-number">6.4</span> Normal vs. beta</h2>
+<pre class="r"><code>prediction_transform = list(
+  function(x) round(pmax(0, pmin(10, x))), # for handling normal predictons
+  function(x) round(x*11)  # for handling beta predictions
+)
+
+
+sb_nor_beta &lt;- age_norm_comparisons(
+  brm_2, brm_8, 
+  ps_table = census_sb, 
+  # RP = c(&quot;census&quot;, &quot;norming_sample&quot;),
+  ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
+  prediction_transform  = prediction_transform,
+  sim_size = 100000,
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, beta&quot;)),
+   palette = c(
+  &quot;#BC3C29FF&quot;,
+  &quot;#0072B5FF&quot;,
+  &quot;#20854EFF&quot;
+  # &quot;#7876B1FF&quot;,
+  # &quot;#6F99ADFF&quot;
+  # &quot;#E18727FF&quot;
+  # &quot;#FFDC91FF&quot;,
+  # &quot;#EE4C97FF&quot;
+),
+  output_file = &quot;data/results/wordsum/sb_nor_beta.rds&quot;
+  )
+
+
+sb_nor_beta[-1]</code></pre>
+<pre><code>## $overall_estimates
+## # A tibble: 3 × 5
+##    Mean SE_of_Mean    SD SE_of_SD Model    
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    
+## 1  7.30     NA      1.71  NA      Raw      
+## 2  7.01      0.113  1.75   0.0721 RPP_brm_2
+## 3  7.05      0.119  1.76   0.0798 RPP_brm_8
+## 
+## $means_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-1.svg" width="768" /></p>
+<pre><code>## 
+## $SDs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-2.svg" width="768" /></p>
+<pre><code>## 
+## $SEs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-4.svg" width="768" /></p>
+</div>
 <div id="with-vs.-without-interactions" class="section level2"
-number="6.3">
-<h2><span class="header-section-number">6.3</span> With vs. without
+number="6.5">
+<h2><span class="header-section-number">6.5</span> With vs. without
 interactions</h2>
 <pre class="r"><code>prediction_transform = list(
   function(x) round(pmax(0, pmin(10, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(10, x)))  # for handling ordinal predictions
+  function(x) round(pmax(0, pmin(10, x)))  # for handling normal predictions
 )
 
 
@@ -3147,7 +4029,7 @@ sb_with_vs_without_ints &lt;- age_norm_comparisons(
   ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
   prediction_transform  = prediction_transform,
   sim_size = 100000,
-  labels = c(labels = c(&quot;Raw&quot;, &quot;MRP, without ints&quot;, &quot;MRP, with ints&quot;)),
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, without ints&quot;, &quot;RPP, with ints&quot;)),
    palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -3164,37 +4046,37 @@ sb_with_vs_without_ints &lt;- age_norm_comparisons(
 
 sb_with_vs_without_ints[-1]</code></pre>
 <pre><code>## $overall_estimates
-## # A tibble: 2 × 5
+## # A tibble: 3 × 5
 ##    Mean SE_of_Mean    SD SE_of_SD Model    
 ##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;    
-## 1  7.01      0.113  1.75   0.0722 RPP_brm_2
-## 2  7.01      0.131  1.88   0.0839 RPP_brm_1
+## 1  7.30     NA      1.71  NA      Raw      
+## 2  7.01      0.112  1.75   0.0720 RPP_brm_2
+## 3  7.00      0.131  1.88   0.0835 RPP_brm_1
 ## 
 ## $means_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-28-1.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_pointrange()`).</code></pre>
-<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-28-2.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-28-3.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-4.svg" width="768" /></p>
 <p>Same here.</p>
 </div>
 <div id="effect-of-removing-careless-respondents" class="section level2"
-number="6.4">
-<h2><span class="header-section-number">6.4</span> Effect of removing
+number="6.6">
+<h2><span class="header-section-number">6.6</span> Effect of removing
 careless respondents?</h2>
 <div id="exclude-participants-based-on-various-indicators"
-class="section level3" number="6.4.1">
-<h3><span class="header-section-number">6.4.1</span> Exclude
+class="section level3" number="6.6.1">
+<h3><span class="header-section-number">6.6.1</span> Exclude
 participants based on various indicators</h3>
 <pre class="r"><code>library(careless)
 
@@ -3215,10 +4097,10 @@ sb_data_CR_cleaned &lt;-  sb_data %&gt;%
 <p>Dropped 85 potentially careless respondents.</p>
 </div>
 <div
-id="refit-model-and-compare-mrp-results-to-the-one-based-on-the-entire-data"
-class="section level3" number="6.4.2">
-<h3><span class="header-section-number">6.4.2</span> Refit model and
-compare MRP results to the one based on the entire data</h3>
+id="refit-model-and-compare-rpp-results-to-the-one-based-on-the-entire-data"
+class="section level3" number="6.6.2">
+<h3><span class="header-section-number">6.6.2</span> Refit model and
+compare RPP results to the one based on the entire data</h3>
 <pre class="r"><code>brm_2_non_CR &lt;- brm(bf(wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
                    sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
                    ),
@@ -3229,8 +4111,7 @@ compare MRP results to the one based on the entire data</h3>
   add_criterion(&quot;loo&quot;)
 
 brm_2_non_CR</code></pre>
-<pre><code>## Warning: There were 95 divergent transitions after warmup. Increasing
-## adapt_delta above 0.8 may help. See
+<pre><code>## Warning: There were 95 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
 ##   Links: mu = identity; sigma = log 
@@ -3313,7 +4194,7 @@ sb_vs_non_CR &lt;- age_norm_comparisons(
   ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
   prediction_transform  = prediction_transform,
   sim_size = 100000,
-  labels = c(labels = c(&quot;Raw&quot;, &quot;MRP, full data&quot;, &quot;MRP, CR cleaned data&quot;)),
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, full data&quot;, &quot;RPP, CR cleaned data&quot;)),
    palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -3330,44 +4211,41 @@ sb_vs_non_CR &lt;- age_norm_comparisons(
 
 sb_vs_non_CR[-1]</code></pre>
 <pre><code>## $overall_estimates
-## # A tibble: 2 × 5
+## # A tibble: 3 × 5
 ##    Mean SE_of_Mean    SD SE_of_SD Model           
 ##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;           
-## 1  7.01      0.113  1.75   0.0724 RPP_brm_2       
-## 2  7.06      0.126  1.69   0.0886 RPP_brm_2_non_CR
+## 1  7.30     NA      1.71  NA      Raw             
+## 2  7.00      0.113  1.75   0.0722 RPP_brm_2       
+## 3  7.06      0.125  1.69   0.0882 RPP_brm_2_non_CR
 ## 
 ## $means_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-1.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_pointrange()`).</code></pre>
-<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range
-## (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-2.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range
-## (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-3.svg" width="768" /></p>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-4.svg" width="768" /></p>
 <p>Negligible differences despite dropping 85/478 datapoints.</p>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.4.1 (2024-06-14)
 ## Platform: x86_64-pc-linux-gnu
-## Running under: Rocky Linux 8.10 (Green Obsidian)
+## Running under: Rocky Linux 9.5 (Blue Onyx)
 ## 
 ## Matrix products: default
 ## BLAS/LAPACK: FlexiBLAS OPENBLAS;  LAPACK version 3.11.0
 ## 
 ## locale:
-##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
-##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
-##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
-##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
-##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8    LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## time zone: Europe/Berlin
 ## tzcode source: system (glibc)
@@ -3376,49 +4254,33 @@ sb_vs_non_CR[-1]</code></pre>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] careless_1.2.2         rstan_2.32.6           StanHeaders_2.32.10   
-##  [4] bayesplot_1.11.1       marginaleffects_0.24.0 tidybayes_3.0.7       
-##  [7] brms_2.22.0            Rcpp_1.0.12            kableExtra_1.4.0      
-## [10] ggrepel_0.9.6          data.table_1.16.4      haven_2.5.4           
-## [13] lubridate_1.9.4        forcats_1.0.0          stringr_1.5.1         
-## [16] dplyr_1.1.4            purrr_1.0.2            readr_2.1.5           
-## [19] tidyr_1.3.1            tibble_3.2.1           ggplot2_3.5.1         
-## [22] tidyverse_2.0.0       
+##  [1] careless_1.2.2         rstan_2.32.6           StanHeaders_2.32.10    bayesplot_1.11.1       marginaleffects_0.24.0
+##  [6] tidybayes_3.0.7        brms_2.22.0            Rcpp_1.0.12            kableExtra_1.4.0       ggrepel_0.9.6         
+## [11] data.table_1.16.4      haven_2.5.4            lubridate_1.9.4        forcats_1.0.0          stringr_1.5.1         
+## [16] dplyr_1.1.4            purrr_1.0.2            readr_2.1.5            tidyr_1.3.1            tibble_3.2.1          
+## [21] ggplot2_3.5.1          tidyverse_2.0.0       
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] mnormt_2.1.1         gridExtra_2.3        inline_0.3.20       
-##  [4] sandwich_3.1-1       readxl_1.4.3         rlang_1.1.4         
-##  [7] magrittr_2.0.3       multcomp_1.4-26      matrixStats_1.5.0   
-## [10] compiler_4.4.1       mgcv_1.9-1           loo_2.8.0           
-## [13] reshape2_1.4.4       systemfonts_1.1.0    vctrs_0.6.5         
-## [16] pkgconfig_2.0.3      arrayhelpers_1.1-0   crayon_1.5.3        
-## [19] fastmap_1.2.0        backports_1.5.0      labeling_0.4.3      
-## [22] utf8_1.2.4           cmdstanr_0.8.0       rmarkdown_2.27      
-## [25] tzdb_0.4.0           ps_1.7.6             xfun_0.45           
-## [28] cachem_1.1.0         jsonlite_1.8.8       highr_0.11          
-## [31] psych_2.4.12         parallel_4.4.1       R6_2.5.1            
-## [34] bslib_0.7.0          stringi_1.8.4        jquerylib_0.1.4     
-## [37] cellranger_1.1.0     estimability_1.5.1   knitr_1.47          
-## [40] zoo_1.8-12           R.utils_2.12.3       Matrix_1.7-1        
-## [43] splines_4.4.1        timechange_0.3.0     tidyselect_1.2.1    
-## [46] rstudioapi_0.16.0    abind_1.4-8          yaml_2.3.8          
-## [49] codetools_0.2-20     processx_3.8.4       pkgbuild_1.4.4      
-## [52] plyr_1.8.9           lattice_0.22-6       withr_3.0.0         
-## [55] bridgesampling_1.1-2 posterior_1.6.0      coda_0.19-4.1       
-## [58] evaluate_0.24.0      survival_3.8-3       RcppParallel_5.1.9  
-## [61] ggdist_3.3.2         xml2_1.3.6           pillar_1.9.0        
-## [64] tensorA_0.36.2.1     checkmate_2.3.2      stats4_4.4.1        
-## [67] distributional_0.5.0 generics_0.1.3       hms_1.1.3           
-## [70] rstantools_2.4.0     munsell_0.5.1        scales_1.3.0        
-## [73] xtable_1.8-4         glue_1.7.0           emmeans_1.10.6      
-## [76] tools_4.4.1          mvtnorm_1.3-2        grid_4.4.1          
-## [79] QuickJSR_1.5.1       colorspace_2.1-1     nlme_3.1-166        
-## [82] cli_3.6.3            fansi_1.0.6          svUnit_1.0.6        
-## [85] viridisLite_0.4.2    svglite_2.1.3        Brobdingnag_1.2-9   
-## [88] gtable_0.3.6         R.methodsS3_1.8.2    sass_0.4.9          
-## [91] digest_0.6.36        TH.data_1.1-2        farver_2.1.2        
-## [94] R.oo_1.27.0          htmltools_0.5.8.1    lifecycle_1.0.4     
-## [97] MASS_7.3-64</code></pre>
+##  [1] mnormt_2.1.1         gridExtra_2.3        inline_0.3.20        sandwich_3.1-1       readxl_1.4.3        
+##  [6] rlang_1.1.4          magrittr_2.0.3       multcomp_1.4-26      matrixStats_1.5.0    compiler_4.4.1      
+## [11] mgcv_1.9-1           loo_2.8.0            reshape2_1.4.4       systemfonts_1.1.0    vctrs_0.6.5         
+## [16] pkgconfig_2.0.3      arrayhelpers_1.1-0   crayon_1.5.3         fastmap_1.2.0        backports_1.5.0     
+## [21] labeling_0.4.3       utf8_1.2.4           cmdstanr_0.8.0       rmarkdown_2.27       tzdb_0.4.0          
+## [26] ps_1.7.6             xfun_0.45            cachem_1.1.0         jsonlite_1.8.8       highr_0.11          
+## [31] psych_2.4.12         parallel_4.4.1       R6_2.5.1             bslib_0.7.0          stringi_1.8.4       
+## [36] jquerylib_0.1.4      cellranger_1.1.0     estimability_1.5.1   knitr_1.47           zoo_1.8-12          
+## [41] R.utils_2.12.3       Matrix_1.7-1         splines_4.4.1        timechange_0.3.0     tidyselect_1.2.1    
+## [46] rstudioapi_0.16.0    abind_1.4-8          yaml_2.3.8           codetools_0.2-20     processx_3.8.4      
+## [51] pkgbuild_1.4.4       plyr_1.8.9           lattice_0.22-6       withr_3.0.0          bridgesampling_1.1-2
+## [56] posterior_1.6.0      coda_0.19-4.1        evaluate_0.24.0      survival_3.8-3       RcppParallel_5.1.9  
+## [61] ggdist_3.3.2         xml2_1.3.6           pillar_1.9.0         tensorA_0.36.2.1     checkmate_2.3.2     
+## [66] stats4_4.4.1         distributional_0.5.0 generics_0.1.3       hms_1.1.3            rstantools_2.4.0    
+## [71] munsell_0.5.1        scales_1.3.0         xtable_1.8-4         glue_1.7.0           emmeans_1.10.6      
+## [76] tools_4.4.1          mvtnorm_1.3-2        grid_4.4.1           QuickJSR_1.5.1       colorspace_2.1-1    
+## [81] nlme_3.1-166         cli_3.6.3            fansi_1.0.6          svUnit_1.0.6         viridisLite_0.4.2   
+## [86] svglite_2.1.3        Brobdingnag_1.2-9    gtable_0.3.6         R.methodsS3_1.8.2    sass_0.4.9          
+## [91] digest_0.6.36        TH.data_1.1-2        farver_2.1.2         R.oo_1.27.0          htmltools_0.5.8.1   
+## [96] lifecycle_1.0.4      MASS_7.3-64</code></pre>
 </div>
 </div>
 </div>

@@ -8,10 +8,32 @@ output:
     toc_depth: 3
     toc_float: true
 ---
+<style>
+.main-container {
+  max-width: 1400px !important;  /* Adjust the width as needed */
+}
+
+pre, code {
+  white-space: pre-wrap;  /* Ensures that long lines wrap */
+  word-wrap: break-word;  /* Breaks long words if necessary */
+}
+
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important; /* Add horizontal scrollbar if content overflows */
+  white-space: pre-line !important; /* Convert line breaks to spaces */
+  word-wrap: break-word !important; /* Break long words if necessary */
+  word-break: break-all !important; /* Break words to fit the container */
+  font-size: 14px !important; /* Adjust font size if needed */
+}
+
+</style>
+
 
 The purpose of this document is to present an abridged version of our model selection process.
 
-```{r setup, message = FALSE}
+```{r setup, message = FALSE, eval=TRUE}
 knitr::opts_chunk$set(
 	message = FALSE,
 	warning = TRUE,
@@ -31,11 +53,12 @@ library(bayesplot)
 library(rstan)
 
 # depending on the platform on which you want to run the brm you might need this or not. We ran the models on a Linux-operated server, cmdstanr version 0.5.3
-options(mc.cores = 4,
-        brms.backend = "cmdstanr")
 
-options(scipen = 999,
-        digits = 4)
+options(mc.cores = 4,
+        brms.backend = "cmdstanr",
+        scipen = 999,
+        digits = 4,
+        width = 140)
 
 # windowsFonts(Times = windowsFont("Times New Roman"))
 theme_set(theme_minimal(base_size = 12, base_family = "Times"))
@@ -56,7 +79,6 @@ source("age_norm_comparisons.R")
 ### No interactions
 
 We start with a main effect only model with age as a spline for regularised continuous modelling, and sex as a fixed instead of random effect because of the small number of categories (2).
-
 
 
 ```{r}
@@ -80,11 +102,7 @@ pp_check(brm_nor)
 bayes_R2(brm_nor)
 ```
 
-Doesn't look too bad but the fit isn't great and 5 divergent transitions in such a simple model.
-
-
-
-
+Doesn't look too bad but we can do better, e.g., by fitting a spline for each education category (in line with an interaction between age and educational attainment).
 
 
 ### Spline by educ for the mean
@@ -97,7 +115,8 @@ Now we fit a spline for each education category separately to allow for differen
 brm_nor_s_by_educ_main_random_educ <-
   brm(bf(
       cft ~ (1 | mig) + male + (1 | educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
       family = gaussian(),
       chains = 4,
       seed = 810,
@@ -162,7 +181,6 @@ brm_nor_s_by_educ
 
 pp_check(brm_nor_s_by_educ)
 
-bayes_R2(brm_nor_s_by_educ)
 
 loo_compare(brm_nor, brm_nor_s_by_educ, brm_nor_s_by_educ_main_random_educ, brm_nor_age_by_educ_main_fixed_educ)
 ```
@@ -171,7 +189,7 @@ Somewhat worse prediction accuracy, but similar fit and 82 divergent transitions
 
 Here we don't include a main effect for educ because it does not contribute any improvement in fit while leading to two problems: 1. more divergent transitions and 2. irregualrities in the norms, see comparison:
 
-```{r}
+```{r, "main_educ_vs_not"}
 
 main_educ_vs_not <- age_norm_comparisons(
   brm_nor, brm_nor_s_by_educ, brm_nor_s_by_educ_main_random_educ,
@@ -188,15 +206,51 @@ main_educ_vs_not <- age_norm_comparisons(
   output_file = "data/results/main_educ_vs_not.rds"
   )
 
-main_educ_vs_not
+main_educ_vs_not[-1]
 
 ```
 
 
-So it seems the term `s(age, by = educ)` is required without additionally including a main effect of educ to get sensible estimates for ages 19-22. This is probably due to the change in meaning of the education variable at age 19 (school type to ISCED), which causes some difficulties for the model.
+So it seems the term `s(age, by = educ)` is required without additionally including a main effect of educ to get sensible estimates for ages 19-22. This is probably due to the change in meaning of the education variable at age 19 (school type to ISCED), which causes some difficulties for the model. Note that this issue also afflicts the model with random slopes instead of splines.
+
+#### Random slopes instead of splines?
+
+```{r, "random_slopes_vs_spline"}
+
+brm_nor_random_slopes <-
+  brm(bf(
+      cft ~ (1 | mig) + male + (1 + age|educ),
+      sigma ~ (1 | mig) + male + (1 + age|educ)
+      ),
+      family = gaussian(),
+      chains = 4,
+      seed = 810,
+      file = "../unshareable_data/brms/cft/brm_nor_educ_random_slope",
+      data = tl) %>% 
+  add_criterion("loo")
+
+random_slopes_vs_spline <- age_norm_comparisons(
+  brm_nor_random_slopes, brm_nor_s_by_educ, 
+   palette = c(
+  "#BC3C29FF",
+  # "#0072B5FF",
+  "#20854EFF",
+  # "#7876B1FF",
+  "#6F99ADFF"
+  # "#E18727FF",
+  # "#FFDC91FF",
+  # "#EE4C97FF"
+),  
+  output_file = "data/results/random_slopes_vs_spline.rds"
+  )
+
+random_slopes_vs_spline[-1]
+```
+
 
 ### More interactions
-We incorporate more interactions into the mean prediction for theoretical reasons (it is e.g., reasonable to expect educational background to interact with migration background).
+We incorporate more interactions into the mean prediction for theoretical reasons (it is e.g., reasonable to expect educational background to interact with migration background). We do not incorporate interaction terms into the sigma prediction as they would unnecessarily complicate the model for little gain in prediction accuracy.
+
 ```{r}
 
 brm_nor_ints <-
@@ -211,6 +265,7 @@ brm_nor_ints <-
   add_criterion("loo")
 
 
+
 brm_nor_ints
 
 pp_check(brm_nor_ints)
@@ -222,11 +277,13 @@ loo_compare(brm_nor, brm_nor_s_by_educ, brm_nor_ints)
 ```
 
 
-Somewhat better fit, but still not great + 63 divergent transitions.
 
-How does the RPP look
 
-```{r}
+Somewhat better fit,  still not great + 63 divergent transitions.
+
+How does the RPP look?
+
+```{r, "rpp_nor_ints"}
 
 rpp_nor_ints <- age_norm_comparisons(
   brm_nor_ints,
@@ -243,7 +300,7 @@ rpp_nor_ints <- age_norm_comparisons(
   output_file = "data/results/rpp_nor_ints.rds"
   )
 
-rpp_nor_ints
+rpp_nor_ints[-1]
 
 ```
 
@@ -252,33 +309,44 @@ Including the educ:male interaction reintroduces the malignant dip at age 19, so
 
 
 
-### No male:educ interaction
+### MAIN model: No male:educ interaction
 
 ```{r}
-brm_nor_ints_no_educ_male <-
+brm_MAIN_nor_ints_no_educ_male <-
   brm(bf(
       cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
       sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
       chains = 4,
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_nor_ints_no_educ_male",
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male",
       data = tl) %>% 
   add_criterion("loo")
 
 
-brm_nor_ints_no_educ_male
+
+pp_check(brm_MAIN_nor_ints_no_educ_male)
+brm_MAIN_nor_ints_no_educ_male
 
 
-loo_compare(brm_nor_ints_no_educ_male, brm_nor_ints)
+loo_compare(brm_MAIN_nor_ints_no_educ_male, brm_nor_ints)
+```
+
+```{r}
+ggsave("figures/S05_pp_check.jpeg", width = 8, height = 4)
 ```
 
 
-```{r}
+```{r, "educXmale_vs_not"}
 
 educXmale_vs_not <- age_norm_comparisons(
-  brm_nor_ints, brm_nor_ints_no_educ_male,
-   palette = c(
+  brm_nor_ints, brm_MAIN_nor_ints_no_educ_male,
+  labels = c("Raw", "All ints", "No Educ*Male Int"),
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
+  palette = c(
   "#BC3C29FF",
   # "#0072B5FF",
   # "#20854EFF",
@@ -299,9 +367,66 @@ educXmale_vs_not[-1]
 Looks much better, this prediction constellation seems okay.
 
 
+### Boosted version of the main model
+We test for the results' robustness to divergent transitions by refitting the same MAIN model with more, slower iterations. 
 
-## Skew normal instead of normal likelihood
-### No male:educ interaction
+```{r}
+
+
+brm_MAIN_nor_ints_no_educ_male_boosted <-
+  brm(bf(
+      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      chains = 4,
+      iter = 7000,
+      seed = 810,
+      control = list(adapt_delta = 0.999),
+      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_boosted",
+      data = tl) %>% 
+  add_criterion("loo")
+
+
+brm_MAIN_nor_ints_no_educ_male_boosted
+
+loo_compare(brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_boosted)
+```
+
+No more divergent transitions.
+
+
+```{r, "main_vs_boosted"}
+main_vs_boosted <- age_norm_comparisons(
+  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_boosted,
+  labels = c("Raw", "RPP, main", "RPP, boosted main"),
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+),
+   palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  # "#20854EFF",
+  # "#7876B1FF",
+  # "#6F99ADFF",
+  # "#E18727FF",
+  # "#FFDC91FF",
+  "#EE4C97FF"
+),  
+  output_file = "data/results/main_vs_boosted.rds"
+  )
+
+main_vs_boosted[-1]
+```
+
+```{r}
+ggsave("figures/S04_main_vs_boosted.jpeg", main_vs_boosted$means_plot, width = 8, height = 4)
+ggsave("figures/S04_main_vs_boosted_percentile.jpeg", main_vs_boosted$percentile_plot, width = 8, height = 4)
+```
+
+## Alternative likelihood functions
+
+### Skew normal
 
 The previous pp_checks show that the data are more skewed than would be expected under a Gaussian data generating mechanism. This is why explored a skew normal likelihood next. One of the chains kept breaking, so we increased the number of chains to 5 to get 4 chains:
 
@@ -323,45 +448,24 @@ pp_check(brm_skew_ints_no_educ_male)
 
 brm_skew_ints_no_educ_male
 
-loo_compare(brm_skew_ints_no_educ_male, brm_nor_ints_no_educ_male)
+loo_compare(brm_skew_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)
 
 ```
 
-The skew model has fewer divergent transitions than the equivalent normal model and waaay better fit. But we drop the other educ interaction term next so that the model runs without problems using default settings.
-
-### Selected model: only mig:male interaction
-```{r}
-brm_MAIN_skew_s_by_educ_mig_male_int <-
-  brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      family = "skew_normal",
-      chains = 4, 
-      seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_skew_s_by_educ_mig_male_int",
-      data = tl) %>% 
-  add_criterion("loo")
-
-brm_MAIN_skew_s_by_educ_mig_male_int
-
-pp_check(brm_MAIN_skew_s_by_educ_mig_male_int)
-
-loo_compare(brm_skew_ints_no_educ_male, brm_nor_ints_no_educ_male, brm_MAIN_skew_s_by_educ_mig_male_int)
-```
-Negligible loss in loo fit, so we adopt this model as our main model. Here we compare its final RPP results to the normal model we had previously found to be good.
+The skew model has better fit to the data, but we still believe normal to be more representative of the data generating mechanism. Skew normal also often has chain initialisation issues. 
 
 
-```{r}
-ggsave("figures/S02_pp_check.png", width = 8, height = 4)
-```
 
-```{r}
-main_vs_normal <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_nor_ints_no_educ_male,
-  sim_size = 100000,
-  labels = c( "Raw", "RPP, skew", "RPP, normal"),
+```{r, "main_vs_skew"}
+
+
+main_vs_skew <- age_norm_comparisons(
+  brm_MAIN_nor_ints_no_educ_male, brm_skew_ints_no_educ_male,
+  labels = c( "Raw", "RPP, normal", "RPP, skew"),
+  prediction_transform = list(
+  function(x) pmax(0, pmin(56, x)), # for handling normal predictons
+  function(x) pmax(0, pmin(56, x))  # for handling skew normal predictions
+),
    palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -372,179 +476,59 @@ main_vs_normal <- age_norm_comparisons(
   # "#FFDC91FF",
   "#EE4C97FF"
 ),  
-  output_file = "data/results/main_vs_normal.rds"
+  output_file = "data/results/main_vs_skew"
   )
 
-main_vs_normal[-1]
+
+main_vs_skew[-1]
 ```
+
 
 
 Negligible differences in means and SDs, the skew model has somewhat larger error. 
 
 
 ```{r}
-ggsave("figures/S04_main_vs_normal.png", main_vs_normal$means_plot, width = 8, height = 4)
+ggsave("figures/S07_main_vs_skew.jpeg", main_vs_skew$means_plot, width = 8, height = 4)
+ggsave("figures/S07_main_vs_skew_percentile.jpeg", main_vs_skew$percentile_plot, width = 8, height = 4)
 ```
 
 
 
 
 
-### Boosted version of the main model
-We test for the results' robustness to divergent transitions by refitting the same MAIN model with more, slower iterations. 
-
+### Binomial
 ```{r}
-
-
-brm_skew_s_by_educ_mig_male_int_boosted <-
+brm_bin_ints_no_educ_male <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age),
-      alpha ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft | trials(56) ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ)
       ),
-      family = "skew_normal",
-      chains = 4, 
-      iter = 7000,
-      seed = 810,
-      control = list(adapt_delta = 0.99),
-      file = "../unshareable_data/brms/cft/brm_skew_s_by_educ_mig_male_int_boosted",
-      data = tl) %>% 
-  add_criterion("loo")
-
-brm_skew_s_by_educ_mig_male_int_boosted
-
-```
-
-1/14000 div transitions vs. 31/4000. 
-
-
-```{r}
-main_vs_boosted <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_skew_s_by_educ_mig_male_int_boosted,
-  labels = c( "Raw", "RPP, main", "RPP, boosted main"),
-  palette = c(
-  "#BC3C29FF",
-  "#0072B5FF",
-  # "#20854EFF",
-  # "#7876B1FF",
-  # "#6F99ADFF",
-  # "#E18727FF",
-  # "#FFDC91FF",
-  "#EE4C97FF" 
-), 
-  output_file = "data/results/main_vs_boosted.rds"
-  )
-
-main_vs_boosted[-1]
-```
-
-Negligibile differences.
-
-```{r}
-ggsave("figures/S05_main_vs_boosted.png", main_vs_boosted$means_plot, width = 8, height = 4)
-```
-
-
-
-
-
-## Ordinal model
-Finally, since CFT can be seen as an ordinal variable, we fit an ordinal model too.
-```{r}
-
-tl_ord <- tl %>% mutate(cft = as.ordered(cft))
-  
-brm_ordinal_ints_no_educ_male <-
-  brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      disc ~  (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      family = cumulative("logit"),
+      family = binomial(),  
       chains = 4,
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_ordinal_ints_no_educ_male_ord",
-      data = tl_ord) %>% 
-  add_criterion("loo")
-
-pp_check(brm_ordinal_ints_no_educ_male)
-
-brm_ordinal_ints_no_educ_male
-
-loo_compare(brm_ordinal_ints_no_educ_male, brm_MAIN_skew_s_by_educ_mig_male_int)
-```
-
-This model has fewer divergent transitions than our main, default settings, model, and neglibily worse fit. In terms of RPP, the results look similar, whereas ordinal does somewhat better at the critical age of 19:
-
-
-
-
-```{r}
-
-prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling skew normal predictons
-  function(x) as.numeric(as.character(x))  # for handling ordinal predictions
-)
-
-
-main_vs_ordinal <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_ordinal_ints_no_educ_male,
-  labels = c( "Raw", "RPP, skew", "RPP, ordinal"),
-  prediction_transform  = prediction_transform,
-  palette = c(
-  "#BC3C29FF",
-  "#0072B5FF",
-  # "#20854EFF",
-  # "#7876B1FF",
-  # "#6F99ADFF",
-  # "#E18727FF",
-  # "#FFDC91FF",
-  "#EE4C97FF" 
-), 
-  output_file = "data/results/main_vs_ordinal_ord.rds"
-  )
-
-
-main_vs_ordinal[-1]
-
-```
-
-
-We stick with the skew normal model because it's easier to explain.
-
-```{r}
-ggsave("figures/S06_main_vs_ordinal.png", main_vs_ordinal$means_plot, width = 8, height = 4)
-```
-
-
-
-## Negative binomial model
-```{r}
-
-brm_negbin_ints_no_educ_male <-
-  brm(bf(
-      cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      shape ~ (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      family = negbinomial(),  
-      chains = 4,
-      seed = 810,
-      file = "../unshareable_data/brms/cft/brm_negbin_ints_no_educ_male",
+      file = "../unshareable_data/brms/cft/brm_bin_ints_no_educ_male",
       data = tl) %>% 
   add_criterion("loo")
 
 
-brm_negbin_ints_no_educ_male
+brm_bin_ints_no_educ_male
 
 
-pp_check(brm_negbin_ints_no_educ_male)
+pp_check(brm_bin_ints_no_educ_male)
 
-loo_compare(brm_ordinal_ints_no_educ_male, brm_negbin_ints_no_educ_male, brm_MAIN_skew_s_by_educ_mig_male_int)
+loo_compare(brm_bin_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)
 ```
 
-```{r}
-main_vs_negbin <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_negbin_ints_no_educ_male,
-  labels = c( "Raw", "RPP, skew", "RPP, neg-binomial"),
+Fit not great, probably due to the model's inability to deal with overdispersion.
+
+```{r, "main_vs_bin"}
+main_vs_bin <- age_norm_comparisons(
+  brm_MAIN_nor_ints_no_educ_male, brm_bin_ints_no_educ_male,
+  labels = c( "Raw", "RPP, normal", "RPP, binomial"),
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) x                            # leave binomial predictions as is
+),
   palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -555,16 +539,17 @@ main_vs_negbin <- age_norm_comparisons(
   # "#FFDC91FF",
   "#EE4C97FF" 
 ), 
-  output_file = "data/results/main_vs_negbin.rds"
+  output_file = "data/results/main_vs_bin.rds"
   )
 
-main_vs_negbin[-1]
+main_vs_bin[-1]
 ```
 
-## Beta model
+### Beta
 
 ```{r}
-tl <- tl %>% mutate(cft_prop = cft/57)
+
+tl <- tl %>% mutate(cft_prop = cft/56)
 
 brm_beta_ints_no_educ_male <-
   brm(bf(
@@ -583,21 +568,22 @@ brm_beta_ints_no_educ_male
 
 pp_check(brm_beta_ints_no_educ_male)
 
-loo_compare(brm_ordinal_ints_no_educ_male, brm_beta_ints_no_educ_male, brm_MAIN_skew_s_by_educ_mig_male_int)
+loo_compare(brm_beta_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)
 ```
 
-```{r}
+Fit looks good, LOO doesn't make sense because of different scales.
 
-prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling skew normal predictons
-  function(x) round(pmax(0, pmin(56, x*57)))  # for handling beta proportion predictions
-)
+
+```{r, "main_vs_beta"}
 
 
 main_vs_beta <- age_norm_comparisons(
-  brm_MAIN_skew_s_by_educ_mig_male_int, brm_beta_ints_no_educ_male,
-  labels = c( "Raw", "RPP, skew", "RPP, beta"),
-  prediction_transform  = prediction_transform,
+  brm_MAIN_nor_ints_no_educ_male, brm_beta_ints_no_educ_male,
+  labels = c( "Raw", "RPP, normal", "RPP, beta"),
+  prediction_transform  = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling skew normal predictons
+  function(x) round(pmax(0, pmin(56, x*56)))  # for handling beta proportion predictions
+),
   palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -616,7 +602,8 @@ main_vs_beta[-1]
 
 ```
 
-
+### Beta binomial
+Took too long to fit (200 iterations after 40 hours). Setting stronger priors sped up fitting time but led to nonconvergence. 
 
 # Some exploration of the selected model
 
@@ -624,14 +611,14 @@ main_vs_beta[-1]
 ```{r, fig.height=8, fig.width=8}
 t <- tl %>% filter(!is.na(age_group))
 
-yrep <- posterior_predict(brm_MAIN_skew_s_by_educ_mig_male_int, newdata = t, ndraws = 1000)
+yrep <- posterior_predict(brm_MAIN_nor_ints_no_educ_male, newdata = t, ndraws = 1000)
 
 
 p <- ppc_pit_ecdf_grouped(t$cft, yrep, group = as.factor(t$age_group), prob = 0.99, plot_diff = F)
 
 p
 
-ggsave("figures/S03_ppc_grouped.png", width = 8, height = 8)
+ggsave("figures/S06_ppc_grouped.jpeg", width = 8, height = 8)
 ```
 
 
@@ -639,13 +626,13 @@ ggsave("figures/S03_ppc_grouped.png", width = 8, height = 8)
 
 ## R2
 ```{r}
-loo_R2(brm_MAIN_skew_s_by_educ_mig_male_int)
+loo_R2(brm_MAIN_nor_ints_no_educ_male)
 ```
 
 ## Prediction plots for education and migration background
 
 ```{r, fig.height = 5, fig.width = 8}
-plot_predictions(brm_MAIN_skew_s_by_educ_mig_male_int,  condition = c("educ"), allow_new_levels = T) + 
+plot_predictions(brm_MAIN_nor_ints_no_educ_male,  condition = c("educ"), allow_new_levels = T) + 
   labs(x = "Education", y = "CFT 20-R Score") +
 theme(axis.text.x = element_text(angle = 60, hjust = 1),
     plot.margin = margin(0.8, 2, 0.8, 2, "cm")) 
@@ -655,7 +642,7 @@ theme(axis.text.x = element_text(angle = 60, hjust = 1),
 We see that means differ considerably across categories of `educ`. The large 95% CIs are for the school type categories, i.e., those which have no observations at ages older than 18.
 
 ```{r, fig.height = 5, fig.width = 8}
-plot_predictions(brm_MAIN_skew_s_by_educ_mig_male_int,  condition = c("mig"), allow_new_levels = T)   + 
+plot_predictions(brm_MAIN_nor_ints_no_educ_male,  condition = c("mig"), allow_new_levels = T)   + 
   labs(x = "Migration Background", y = "CFT 20-R Score") +
 theme(axis.text.x = element_text(angle = 60, hjust = 1),
     plot.margin = margin(0.8, 2, 0.8, 1.4, "cm"))
@@ -674,7 +661,7 @@ distinct_tl <- tl %>%
   mutate(male = FALSE, mig = "Citizen: No mig background") %>%
   distinct()
 
-fitted_tl <- fitted(brm_MAIN_skew_s_by_educ_mig_male_int, newdata = distinct_tl, summary = T, ndraws = 1000, probs = c(0.20, 0.80)) %>% as_tibble() %>%
+fitted_tl <- fitted(brm_MAIN_nor_ints_no_educ_male, newdata = distinct_tl, summary = T, ndraws = 1000, probs = c(0.20, 0.80)) %>% as_tibble() %>%
   bind_cols(distinct_tl) %>%
   mutate(
     school_type = case_when(
@@ -739,7 +726,7 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, colo
   scale_color_manual(values = c("#009292","#000000","#ff6db6","#006ddb","#920000", "#490092","#6db6ff")) +
   scale_fill_manual(values = c("#009292","#000000","#ff6db6","#006ddb","#920000", "#490092","#6db6ff"))
 
-ggsave("figures/3_splines_ST.png", width = 9, height = 5)
+ggsave("figures/03_splines_ST.jpeg", width = 9, height = 5)
 ```
 
 
@@ -773,15 +760,14 @@ ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, c
   scale_fill_manual(values = c("#b66dff","#6db6ff","#009292", "#920000","#924900","#490092","#24ff24","#000000"))
 
 
-ggsave("figures/03_splines_ISCED.png", width = 9, height = 5, scale = 1)
+ggsave("figures/03_splines_ISCED.jpeg", width = 9, height = 5, scale = 1)
 
 ```
 
 ## Distribution of RPP predicitons
 ### Generate a poststratified sample
 ```{r, eval=FALSE}
-
-
+set.seed(14)
 
 sim_pop_sample <- census %>%  
   sample_n(size = 100000,
@@ -789,7 +775,7 @@ sim_pop_sample <- census %>%
            replace = TRUE)
 
 sim_pop_sample_with_draws <- sim_pop_sample %>%
-  add_predicted_draws(brm_MAIN_skew_s_by_educ_mig_male_int,
+  add_predicted_draws(brm_MAIN_nor_ints_no_educ_male,
                       ndraws = 1000,
                       seed = 810,
                       allow_new_levels = TRUE) %>%
@@ -859,33 +845,6 @@ means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>%
   labs(x = "RPP predicted CFT 20-R score", y = "Count") +
   facet_wrap(~ age_group, scales = "free_y")  # Create a separate facet for each level of the variable "age"
 ```
-
-
-
-```{r, fig.width= 16, fig.height=10}
-stats <- sim_pop_sample_with_draws %>%
-  group_by(age_group) %>%
-  summarise(mean = mean(.prediction, na.rm = TRUE),
-            sd = sd(.prediction, na.rm = TRUE)) %>%
-  mutate(lower = mean - 2 * sd,
-         upper = mean + 2 * sd)
-
-# Create the histogram with vertical lines for mean and ±2 SDs
-sim_pop_sample_with_draws %>% 
-  ggplot(aes(x = .prediction)) +
-  geom_histogram(binwidth = 1, fill = "darkblue", color = "black") +
-  scale_x_continuous(breaks = seq(min(sim_pop_sample_with_draws$.prediction), 
-                                   max(sim_pop_sample_with_draws$.prediction), 
-                                   by = 8)) +
-  theme_minimal() +
-  labs(x = ".prediction", y = "Count", title = "Histogram of Predictions by Age") +
-  facet_wrap(~ age_group, scales = "free_y") +  # Allow y scale to vary by facet
-  geom_vline(data = stats, aes(xintercept = mean), color = "red", linetype = "dashed") +  # Mean line
-  geom_vline(data = stats, aes(xintercept = lower), color = "yellow", linetype = "dotted") +  # -2 SD line
-  geom_vline(data = stats, aes(xintercept = upper), color = "yellow", linetype = "dotted")    # +2 SD line
-```
-
-
 
 
 
