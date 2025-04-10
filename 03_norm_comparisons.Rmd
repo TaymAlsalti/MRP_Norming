@@ -794,7 +794,9 @@ ggsave("figures/08_RPP_vs_cNorm.jpeg", width = 8, height = 4)
 
 # RPP vs. GAMLSS + MRP
 Most of the code in this section is from de [Vries et al.'s (2025)](https://psycnet.apa.org/doi/10.1037/met0000752) [supplementary materials](https://osf.io/uwjb2/files/osfstorage).
+
 ## Fit GAMLLS model
+
 ### Polynomial model selection
 Assuming no interactions and homoscedasticity, like in de [Vries et al. (2025)](https://psycnet.apa.org/doi/10.1037/met0000752).
 
@@ -855,6 +857,7 @@ Conflicting conclusions from BIC and AIC.
 
 
 ## Extract IQ predictions and percentiles
+
 ### For selected polynomial model
 
 ```{r}
@@ -956,7 +959,9 @@ z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
 
 
 ### Plots
+
 #### Percentiles
+
 ```{r}
 cdf_df <- as.data.frame(CDF_matrix_mrp)
 names(cdf_df)[-1] <- as.integer(names(cdf_df)[-1])  # convert "0", "1", ..., "56" to numeric
@@ -1060,6 +1065,7 @@ ggsave("figures/09_RPP_vs_GAMLSS_MRP.jpeg", width = 8, height = 4)
 ```
 
 #### IQ means
+
 ```{r}
 z_df <- as.data.frame(z_matrix)
 names(z_df)[-1] <- as.integer(names(z_df)[-1])  
@@ -1146,6 +1152,7 @@ means_ns_sds_and_ses  %>%
 
 
 ## Does including age in the poststratification weights make a difference?
+
 Spoiler: yes.
 
 ```{r}
@@ -1259,6 +1266,7 @@ z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
 ```
 
 ### Percentiles plot
+
 ```{r}
 
 
@@ -1363,6 +1371,7 @@ ggsave("figures/S08_RPP_vs_GAMLSS_MRP_PS.jpeg", width = 8, height = 4)
 ```
 
 ### Plot Age group IQs based on the norming sample
+
 ```{r}
 
 z_df <- as.data.frame(z_matrix)
@@ -1458,6 +1467,7 @@ means_ns_sds_and_ses  %>%
 ```
 
 ## Does including educ as a main effect make a dif?
+
 Spoiler: no
 
 ```{r}
@@ -1598,6 +1608,7 @@ z_matrix2 <- cbind(CDF_matrix_mrp2[1],z_matrix2) # add age again
 
 
 ### Percentiles plot
+
 ```{r}
 
 
@@ -1701,6 +1712,7 @@ ggplot(combined_percentiles, aes(x = age, y = Raw_score,
 ```
 
 ### Plot Age group IQs based on the norming sample
+
 ```{r}
 
 z_df <- as.data.frame(z_matrix)
@@ -1797,6 +1809,7 @@ means_ns_sds_and_ses  %>%
 
 
 # Poststratification without regularisation
+
 Weighting is often undertaken using simple averages instead of model predictions. Here we apply poststratification weights we calculated based on population data and use weights provided by TwinLife and compare the results to RPP and raw data.
 
 ## Means plot
@@ -1886,6 +1899,7 @@ ggsave("figures/10_RPP_vs_raw_PS.jpeg", width = 8, height = 4)
 
 
 ## Overall differences
+
 ```{r}
 means_ns_sds_and_ses %>% group_by(source) %>% summarise(mean = mean(mean), se = mean(se_of_mean)) 
 ```
