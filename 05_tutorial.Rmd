@@ -551,10 +551,10 @@ brm_2 <- brm(bf(
   sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
                    ),
     family = gaussian(), # default
-    seed = 14, # default
     iter = 2000, # default
     chains = 4, # default 
     control = list(adapt_delta = 0.8), # default
+    seed = 14,
     file = "data/brms/wordsum/sb/brm_2",
     data = sb_data) %>%
   add_criterion("loo")
@@ -595,6 +595,32 @@ loo_compare(brm_2, brm_2_boosted)
 
 No difference between the model with 47/4000 divergent transitions and the same model with no divergent transitions.
 
+#### Stronger priors
+```{r}
+priors <- 
+  prior(normal(0,1), class = "b") +
+  prior(normal(0,1), class = "Intercept") +
+  prior(normal(0,1), class = "sd") + 
+  prior(normal(0,1), class = "sds")
+
+brm_2_priors <- brm(bf(wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
+                   sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
+                   ),
+    seed = 14,
+    prior = priors,
+    file = "data/brms/wordsum/sb/brm_2_priors",
+    data = sb_data) %>%
+  add_criterion("loo")
+
+
+brm_2_priors
+
+pp_check(brm_2_priors)
+
+loo_compare(brm_2, brm_2_priors)
+```
+
+Divergent transitions reduced and some effect estimates changed, but no change in prediction accuracy.
 
 
 
@@ -934,7 +960,8 @@ iqs_linear <- sim_pop_sample_with_draws %>%
          RPP_IQ = iq(wordsum_score, RPP_mean, RPP_sd),
          RPP_T = t(wordsum_score, RPP_mean, RPP_sd)) %>% 
   group_by(age, wordsum_score) %>% 
-  summarise(RPP_IQ = round(mean(RPP_IQ)))
+  summarise(RPP_IQ = round(mean(iq_score)),
+            RPP_T = round(mean(T_score)))
 
 iqs_linear %>% head(14) %>% kable %>% kable_styling(full_width = FALSE)
 ```

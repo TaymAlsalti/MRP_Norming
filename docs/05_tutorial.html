@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2025-04-02" />
+<meta name="date" content="2025-04-19" />
 
 <title>RPP norming tutorial</title>
 
@@ -360,7 +360,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">RPP norming tutorial</h1>
-<h4 class="date">2025-04-02</h4>
+<h4 class="date">2025-04-19</h4>
 
 </div>
 
@@ -1732,10 +1732,10 @@ interactions</h3>
   sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
                    ),
     family = gaussian(), # default
-    seed = 14, # default
     iter = 2000, # default
     chains = 4, # default 
     control = list(adapt_delta = 0.8), # default
+    seed = 14,
     file = &quot;data/brms/wordsum/sb/brm_2&quot;,
     data = sb_data) %&gt;%
   add_criterion(&quot;loo&quot;)
@@ -1919,6 +1919,105 @@ brm_2_boosted</code></pre>
 <p>No difference between the model with 47/4000 divergent transitions
 and the same model with no divergent transitions.</p>
 </div>
+<div id="stronger-priors" class="section level4" number="3.1.2.2">
+<h4><span class="header-section-number">3.1.2.2</span> Stronger
+priors</h4>
+<pre class="r"><code>priors &lt;- 
+  prior(normal(0,1), class = &quot;b&quot;) +
+  prior(normal(0,1), class = &quot;Intercept&quot;) +
+  prior(normal(0,1), class = &quot;sd&quot;) + 
+  prior(normal(0,1), class = &quot;sds&quot;)
+
+brm_2_priors &lt;- brm(bf(wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
+                   sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
+                   ),
+    seed = 14,
+    prior = priors,
+    file = &quot;data/brms/wordsum/sb/brm_2_priors&quot;,
+    data = sb_data) %&gt;%
+  add_criterion(&quot;loo&quot;)
+
+
+brm_2_priors</code></pre>
+<pre><code>## Warning: There were 6 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
+<pre><code>##  Family: gaussian 
+##   Links: mu = identity; sigma = log 
+## Formula: wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets) 
+##          sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth) + female + (1 | income_brackets)
+##    Data: sb_data (Number of observations: 478) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Smoothing Spline Hyperparameters:
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sds(sage_1)           0.74      0.45     0.06     1.76 1.00     1948     1482
+## sds(sigma_sage_1)     0.60      0.55     0.02     2.03 1.01     1173     1825
+## 
+## Multilevel Hyperparameters:
+## ~degfield_branch (Number of levels: 5) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.54      0.36     0.13     1.47 1.00     1305     1985
+## sd(sigma_Intercept)     0.09      0.09     0.00     0.32 1.00     1747     1810
+## 
+## ~educ (Number of levels: 5) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.62      0.45     0.16     1.91 1.01      521      285
+## sd(sigma_Intercept)     0.07      0.09     0.00     0.25 1.00     2387     2474
+## 
+## ~income_brackets (Number of levels: 11) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.18      0.12     0.01     0.45 1.00     1462     2045
+## sd(sigma_Intercept)     0.06      0.05     0.00     0.18 1.00     1745     1995
+## 
+## ~marst (Number of levels: 3) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           2.60      0.77     0.60     3.95 1.01      432      158
+## sd(sigma_Intercept)     0.52      0.53     0.10     1.97 1.00     1375     1562
+## 
+## ~occ_category (Number of levels: 6) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.41      0.38     0.02     1.34 1.00      803     1187
+## sd(sigma_Intercept)     0.12      0.12     0.00     0.44 1.00     1866     2286
+## 
+## ~race (Number of levels: 4) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.42      0.46     0.03     1.86 1.00      708      808
+## sd(sigma_Intercept)     0.13      0.16     0.00     0.53 1.00     1600     2061
+## 
+## ~region_birth (Number of levels: 10) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.11      0.09     0.00     0.34 1.00     2158     1810
+## sd(sigma_Intercept)     0.08      0.06     0.00     0.22 1.00     1662     2029
+## 
+## ~region_residence (Number of levels: 9) 
+##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)           0.13      0.10     0.00     0.38 1.00     1572     1581
+## sd(sigma_Intercept)     0.08      0.06     0.00     0.24 1.00     1479     1874
+## 
+## Regression Coefficients:
+##                  Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept            2.18      1.05     0.14     4.21 1.00     2267     2162
+## sigma_Intercept      0.47      0.41    -0.39     1.29 1.00     1289     1186
+## hispanTRUE          -0.28      0.21    -0.71     0.14 1.00     6065     3060
+## femaleTRUE          -0.10      0.16    -0.41     0.21 1.00     4406     3269
+## sigma_hispanTRUE     0.03      0.11    -0.18     0.25 1.00     5592     2978
+## sigma_femaleTRUE    -0.11      0.08    -0.26     0.04 1.00     5284     2961
+## sage_1               0.45      0.96    -1.56     2.18 1.00     2705     2881
+## sigma_sage_1        -0.16      1.50    -3.12     3.31 1.00     2491     1962
+## 
+## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>pp_check(brm_2_priors)</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
+<pre class="r"><code>loo_compare(brm_2, brm_2_priors)</code></pre>
+<pre><code>##              elpd_diff se_diff
+## brm_2         0.0       0.0   
+## brm_2_priors -0.3       0.7</code></pre>
+<p>Divergent transitions reduced and some effect estimates changed, but
+no change in prediction accuracy.</p>
+</div>
 </div>
 <div id="censored-normal-model" class="section level3" number="3.1.3">
 <h3><span class="header-section-number">3.1.3</span> Censored normal
@@ -2005,7 +2104,7 @@ brm_3</code></pre>
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_3)</code></pre>
 <pre><code>## Warning: Censored responses are not shown in &#39;pp_check&#39;.</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-11-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_1, brm_2, brm_3)</code></pre>
 <pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
 <pre><code>##       elpd_diff se_diff
@@ -2108,7 +2207,7 @@ brm_4</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_4)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-11-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-12-1.svg" width="768" /></p>
 <pre class="r"><code>loo_compare(brm_1, brm_2, brm_3, brm_4)</code></pre>
 <pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
 <pre><code>##       elpd_diff se_diff
@@ -2450,7 +2549,7 @@ brm_6</code></pre>
   add_criterion(&quot;loo&quot;)
 
 pp_check(brm_7)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-16-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
 <pre class="r"><code>brm_7</code></pre>
 <pre><code>## Warning: There were 41 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
@@ -2610,7 +2709,7 @@ brm_8</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_8)</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-18-1.svg" width="768" /></p>
 <p>Can’t loo_compare because we’re missing one data point, but pp_check
 doesn’t look too bad.</p>
 </div>
@@ -2724,7 +2823,7 @@ on Wordsum than females.</p>
 <h3><span class="header-section-number">3.2.2</span> Check model
 fit</h3>
 <pre class="r"><code>pp_check(brm_2) </code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-20-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-21-1.svg" width="768" /></p>
 <div id="within-age-groups" class="section level4" number="3.2.2.1">
 <h4><span class="header-section-number">3.2.2.1</span> Within age
 groups</h4>
@@ -2737,7 +2836,7 @@ yrep &lt;- posterior_predict(brm_2, newdata = t, ndraws = 1000)
 p &lt;- ppc_pit_ecdf_grouped(t$wordsum, yrep, group = as.factor(t$age_group), prob = 0.99, plot_diff = F)
 
 p</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-21-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-22-1.svg" width="768" /></p>
 <p>Some deviations at the right tail but not too bad.</p>
 </div>
 </div>
@@ -2746,7 +2845,7 @@ p</code></pre>
 <pre class="r"><code>loo_R2(brm_2)</code></pre>
 <pre><code>## Warning: Some Pareto k diagnostic values are too high. See help(&#39;pareto-k-diagnostic&#39;) for details.</code></pre>
 <pre><code>##    Estimate Est.Error    Q2.5  Q97.5
-## R2  0.06909   0.02901 0.01199 0.1247</code></pre>
+## R2  0.06907   0.02881 0.01182 0.1243</code></pre>
 <p>The included predictors do not explain a lot of variance (~7%), so
 not a lot of adjustment can happen even if there are differences between
 the sample and the population.</p>
@@ -3109,180 +3208,15 @@ iqs_linear &lt;- sim_pop_sample_with_draws %&gt;%
          RPP_IQ = iq(wordsum_score, RPP_mean, RPP_sd),
          RPP_T = t(wordsum_score, RPP_mean, RPP_sd)) %&gt;% 
   group_by(age, wordsum_score) %&gt;% 
-  summarise(RPP_IQ = round(mean(RPP_IQ)))
-
-iqs_linear %&gt;% head(14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
-<table class="table" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
-<tr>
-<th style="text-align:right;">
-age
-</th>
-<th style="text-align:right;">
-wordsum_score
-</th>
-<th style="text-align:right;">
-RPP_IQ
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-40
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:right;">
-49
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-2
-</td>
-<td style="text-align:right;">
-58
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-3
-</td>
-<td style="text-align:right;">
-67
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-4
-</td>
-<td style="text-align:right;">
-76
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-5
-</td>
-<td style="text-align:right;">
-85
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-6
-</td>
-<td style="text-align:right;">
-94
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-7
-</td>
-<td style="text-align:right;">
-103
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-8
-</td>
-<td style="text-align:right;">
-113
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-9
-</td>
-<td style="text-align:right;">
-122
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-21
-</td>
-<td style="text-align:right;">
-10
-</td>
-<td style="text-align:right;">
-131
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-22
-</td>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-41
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-22
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:right;">
-49
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-22
-</td>
-<td style="text-align:right;">
-2
-</td>
-<td style="text-align:right;">
-58
-</td>
-</tr>
-</tbody>
-</table>
+  summarise(RPP_IQ = round(mean(iq_score)),
+            RPP_T = round(mean(T_score)))</code></pre>
+<pre><code>## Error in `summarise()`:
+## ℹ In argument: `RPP_IQ = round(mean(iq_score))`.
+## ℹ In group 1: `age = 21` and `wordsum_score = 0`.
+## Caused by error:
+## ! object &#39;iq_score&#39; not found</code></pre>
+<pre class="r"><code>iqs_linear %&gt;% head(14) %&gt;% kable %&gt;% kable_styling(full_width = FALSE)</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object &#39;iqs_linear&#39; not found</code></pre>
 <p>Due to the left skewed distributions linear transformation probably
 underestimates IQs at the lower tail.</p>
 </div>
@@ -3753,19 +3687,19 @@ sb_raw_vs_rpp_rp[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-30-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-30-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-30-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-29-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-30-4.svg" width="768" /></p>
 <p>As can be expected given the small associations between the
 adjustment variables and the outcome, most of the adjustment to the age
 group means were the result of the regularisation rather than the
@@ -3825,11 +3759,11 @@ iqs &lt;- iqs_normalised %&gt;%
 
 
 mean(iqs$RPP_IQ-iqs$RP_IQ)</code></pre>
-<pre><code>## [1] NA</code></pre>
+<pre><code>## [1] 2.029</code></pre>
 <pre class="r"><code>mean(abs(iqs$RPP_IQ-iqs$RP_IQ))</code></pre>
-<pre><code>## [1] NA</code></pre>
+<pre><code>## [1] 2.389</code></pre>
 <pre class="r"><code>max(iqs$RPP_IQ-iqs$RP_IQ)</code></pre>
-<pre><code>## [1] NA</code></pre>
+<pre><code>## [1] 11</code></pre>
 <pre class="r"><code>mean(iqs$RPP_IQ-iqs$Raw_IQ, na.rm = T)</code></pre>
 <pre><code>## [1] 1.736</code></pre>
 <pre class="r"><code>mean(abs(iqs$RPP_IQ-iqs$Raw_IQ), na.rm = T)</code></pre>
@@ -3885,19 +3819,19 @@ sb_ord_nor[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-31-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-4.svg" width="768" /></p>
 </div>
 <div id="normal-vs.-binomial" class="section level2" number="6.3">
 <h2><span class="header-section-number">6.3</span> Normal
@@ -3941,19 +3875,19 @@ sb_nor_bin[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-32-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-4.svg" width="768" /></p>
 <p>Barely any difference in means, although ordinal predictions are
 somewhat more dispersed.</p>
 </div>
@@ -3998,23 +3932,79 @@ sb_nor_beta[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-33-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-4.svg" width="768" /></p>
+</div>
+<div id="default-vs.-boosted" class="section level2" number="6.5">
+<h2><span class="header-section-number">6.5</span> Default
+vs. boosted</h2>
+<pre class="r"><code>prediction_transform = list(
+  function(x) round(pmax(0, pmin(10, x))), # for handling normal predictons
+  function(x) round(pmax(0, pmin(10, x)))  # for handling normal predictions
+)
+
+
+sb_default_vs_boosted &lt;- age_norm_comparisons(
+  brm_2, brm_2_boosted, 
+  ps_table = census_sb, 
+  # RP = c(&quot;census&quot;, &quot;norming_sample&quot;),
+  ps_variables = c(&quot;age&quot;, &quot;female&quot;, &quot;educ&quot;, &quot;income_brackets&quot;, &quot;race&quot;, &quot;hispan&quot;, &quot;region_residence&quot;, &quot;region_birth&quot;, &quot;degfield_branch&quot;, &quot;marst&quot;, &quot;occ_category&quot;), 
+  prediction_transform  = prediction_transform,
+  sim_size = 100000,
+  labels = c(labels = c(&quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, boosted normal&quot;)),
+   palette = c(
+  &quot;#BC3C29FF&quot;,
+  &quot;#0072B5FF&quot;,
+  &quot;#20854EFF&quot;
+  # &quot;#7876B1FF&quot;,
+  # &quot;#6F99ADFF&quot;
+  # &quot;#E18727FF&quot;
+  # &quot;#FFDC91FF&quot;,
+  # &quot;#EE4C97FF&quot;
+),
+  output_file = &quot;data/results/wordsum/sb_default_vs_boosted.rds&quot;
+  )
+
+
+sb_default_vs_boosted[-1]</code></pre>
+<pre><code>## $overall_estimates
+## # A tibble: 3 × 5
+##    Mean SE_of_Mean    SD SE_of_SD Model            
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;            
+## 1  7.30     NA      1.71  NA      Raw              
+## 2  7.01      0.113  1.74   0.0722 RPP_brm_2        
+## 3  7.00      0.115  1.75   0.0720 RPP_brm_2_boosted
+## 
+## $means_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-35-1.svg" width="768" /></p>
+<pre><code>## 
+## $SDs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
+<pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-35-2.svg" width="768" /></p>
+<pre><code>## 
+## $SEs_plot</code></pre>
+<pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-35-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-35-4.svg" width="768" /></p>
 </div>
 <div id="with-vs.-without-interactions" class="section level2"
-number="6.5">
-<h2><span class="header-section-number">6.5</span> With vs. without
+number="6.6">
+<h2><span class="header-section-number">6.6</span> With vs. without
 interactions</h2>
 <pre class="r"><code>prediction_transform = list(
   function(x) round(pmax(0, pmin(10, x))), # for handling normal predictons
@@ -4055,28 +4045,28 @@ sb_with_vs_without_ints[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-36-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-36-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-36-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-34-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-36-4.svg" width="768" /></p>
 <p>Same here.</p>
 </div>
 <div id="effect-of-removing-careless-respondents" class="section level2"
-number="6.6">
-<h2><span class="header-section-number">6.6</span> Effect of removing
+number="6.7">
+<h2><span class="header-section-number">6.7</span> Effect of removing
 careless respondents?</h2>
 <div id="exclude-participants-based-on-various-indicators"
-class="section level3" number="6.6.1">
-<h3><span class="header-section-number">6.6.1</span> Exclude
+class="section level3" number="6.7.1">
+<h3><span class="header-section-number">6.7.1</span> Exclude
 participants based on various indicators</h3>
 <pre class="r"><code>library(careless)
 
@@ -4098,8 +4088,8 @@ sb_data_CR_cleaned &lt;-  sb_data %&gt;%
 </div>
 <div
 id="refit-model-and-compare-rpp-results-to-the-one-based-on-the-entire-data"
-class="section level3" number="6.6.2">
-<h3><span class="header-section-number">6.6.2</span> Refit model and
+class="section level3" number="6.7.2">
+<h3><span class="header-section-number">6.7.2</span> Refit model and
 compare RPP results to the one based on the entire data</h3>
 <pre class="r"><code>brm_2_non_CR &lt;- brm(bf(wordsum ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets),
                    sigma ~ s(age) + (1 | educ) + (1 | race) + hispan + (1 | region_residence) + (1 | marst) + (1 | degfield_branch) + (1 | occ_category) + (1 | region_birth)  + female + (1 | income_brackets)
@@ -4220,19 +4210,19 @@ sb_vs_non_CR[-1]</code></pre>
 ## 
 ## $means_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-1.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-39-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_pointrange()`).</code></pre>
 <pre><code>## Warning: Removed 46 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-2.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-39-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
 <pre><code>## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_point()`).</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-3.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-39-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="05_tutorial_files/figure-html/unnamed-chunk-37-4.svg" width="768" /></p>
+<p><img src="05_tutorial_files/figure-html/unnamed-chunk-39-4.svg" width="768" /></p>
 <p>Negligible differences despite dropping 85/478 datapoints.</p>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.4.1 (2024-06-14)
