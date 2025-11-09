@@ -16,9 +16,6 @@ navbar:
     
   - text: Additional analyses
     href: "04_supplements.html"
-
-  - text: MRP Norming Tutorial
-    href: "05_tutorial.html"
     
 
   right:

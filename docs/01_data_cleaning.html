@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2025-03-29" />
+<meta name="date" content="2025-06-07" />
 
 <title>Data preprocessing code</title>
 
@@ -338,9 +338,6 @@ div.tocify {
 <li>
   <a href="04_supplements.html">Additional analyses</a>
 </li>
-<li>
-  <a href="05_tutorial.html">MRP Norming Tutorial</a>
-</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
@@ -360,7 +357,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Data preprocessing code</h1>
-<h4 class="date">2025-03-29</h4>
+<h4 class="date">2025-06-07</h4>
 
 </div>
 
@@ -393,7 +390,6 @@ pre {
     error = TRUE
 )
 
-knitr::opts_chunk$set(fig.ext = &#39;svg&#39;)
 
 
 options(scipen = 999,
@@ -714,24 +710,7 @@ census_n
 <tbody>
 <tr>
 <td style="text-align:right;">
-57
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Citizen: Own mig experience
-</td>
-<td style="text-align:left;">
-ISCED 3b: Upper secondary, vocational
-</td>
-<td style="text-align:right;">
-19380
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-41
+37
 </td>
 <td style="text-align:left;">
 TRUE
@@ -740,38 +719,106 @@ TRUE
 Non-citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-ISCED 5a: Tertiary, e.g., college
+ISCED 2: Lower secondary
 </td>
 <td style="text-align:right;">
-7190
+11160
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-11
+55
 </td>
 <td style="text-align:left;">
-TRUE
+FALSE
 </td>
 <td style="text-align:left;">
-Citizen: Mig background from both parents
+Non-citizen: Own mig experience
 </td>
 <td style="text-align:left;">
-ST6: Other school
+ISCED 5b: Tertiary, e.g., co-op program
 </td>
 <td style="text-align:right;">
-1450
+2220
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-64
+15
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
 Citizen: Mig background from both parents
+</td>
+<td style="text-align:left;">
+ST3: Intermediate secondary
+</td>
+<td style="text-align:right;">
+9140
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+49
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+Non-citizen: Own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 3a: Upper secondary, general
+</td>
+<td style="text-align:right;">
+1900
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+13
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Citizen: Mig background from both parents
+</td>
+<td style="text-align:left;">
+ST2: Lower secondary
+</td>
+<td style="text-align:right;">
+5200
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+45
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+<td style="text-align:left;">
+Citizen: Own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 4: Post-secondary
+</td>
+<td style="text-align:right;">
+2650
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+45
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Citizen: Mig background from one parent
 </td>
 <td style="text-align:left;">
 ISCED 1: Primary
@@ -782,7 +829,7 @@ ISCED 1: Primary
 </tr>
 <tr>
 <td style="text-align:right;">
-35
+57
 </td>
 <td style="text-align:left;">
 FALSE
@@ -791,10 +838,44 @@ FALSE
 Citizen: No mig background
 </td>
 <td style="text-align:left;">
-ISCED 5a: Tertiary, e.g., college
+ISCED 2: Lower secondary
 </td>
 <td style="text-align:right;">
-58550
+65900
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+48
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Non-citizen: No own mig experience
+</td>
+<td style="text-align:left;">
+ISCED 1: Primary
+</td>
+<td style="text-align:right;">
+360
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+49
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+Citizen: Mig background from both parents
+</td>
+<td style="text-align:left;">
+ISCED 3a: Upper secondary, general
+</td>
+<td style="text-align:right;">
+0
 </td>
 </tr>
 <tr>
@@ -805,64 +886,13 @@ ISCED 5a: Tertiary, e.g., college
 FALSE
 </td>
 <td style="text-align:left;">
-Citizen: Mig background from both parents
+Non-citizen: Own mig experience
 </td>
 <td style="text-align:left;">
 ISCED 5b: Tertiary, e.g., co-op program
 </td>
 <td style="text-align:right;">
-0
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-50
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Non-citizen: No own mig experience
-</td>
-<td style="text-align:left;">
-ISCED 1: Primary
-</td>
-<td style="text-align:right;">
-300
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-48
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Non-citizen: No own mig experience
-</td>
-<td style="text-align:left;">
-ISCED 2: Lower secondary
-</td>
-<td style="text-align:right;">
-830
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-27
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Non-citizen: No own mig experience
-</td>
-<td style="text-align:left;">
-ISCED 5b: Tertiary, e.g., co-op program
-</td>
-<td style="text-align:right;">
-500
+2290
 </td>
 </tr>
 <tr>
@@ -876,15 +906,15 @@ TRUE
 Citizen: Mig background from one parent
 </td>
 <td style="text-align:left;">
-ISCED 5a: Tertiary, e.g., college
+ISCED 2: Lower secondary
 </td>
 <td style="text-align:right;">
-3480
+1680
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-24
+32
 </td>
 <td style="text-align:left;">
 TRUE
@@ -893,61 +923,27 @@ TRUE
 Citizen: No mig background
 </td>
 <td style="text-align:left;">
-ISCED 1: Primary
+ISCED 2: Lower secondary
 </td>
 <td style="text-align:right;">
-9330
+24080
 </td>
 </tr>
 <tr>
 <td style="text-align:right;">
-61
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Citizen: No mig background
-</td>
-<td style="text-align:left;">
-ISCED 4: Post-secondary
-</td>
-<td style="text-align:right;">
-10340
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-39
+34
 </td>
 <td style="text-align:left;">
 FALSE
 </td>
 <td style="text-align:left;">
-Citizen: No mig background
+Citizen: Mig background from one parent
 </td>
 <td style="text-align:left;">
-ISCED 5a: Tertiary, e.g., college
+ISCED 5b: Tertiary, e.g., co-op program
 </td>
 <td style="text-align:right;">
-64090
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-14
-</td>
-<td style="text-align:left;">
-TRUE
-</td>
-<td style="text-align:left;">
-Citizen: Mig background from both parents
-</td>
-<td style="text-align:left;">
-ST4: Upper secondary
-</td>
-<td style="text-align:right;">
-8290
+1820
 </td>
 </tr>
 </tbody>

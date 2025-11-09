@@ -110,12 +110,10 @@ norm_plots <- function(means_ns_sds_and_ses, labels, palette, ps_table) {
 }
 
 
-# =======================
-# MAIN FUNCTION
-# =======================
+
 age_norm_comparisons <- function(...,
                                  ps_table       = census,  
-                                 ps_variables   = c("age", "educ", "mig", "male"),
+                                 ps_variables   = NULL,  # Changed default to NULL
                                  re_formula     = NULL,
                                  sim_size       = 100000,
                                  RP             = NULL,        
@@ -133,39 +131,25 @@ age_norm_comparisons <- function(...,
     message("File '", output_file, "' already exists. Loading from RDS...")
     existing_data <- readRDS(output_file)
     
-    # We expect existing_data to contain at least:
-    #  means_ns_sds_and_ses, overall_estimates, percentile_data
-    # If "percentile_data" might not exist in older runs, we check, else skip
     means_ns_sds_and_ses <- existing_data$means_ns_sds_and_ses
     overall_estimates    <- existing_data$overall_estimates
     percentile_data      <- existing_data$percentile_data
     
-    # Re-build final 3 aggregated plots
     plots <- norm_plots(means_ns_sds_and_ses, labels, palette, ps_table)
     
-    # Rebuild percentile_plot if percentile_data is present
     percentile_plot <- NULL
     if (!is.null(percentile_data)) {
-      # We do the same logic as previously for building the percentile plot 
-      # from the final df
-      # i.e. we just do a small snippet, since "percentile_data" should already have:
-      #    "Raw_score","age","Source","percentile_label","line_label","show_text"
-      
-      # We'll re-check color skipping logic => if "Raw" in sources => use palette as is, else skip first
-      # We'll define approach_set from unique(percentile_data$Source).
       approach_set <- levels(percentile_data$Source)
-      # if "Raw" in approach_set => color_values=palette else palette[-1]
       if ("Raw" %in% approach_set) {
         color_values <- palette
       } else {
         color_values <- palette[-1]
       }
-      # expansions => baseMaxLabelLen => from the user labels if any
+      
       baseMaxLabelLen <- if (is.null(labels)) 1 else max(nchar(labels))
       maxLabelLen2     <- max(nchar(percentile_data$line_label), na.rm=TRUE)
       myExpandRight2   <- max(baseMaxLabelLen, maxLabelLen2, 1)/1.7
       
-      # build the plot
       max_age_val <- max(percentile_data$age, na.rm=TRUE)
       percentile_plot <- percentile_data %>%
         ggplot2::ggplot(
@@ -232,7 +216,20 @@ age_norm_comparisons <- function(...,
   }
   nModels <- length(brms_models)
   
-  # If user gave single function => apply to all models
+  # Handle ps_variables
+  if (is.null(ps_variables)) {
+    # If NULL, use all predictors from each model
+    ps_variables <- lapply(brms_models, function(model) {
+      all.vars(model$formula$formula)[-1]  # Exclude response variable
+    })
+  } else if (!is.list(ps_variables)) {
+    # If not a list, replicate for all models
+    ps_variables <- replicate(nModels, ps_variables, simplify = FALSE)
+  } else if (length(ps_variables) != nModels) {
+    stop("If ps_variables is a list, its length must match number of brms models.")
+  }
+  
+  # Handle prediction_transform
   if (!is.null(prediction_transform)) {
     if (is.function(prediction_transform)) {
       prediction_transform <- replicate(nModels, prediction_transform, simplify=FALSE)
@@ -248,18 +245,15 @@ age_norm_comparisons <- function(...,
   }
   
   #--------------------------------------------------
-  # 4) Summarize the "raw" lines from the FIRST brms model => always numeric(as.character())
-  #    => ALWAYS create row_level_draws$raw for the first model => so raw percentiles are always shown
+  # 4) Summarize the "raw" lines from the FIRST brms model
   #--------------------------------------------------
   first_mod_data <- brms_models[[1]]$data
   out_name <- all.vars(brms_models[[1]]$formula$formula)[1]
   if (is.na(out_name)) {
     stop("Could not detect outcome from first brms model (multi-param?).")
   }
-  # convert raw outcome => numeric
   first_mod_data[[ out_name ]] <- as.numeric(as.character(first_mod_data[[ out_name ]]))
   
-  # Summaries for aggregated "Raw"
   means_sds_and_ses_raw <- first_mod_data %>%
     dplyr::mutate(age = floor(age)) %>%
     dplyr::group_by(age) %>%
@@ -271,7 +265,6 @@ age_norm_comparisons <- function(...,
       .groups="drop"
     )
   
-  # Always define row approach => "raw"
   row_level_draws <- list()
   row_level_draws[["raw"]] <- list()
   row_level_draws[["raw"]][[ raw_call_names[1] ]] <- first_mod_data %>%
@@ -281,7 +274,6 @@ age_norm_comparisons <- function(...,
       .prediction = .data[[ out_name ]]
     )
   
-  # We'll also gather row_level_draws for actual MRP approaches => c("census","norming_sample")
   age_level_list <- list()
   
   #--------------------------------------------------
@@ -289,33 +281,6 @@ age_norm_comparisons <- function(...,
   #--------------------------------------------------
   for (this_approach in RP) {
     prefix <- if (this_approach=="census") "RPP_" else "RP_"
-    
-    if (this_approach=="census") {
-      sim_data <- ps_table %>%
-        dplyr::filter(census_n != 0) %>%
-        dplyr::ungroup() %>%
-        dplyr::sample_n(
-          size   = sim_size,
-          weight = census_n,
-          replace=TRUE
-        ) %>%
-        dplyr::select(dplyr::all_of(ps_variables))
-    } else if (this_approach=="norming_sample") {
-      sim_data <- first_mod_data %>%
-        dplyr::select(dplyr::all_of(ps_variables)) %>%
-        dplyr::mutate(age = floor(age)) %>%
-        dplyr::filter(between(age, min(ps_table$age), max(ps_table$age))) %>% 
-        dplyr::group_by(dplyr::across(dplyr::everything())) %>%
-        dplyr::summarise(Raw_n = dplyr::n(), .groups="drop") %>%
-        dplyr::sample_n(
-          size   = sim_size,
-          weight = Raw_n,
-          replace=TRUE
-        ) %>%
-        dplyr::select(dplyr::all_of(ps_variables))
-    } else {
-      stop("RP must be 'census' or 'norming_sample'.")
-    }
     
     approach_age_wide_list <- list()
     row_level_draws[[ this_approach ]] <- list()
@@ -326,7 +291,38 @@ age_norm_comparisons <- function(...,
       short_name <- sub("^brm_", "", model_name)
       full_name  <- paste0(prefix,"brm_",short_name)
       
-      sim_data_with_draws <- sim_data %>%
+      # Get the ps_variables for this model
+      this_ps_vars <- ps_variables[[i]]
+      
+      # Create simulation data with the appropriate variables
+      if (this_approach=="census") {
+        sim_data <- ps_table %>%
+          dplyr::filter(census_n != 0) %>%
+          dplyr::ungroup() %>%
+          dplyr::sample_n(
+            size   = sim_size,
+            weight = census_n,
+            replace=TRUE
+          ) 
+      } else if (this_approach=="norming_sample") {
+        sim_data <- first_mod_data %>%
+          dplyr::select(dplyr::all_of(this_ps_vars)) %>%
+          dplyr::mutate(age = floor(age)) %>%
+          dplyr::filter(between(age, min(ps_table$age), max(ps_table$age))) %>% 
+          dplyr::group_by(dplyr::across(dplyr::everything())) %>%
+          dplyr::summarise(Raw_n = dplyr::n(), .groups="drop") %>%
+          dplyr::sample_n(
+            size   = sim_size,
+            weight = Raw_n,
+            replace=TRUE
+          ) 
+      } else {
+        stop("RP must be 'census' or 'norming_sample'.")
+      } 
+      
+      sim_data_with_draws <- sim_data %>% 
+        mutate(pid = row_number() + 100000) %>%  
+        select(pid, everything()) %>%
         tidybayes::add_predicted_draws(
           model,
           ndraws           = 1000,
@@ -335,13 +331,11 @@ age_norm_comparisons <- function(...,
           allow_new_levels = TRUE
         )
       
-      # apply user-supplied transform if any
       fun_pred <- prediction_transform[[ i ]]
       if (!is.null(fun_pred)) {
         sim_data_with_draws$.prediction <- fun_pred(sim_data_with_draws$.prediction)
       }
       
-      # aggregated wide columns
       summary_df <- sim_data_with_draws %>%
         dplyr::group_by(age, .draw) %>%
         dplyr::summarise(
@@ -374,8 +368,6 @@ age_norm_comparisons <- function(...,
   } else if (length(age_level_list)>1) {
     combined_results <- purrr::reduce(age_level_list, dplyr::left_join, by="age")
   } else {
-    # if user didn't specify "census" or "norming_sample", 
-    # we just have raw => minimal approach
     combined_results <- means_sds_and_ses_raw
   }
   
@@ -392,7 +384,6 @@ age_norm_comparisons <- function(...,
       names_pattern= "(.*)_(.*)"
     )
   
-  # define final_levels => always "Raw" plus RPP/RP lines
   final_levels <- "Raw"
   for (i in seq_along(brms_models)) {
     model_name <- raw_call_names[i]
@@ -431,7 +422,6 @@ age_norm_comparisons <- function(...,
   #--------------------------------------------------
   overall_estimates <- list()
   for (appr in names(row_level_draws)) {
-    # e.g. "raw","census","norming_sample"
     prefix <- if (appr=="census") "RPP_" else if (appr=="norming_sample") "RP_" else "Raw_"
     
     for (i in seq_along(brms_models)) {
@@ -469,9 +459,8 @@ age_norm_comparisons <- function(...,
   
   #--------------------------------------------------
   # Build percentile_data from row_level_draws 
-  # Then store it in final_data$percentile_data
   #--------------------------------------------------
-  approach_set <- setdiff(names(row_level_draws), "raw")  # skip "raw"
+  approach_set <- setdiff(names(row_level_draws), "raw")
   target_p <- c(0.01,0.05,0.5,0.95,0.99)
   df_percentile_curves <- list()
   
@@ -525,7 +514,6 @@ age_norm_comparisons <- function(...,
   df_percentile_final$Source <- factor(df_percentile_final$Source, levels=level_order[level_order != "Raw"])
   
   if (!is.null(labels) && length(labels) == length(level_order)) {
-    # Skip first label (for Raw) when labeling percentiles
     adjusted_labels <- labels[-1]
     level_order_no_raw <- level_order[level_order != "Raw"]
     
@@ -539,7 +527,6 @@ age_norm_comparisons <- function(...,
     )
   }
   
-  # only label the first method's percentiles
   methodLevels <- levels(df_percentile_final$Source)
   df_percentile_final <- df_percentile_final %>%
     dplyr::mutate(
@@ -560,7 +547,7 @@ age_norm_comparisons <- function(...,
   # Plots
   plots <- norm_plots(means_ns_sds_and_ses, labels, palette, ps_table)
   
-  # Build percentile plot (Raw is skipped, so we skip first palette color)
+  # Build percentile plot
   approach_set <- levels(percentile_data$Source)
   color_values <- palette[-1]
   

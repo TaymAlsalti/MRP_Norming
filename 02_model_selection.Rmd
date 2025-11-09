@@ -517,7 +517,10 @@ brm_bin_ints_no_educ_male
 pp_check(brm_bin_ints_no_educ_male)
 
 loo_compare(brm_bin_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)
+
+
 ```
+
 
 Fit not great, probably due to the model's inability to deal with overdispersion.
 
@@ -544,6 +547,57 @@ main_vs_bin <- age_norm_comparisons(
 
 main_vs_bin[-1]
 ```
+
+#### With pid as random intercept
+```{r}
+brm_bin_ints_no_educ_male2 <-
+  brm(bf(
+      cft | trials(56) ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ)  + (1 | pid)
+      ),
+      family = binomial(),  
+      chains = 4,
+      seed = 810,
+      file = "../unshareable_data/brms/cft/brm_bin_ints_no_educ_male2",
+      data = tl) %>% 
+  add_criterion("loo")
+
+brm_bin_ints_no_educ_male2
+
+
+pp_check(brm_bin_ints_no_educ_male2)
+
+loo_compare(brm_bin_ints_no_educ_male2, brm_MAIN_nor_ints_no_educ_male)
+```
+
+Fit much better.
+
+
+
+```{r, "main_vs_bin2"}
+main_vs_bin2 <- age_norm_comparisons(
+  brm_MAIN_nor_ints_no_educ_male,  brm_bin_ints_no_educ_male2,
+  labels = c( "Raw", "RPP, normal", "RPP, binomial + ID"),
+  prediction_transform = list(
+  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
+  function(x) x                            # leave binomial predictions as is
+),
+  palette = c(
+  "#BC3C29FF",
+  "#0072B5FF",
+  # "#20854EFF",
+  # "#7876B1FF",
+  # "#6F99ADFF",
+  # "#E18727FF",
+  # "#FFDC91FF",
+  "#EE4C97FF" 
+), 
+  output_file = "data/results/main_vs_bin2.rds"
+  )
+
+main_vs_bin2[-1]
+```
+Smaller error on the binomial model and some differences in the norming distribution (mostly in the right tail of the distribution, where the normal distribution doesn't account for the left skew in the data) and in SDs.
+
 
 ### Beta
 
