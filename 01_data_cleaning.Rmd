@@ -68,6 +68,7 @@ tl_prelim <-
   filter(complete.cases(igf0182, igf0282, igf0382, igf0482)) %>%
   # total sum scores of the sum scores of all 4 subtests, automatically excludes invalid and NA on subtests
   mutate(cft = igf0182 + igf0282 + igf0382 + igf0482,
+         cft_prop = cft/56,
   # divide age in months variable by 12 for easier interpretablility
          age = age0101/12,
   # create logical sex variable

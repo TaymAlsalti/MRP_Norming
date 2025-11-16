@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2025-06-07" />
+<meta name="date" content="2025-11-14" />
 
 <title>Additional analyses</title>
 
@@ -355,7 +355,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Additional analyses</h1>
-<h4 class="date">2025-06-07</h4>
+<h4 class="date">2025-11-14</h4>
 
 </div>
 
@@ -435,24 +435,24 @@ the population. This underlies the difference between RP and RPP.</p>
 number="1.1">
 <h2><span class="header-section-number">1.1</span> Fit/load the
 prediction model</h2>
-<pre class="r"><code>brm_MAIN_nor_ints_no_educ_male &lt;-
+<pre class="r"><code>brm_beta_ints_no_educ_male &lt;-
   brm(bf(
       cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
       sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
       chains = 4, 
       seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male&quot;,
+      file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male&quot;,
       data = tl) %&gt;% 
   add_criterion(&quot;loo&quot;)</code></pre>
 </div>
 <div id="compare" class="section level2" number="1.2">
 <h2><span class="header-section-number">1.2</span> Compare</h2>
 <pre class="r"><code>RPP_vs_raw_vs_RP &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, 
+  brm_beta_ints_no_educ_male, 
   RP = c(&quot;census&quot;, &quot;norming_sample&quot;),
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons
+  function(x) round(x*56) # for handling proportion predictons
 ),
   labels = c( &quot;Raw&quot;, &quot;RPP&quot;, &quot;RP&quot;),
    palette = c(
@@ -469,11 +469,11 @@ prediction model</h2>
 RPP_vs_raw_vs_RP[-1]</code></pre>
 <pre><code>## $overall_estimates
 ## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                             
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                             
-## 1  37.4    NA       8.19  NA      Raw                               
-## 2  35.7     0.116   8.59   0.0990 RPP_brm_MAIN_nor_ints_no_educ_male
-## 3  37.4     0.0725  8.19   0.0587 RP_brm_MAIN_nor_ints_no_educ_male 
+##    Mean SE_of_Mean    SD SE_of_SD Model                         
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                         
+## 1  37.4    NA       8.19  NA      Raw                           
+## 2  35.7     0.116   8.59   0.0952 RPP_brm_beta_ints_no_educ_male
+## 3  37.3     0.0736  8.21   0.0565 RP_brm_beta_ints_no_educ_male 
 ## 
 ## $means_plot</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-2-1.svg" width="768" /></p>
@@ -511,87 +511,91 @@ tl_1_per_fid &lt;- tl %&gt;%
   group_by(fid) %&gt;%
   sample_n(1)
 
-brm_MAIN_nor_ints_no_educ_male_1_per_fid &lt;-
+
+brm_beta_ints_no_educ_male_1_per_fid &lt;-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_1_per_fid&quot;,
+      file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_1_per_fid&quot;,
       data = tl_1_per_fid) %&gt;% 
   add_criterion(&quot;loo&quot;)
 
-brm_MAIN_nor_ints_no_educ_male_1_per_fid</code></pre>
-<pre><code>## Warning: There were 35 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+
+
+brm_beta_ints_no_educ_male_1_per_fid</code></pre>
+<pre><code>## Warning: There were 32 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
-<pre><code>##  Family: gaussian 
-##   Links: mu = identity; sigma = log 
-## Formula: cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
-##          sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+<pre><code>##  Family: beta 
+##   Links: mu = logit; phi = log 
+## Formula: cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
+##          phi ~ (1 | mig) + (1 | educ) + male + s(age)
 ##    Data: tl_1_per_fid (Number of observations: 4046) 
 ##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
 ##          total post-warmup draws = 4000
 ## 
 ## Smoothing Spline Hyperparameters:
 ##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)    13.71      7.58     2.86    31.61 1.00      796     1133
-## sds(sageeducISCED1:Primary_1)                      98.33     36.17    43.10   183.66 1.00     1598     1742
-## sds(sageeducISCED2:Lowersecondary_1)               39.42     18.52    12.57    85.41 1.00      674      880
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)        6.85      6.52     0.13    24.19 1.01      954      716
-## sds(sageeducISCED4:PostMsecondary_1)                9.22      6.24     1.15    25.28 1.00     1674     1928
-## sds(sageeducISCED5a:Tertiarye.g.college_1)         12.82      7.35     2.62    30.00 1.00      769     1642
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     7.51      4.28     1.80    17.72 1.00     2102     1291
-## sds(sageeducISCED6:PhD_1)                          14.73      7.72     5.21    34.51 1.00     2245     2429
-## sds(sageeducST1:Primary_1)                          9.65     11.27     0.33    35.87 1.00     2506     1738
-## sds(sageeducST2:Lowersecondary_1)                   8.59      8.63     0.24    29.78 1.00     2092     1757
-## sds(sageeducST3:Intermediatesecondary_1)           24.68     15.11     7.41    65.38 1.00     1809     1784
-## sds(sageeducST4:Uppersecondary_1)                  23.88     10.28    11.07    52.13 1.00     2033     1241
-## sds(sageeducST5:Comprehensiveschool_1)             27.20     14.86    10.92    66.28 1.00     2503     2237
-## sds(sageeducST6:Otherschool_1)                     25.83     15.03     9.87    61.74 1.00     2198     2058
-## sds(sageeducST7:Nolongeratschool_1)                 9.63     10.25     0.27    39.55 1.00     1679      899
-## sds(sigma_sage_1)                                   0.23      0.30     0.01     1.04 1.00      950     1206
+## sds(sageeducISCED3b:Uppersecondaryvocational_1)     1.25      0.74     0.27     3.05 1.01      897     1864
+## sds(sageeducISCED1:Primary_1)                       7.57      2.85     3.52    14.43 1.00     1930     2453
+## sds(sageeducISCED2:Lowersecondary_1)                3.34      1.42     1.34     6.71 1.00     1189     1814
+## sds(sageeducISCED3a:Uppersecondarygeneral_1)        1.92      1.39     0.10     5.11 1.01      688     1288
+## sds(sageeducISCED4:PostMsecondary_1)                1.76      1.08     0.30     4.31 1.00      870     1467
+## sds(sageeducISCED5a:Tertiarye.g.college_1)          2.28      1.06     0.64     4.78 1.00      687      822
+## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     0.77      0.45     0.22     1.90 1.00     2326     2806
+## sds(sageeducISCED6:PhD_1)                           2.01      1.09     0.68     4.72 1.00     1771     2427
+## sds(sageeducST1:Primary_1)                          3.15      3.13     0.12    11.77 1.00     2103     1978
+## sds(sageeducST2:Lowersecondary_1)                   1.76      1.72     0.06     5.96 1.00     1922     1775
+## sds(sageeducST3:Intermediatesecondary_1)            3.39      2.14     0.94     8.92 1.00     1892     1598
+## sds(sageeducST4:Uppersecondary_1)                   3.06      1.48     1.20     6.95 1.00     2741     2390
+## sds(sageeducST5:Comprehensiveschool_1)              3.52      2.01     1.18     8.90 1.00     2387     2338
+## sds(sageeducST6:Otherschool_1)                      3.25      1.85     1.10     8.31 1.00     2400     1858
+## sds(sageeducST7:Nolongeratschool_1)                 2.35      2.25     0.07     8.15 1.00     1489      958
+## sds(phi_sage_1)                                     0.37      0.44     0.01     1.58 1.00     1112     1719
 ## 
 ## Multilevel Hyperparameters:
 ## ~mig (Number of levels: 6) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)           2.36      1.22     0.83     5.66 1.00      822      803
-## sd(sigma_Intercept)     0.11      0.06     0.04     0.27 1.00     1387     1707
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.19      0.11     0.07     0.46 1.00     1399     1851
+## sd(phi_Intercept)     0.13      0.09     0.02     0.34 1.00     1356     1251
 ## 
 ## ~mig:educ (Number of levels: 86) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     1.46      0.47     0.67     2.50 1.01      475      919
+## sd(Intercept)     0.09      0.03     0.04     0.16 1.00      638     1033
 ## 
 ## ~mig:male (Number of levels: 12) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.42      0.41     0.01     1.53 1.00     1377     1354
+## sd(Intercept)     0.03      0.03     0.00     0.13 1.01     1211     1311
 ## 
 ## ~educ (Number of levels: 15) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(sigma_Intercept)     0.12      0.03     0.07     0.20 1.00     1416     2233
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(phi_Intercept)     0.17      0.06     0.09     0.30 1.00     1361     2366
 ## 
 ## Regression Coefficients:
 ##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                      36.24      1.27    33.66    38.69 1.00      696      629
-## sigma_Intercept                                 1.98      0.06     1.86     2.11 1.00     1355     2344
-## maleTRUE                                        1.68      0.44     0.86     2.69 1.00     2569     2102
-## sigma_maleTRUE                                  0.00      0.02    -0.05     0.05 1.00     5771     2971
-## sage:educISCED3b:Uppersecondaryvocational_1   -68.46     39.16  -157.52   -11.14 1.00      735     1209
-## sage:educISCED1:Primary_1                    -333.72    191.13  -747.28    10.46 1.00     1625     2323
-## sage:educISCED2:Lowersecondary_1             -167.46     90.12  -374.37   -26.38 1.00      802     1633
-## sage:educISCED3a:Uppersecondarygeneral_1       -7.36     21.07   -40.73    47.76 1.00     1919     1585
-## sage:educISCED4:PostMsecondary_1               -8.53     23.67   -51.98    49.34 1.00     1925     1642
-## sage:educISCED5a:Tertiarye.g.college_1         21.13     33.07   -26.12   100.75 1.00      728     1534
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1   -22.06     19.71   -69.36    10.25 1.00     1926     1706
-## sage:educISCED6:PhD_1                          15.37     34.63   -53.55    87.08 1.00     2103     2104
-## sage:educST1:Primary_1                         23.15     32.11   -43.87    88.55 1.00     1790     1472
-## sage:educST2:Lowersecondary_1                  42.57     30.21   -16.11   108.14 1.00     1510     1506
-## sage:educST3:Intermediatesecondary_1           42.88     69.82   -96.91   191.54 1.01     1647     1551
-## sage:educST4:Uppersecondary_1                  25.76     65.45  -105.09   161.87 1.00     1213      646
-## sage:educST5:Comprehensiveschool_1             28.52     75.71  -129.51   168.56 1.00     2007     1847
-## sage:educST6:Otherschool_1                     42.88     76.61   -98.03   196.17 1.00     1720     1440
-## sage:educST7:Nolongeratschool_1                15.89     35.18   -54.54   101.57 1.00     1190      665
-## sigma_sage_1                                   -0.03      0.52    -1.15     1.17 1.00     1289      688
+## Intercept                                       0.55      0.11     0.32     0.77 1.00      928     1726
+## phi_Intercept                                   2.55      0.09     2.36     2.74 1.00     1775     1598
+## maleTRUE                                        0.14      0.04     0.07     0.22 1.00     2054     1197
+## phi_maleTRUE                                   -0.05      0.05    -0.14     0.03 1.00     6699     2920
+## sage:educISCED3b:Uppersecondaryvocational_1    -5.27      3.14   -13.01    -0.78 1.00      867     1496
+## sage:educISCED1:Primary_1                     -23.34     14.90   -56.24     2.82 1.00     1864     2546
+## sage:educISCED2:Lowersecondary_1              -12.17      6.35   -27.26    -1.87 1.00     1265     1530
+## sage:educISCED3a:Uppersecondarygeneral_1        2.06      4.38    -4.07    13.06 1.00      990     1402
+## sage:educISCED4:PostMsecondary_1                1.45      3.88    -4.59    11.01 1.00     1273     1678
+## sage:educISCED5a:Tertiarye.g.college_1          5.84      4.03    -1.19    14.59 1.00      771      959
+## sage:educISCED5b:Tertiarye.g.coMopprogram_1    -1.54      1.82    -5.74     1.75 1.01     1572     1701
+## sage:educISCED6:PhD_1                           1.83      4.43    -7.32    11.08 1.00     2191     1791
+## sage:educST1:Primary_1                          2.74      9.95   -15.95    27.43 1.00     1676     1031
+## sage:educST2:Lowersecondary_1                   3.12      5.80    -8.94    14.88 1.00     2162     1705
+## sage:educST3:Intermediatesecondary_1            3.91      9.19   -14.11    24.57 1.00     1696     1220
+## sage:educST4:Uppersecondary_1                   1.58      7.82   -14.20    17.53 1.01     1947     1851
+## sage:educST5:Comprehensiveschool_1              1.53      9.99   -20.61    21.52 1.01     1786     1536
+## sage:educST6:Otherschool_1                      2.51      9.02   -16.26    20.63 1.00     1839     1703
+## sage:educST7:Nolongeratschool_1                 1.27      8.46   -15.57    19.50 1.00     1211      675
+## phi_sage_1                                     -0.15      0.91    -2.33     1.21 1.00     1873     1761
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -600,12 +604,12 @@ brm_MAIN_nor_ints_no_educ_male_1_per_fid</code></pre>
 <div id="compare-1" class="section level2" number="2.2">
 <h2><span class="header-section-number">2.2</span> Compare</h2>
 <pre class="r"><code>main_vs_1_per_fam &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_1_per_fid,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_1_per_fid,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( &quot;Raw&quot;, &quot;RPP, main&quot;, &quot;RPP, 1/fam&quot;),
+  labels = c( &quot;Raw&quot;, &quot;RPP, full sample&quot;, &quot;RPP, 1/fam&quot;),
    palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -621,11 +625,11 @@ ggsave( &quot;figures/S09_main_vs_1_per_fam_percentile.jpeg&quot;, main_vs_1_per
 main_vs_1_per_fam[-1]</code></pre>
 <pre><code>## $overall_estimates
 ## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                                       
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                       
-## 1  37.4     NA      8.19  NA      Raw                                         
-## 2  35.7      0.114  8.59   0.0973 RPP_brm_MAIN_nor_ints_no_educ_male          
-## 3  35.8      0.178  8.69   0.163  RPP_brm_MAIN_nor_ints_no_educ_male_1_per_fid
+##    Mean SE_of_Mean    SD SE_of_SD Model                                   
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                   
+## 1  37.4     NA      8.19  NA      Raw                                     
+## 2  35.7      0.115  8.60   0.0942 RPP_brm_beta_ints_no_educ_male          
+## 3  35.7      0.168  8.68   0.146  RPP_brm_beta_ints_no_educ_male_1_per_fid
 ## 
 ## $means_plot</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-4-1.svg" width="768" /></p>
@@ -661,88 +665,89 @@ prediction model</h2>
 <pre class="r"><code>tl_no_berufsakad_with_fachhochschule &lt;- tl %&gt;% 
   filter(!(eca0108 == &quot;level 5a&quot; &amp; eca0230 == 8))
 
-brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule &lt;-
+brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule &lt;-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule&quot;,
+      file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule&quot;,
       data = tl_no_berufsakad_with_fachhochschule) %&gt;% 
   add_criterion(&quot;loo&quot;)
 
 
-brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule</code></pre>
-<pre><code>## Warning: There were 56 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule</code></pre>
+<pre><code>## Warning: There were 36 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
-<pre><code>##  Family: gaussian 
-##   Links: mu = identity; sigma = log 
-## Formula: cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
-##          sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+<pre><code>##  Family: beta 
+##   Links: mu = logit; phi = log 
+## Formula: cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
+##          phi ~ (1 | mig) + (1 | educ) + male + s(age)
 ##    Data: tl_no_berufsakad_with_fachhochschule (Number of observations: 9630) 
 ##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
 ##          total post-warmup draws = 4000
 ## 
 ## Smoothing Spline Hyperparameters:
 ##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)    17.58      7.36     6.62    34.49 1.00      815     1336
-## sds(sageeducISCED1:Primary_1)                      78.32     28.09    37.46   144.14 1.00     1408     2067
-## sds(sageeducISCED2:Lowersecondary_1)               43.47     17.95    17.42    87.28 1.00      832     1561
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)       14.93      9.36     1.19    37.61 1.00      974     1191
-## sds(sageeducISCED4:PostMsecondary_1)                8.68      4.56     2.51    19.47 1.00     1664     2221
-## sds(sageeducISCED5a:Tertiarye.g.college_1)         21.54      7.77     9.81    40.21 1.00     1013     1305
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     9.48      4.53     3.36    20.88 1.01     1632     2375
-## sds(sageeducISCED6:PhD_1)                          15.68      6.89     6.58    33.22 1.00     2076     2537
-## sds(sageeducST1:Primary_1)                         10.69     12.36     0.33    42.21 1.00     2403     1394
-## sds(sageeducST2:Lowersecondary_1)                  12.42     10.35     0.80    38.37 1.00     2027     2011
-## sds(sageeducST3:Intermediatesecondary_1)           24.01     14.56     8.88    64.95 1.00     2198     1808
-## sds(sageeducST4:Uppersecondary_1)                  26.85     11.05    12.99    55.55 1.00     2092     1811
-## sds(sageeducST5:Comprehensiveschool_1)             29.76     17.82    11.91    80.46 1.00     1595     1194
-## sds(sageeducST6:Otherschool_1)                     24.69     13.40    10.49    57.60 1.00     2268     2180
-## sds(sageeducST7:Nolongeratschool_1)                13.92     13.95     0.46    52.05 1.00     2518     2368
-## sds(sigma_sage_1)                                   0.14      0.15     0.00     0.53 1.00     1076     1745
+## sds(sageeducISCED3b:Uppersecondaryvocational_1)     1.41      0.69     0.45     3.06 1.00     1082     1983
+## sds(sageeducISCED1:Primary_1)                       6.02      2.03     3.02    10.85 1.00     1815     2388
+## sds(sageeducISCED2:Lowersecondary_1)                3.33      1.44     1.41     6.77 1.01     1124     1950
+## sds(sageeducISCED3a:Uppersecondarygeneral_1)        2.46      1.22     0.63     5.52 1.00     1337     1583
+## sds(sageeducISCED4:PostMsecondary_1)                1.18      0.65     0.33     2.75 1.00     1518     2434
+## sds(sageeducISCED5a:Tertiarye.g.college_1)          2.64      0.92     1.25     4.82 1.00     1850     2300
+## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     0.87      0.49     0.29     2.18 1.00     1939     2776
+## sds(sageeducISCED6:PhD_1)                           2.08      1.05     0.82     4.67 1.00     2337     2907
+## sds(sageeducST1:Primary_1)                          3.35      3.06     0.12    11.43 1.00     2192     2479
+## sds(sageeducST2:Lowersecondary_1)                   2.32      1.89     0.19     7.16 1.00     1487     1217
+## sds(sageeducST3:Intermediatesecondary_1)            3.35      2.09     0.99     9.08 1.00     2444     2565
+## sds(sageeducST4:Uppersecondary_1)                   3.29      1.56     1.35     7.28 1.00     2857     2255
+## sds(sageeducST5:Comprehensiveschool_1)              3.69      2.20     1.23     9.81 1.00     3061     2287
+## sds(sageeducST6:Otherschool_1)                      3.04      1.72     1.07     7.55 1.00     3052     2410
+## sds(sageeducST7:Nolongeratschool_1)                 3.09      2.40     0.16     9.23 1.00     2042     1774
+## sds(phi_sage_1)                                     0.55      0.38     0.08     1.55 1.00     1475     1697
 ## 
 ## Multilevel Hyperparameters:
 ## ~mig (Number of levels: 6) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)           2.78      1.27     1.32     6.00 1.00     1499     2076
-## sd(sigma_Intercept)     0.09      0.05     0.04     0.21 1.00     1346     2313
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.23      0.11     0.10     0.51 1.00     1984     2575
+## sd(phi_Intercept)     0.12      0.07     0.04     0.29 1.00     1637     2108
 ## 
 ## ~mig:educ (Number of levels: 89) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     1.04      0.33     0.50     1.79 1.01      681     1035
+## sd(Intercept)     0.08      0.02     0.04     0.13 1.00      972     2020
 ## 
 ## ~mig:male (Number of levels: 12) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.23      0.23     0.01     0.81 1.00     1672     1849
+## sd(Intercept)     0.02      0.02     0.00     0.07 1.00     2141     2308
 ## 
 ## ~educ (Number of levels: 15) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(sigma_Intercept)     0.10      0.03     0.06     0.17 1.00     1179     1823
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(phi_Intercept)     0.14      0.04     0.08     0.23 1.00     2047     2710
 ## 
 ## Regression Coefficients:
 ##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                      36.40      1.38    33.61    39.11 1.00      939     1577
-## sigma_Intercept                                 1.98      0.05     1.88     2.09 1.01     1095     1535
-## maleTRUE                                        1.42      0.26     0.94     1.97 1.00     2192     1847
-## sigma_maleTRUE                                  0.01      0.01    -0.02     0.04 1.00     7975     2601
-## sage:educISCED3b:Uppersecondaryvocational_1   -93.84     37.67  -178.09   -30.85 1.00      836     1523
-## sage:educISCED1:Primary_1                    -334.34    110.29  -570.20  -142.13 1.00     1725     1993
-## sage:educISCED2:Lowersecondary_1             -234.97     91.25  -438.98   -79.16 1.00      897     1223
-## sage:educISCED3a:Uppersecondarygeneral_1        7.15     35.16   -53.23    90.16 1.00     1477     1486
-## sage:educISCED4:PostMsecondary_1               -7.59     22.00   -49.04    40.18 1.00     1381     1300
-## sage:educISCED5a:Tertiarye.g.college_1         46.88     35.37   -15.66   124.56 1.01     1060     1431
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1   -37.07     23.43   -89.47     1.08 1.00     1253     1832
-## sage:educISCED6:PhD_1                          29.06     35.52   -38.33   105.54 1.00     1789     2033
-## sage:educST1:Primary_1                         31.46     39.95   -42.73   114.83 1.00     1382      909
-## sage:educST2:Lowersecondary_1                  52.38     38.50   -27.31   140.21 1.00     2012     1553
-## sage:educST3:Intermediatesecondary_1           52.34     70.40   -69.41   196.95 1.00     1548     1289
-## sage:educST4:Uppersecondary_1                  37.62     72.18  -107.27   187.83 1.00     1781     1536
-## sage:educST5:Comprehensiveschool_1             31.09     89.16  -161.75   187.38 1.00     1382      943
-## sage:educST6:Otherschool_1                     40.17     72.80  -111.64   178.00 1.00     1833     1578
-## sage:educST7:Nolongeratschool_1                23.86     51.19   -64.76   151.01 1.00     1800     1516
-## sigma_sage_1                                    0.01      0.33    -0.56     0.83 1.00     1833     1407
+## Intercept                                       0.57      0.12     0.35     0.80 1.00     1506     1980
+## phi_Intercept                                   2.57      0.07     2.42     2.71 1.00     2656     2771
+## maleTRUE                                        0.11      0.02     0.07     0.15 1.00     4100     2482
+## phi_maleTRUE                                   -0.09      0.03    -0.15    -0.03 1.00     7156     2967
+## sage:educISCED3b:Uppersecondaryvocational_1    -6.45      2.96   -13.10    -1.80 1.00     1098     1698
+## sage:educISCED1:Primary_1                     -25.18      8.32   -43.32   -10.28 1.00     2957     2669
+## sage:educISCED2:Lowersecondary_1              -15.51      6.55   -30.05    -4.90 1.01     1141     1783
+## sage:educISCED3a:Uppersecondarygeneral_1        3.28      4.84    -4.50    14.41 1.00     1744     2724
+## sage:educISCED4:PostMsecondary_1                0.50      2.73    -4.01     6.73 1.00     2235     2274
+## sage:educISCED5a:Tertiarye.g.college_1          6.41      3.63    -0.05    14.30 1.00     1582     2306
+## sage:educISCED5b:Tertiarye.g.coMopprogram_1    -2.40      1.92    -6.81     0.90 1.00     1721     2259
+## sage:educISCED6:PhD_1                           3.12      4.40    -5.75    11.90 1.00     2971     2450
+## sage:educST1:Primary_1                          2.75     10.84   -20.95    27.08 1.00     2634     1853
+## sage:educST2:Lowersecondary_1                   4.06      7.38   -11.24    19.41 1.00     3381     2202
+## sage:educST3:Intermediatesecondary_1            5.13      9.62   -12.34    27.76 1.00     2462     1749
+## sage:educST4:Uppersecondary_1                   3.04      8.53   -13.95    21.07 1.00     2527     1933
+## sage:educST5:Comprehensiveschool_1              1.38     10.22   -21.87    21.91 1.01     2900     1787
+## sage:educST6:Otherschool_1                      2.47      8.44   -15.61    19.39 1.00     3223     2169
+## sage:educST7:Nolongeratschool_1                 2.57      9.45   -16.05    23.45 1.00     3025     2276
+## phi_sage_1                                     -0.94      1.08    -3.37     0.74 1.00     2558     2932
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -751,12 +756,12 @@ brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule</code></pre>
 <div id="compare-2" class="section level2" number="3.2">
 <h2><span class="header-section-number">3.2</span> Compare</h2>
 <pre class="r"><code>main_vs_mod_isced &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( &quot;Raw&quot;, &quot;RPP, main&quot;, &quot;RPP, no BeAk/FHS&quot;),
+  labels = c( &quot;Raw&quot;, &quot;RPP, full sample&quot;, &quot;RPP, no BeAk/FHS&quot;),
   palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -772,11 +777,11 @@ ggsave( &quot;figures/S03_main_vs_mod_isced_percentile.jpeg&quot;, main_vs_mod_i
 main_vs_mod_isced[-1]</code></pre>
 <pre><code>## $overall_estimates
 ## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                                                               
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                                               
-## 1  37.4     NA      8.19  NA      Raw                                                                 
-## 2  35.7      0.114  8.58   0.0976 RPP_brm_MAIN_nor_ints_no_educ_male                                  
-## 3  35.7      0.109  8.60   0.0996 RPP_brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule
+##    Mean SE_of_Mean    SD SE_of_SD Model                                                           
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                                           
+## 1  37.4     NA      8.19  NA      Raw                                                             
+## 2  35.7      0.116  8.59   0.0948 RPP_brm_beta_ints_no_educ_male                                  
+## 3  35.7      0.115  8.61   0.0907 RPP_brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule
 ## 
 ## $means_plot</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-6-1.svg" width="768" /></p>
@@ -804,87 +809,88 @@ prediction model</h2>
 <pre class="r"><code>tl_no_missing_mig &lt;- tl %&gt;% 
   filter(complete.cases(mig0520, mig2000, mig3100, mig3200))
 
-brm_MAIN_nor_ints_no_educ_male_no_missing_mig &lt;-
+brm_beta_ints_no_educ_male_no_missing_mig &lt;-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_missing_mig&quot;,
+      file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_no_missing_mig&quot;,
       data = tl_no_missing_mig) %&gt;% 
   add_criterion(&quot;loo&quot;)
 
-brm_MAIN_nor_ints_no_educ_male_no_missing_mig</code></pre>
-<pre><code>## Warning: There were 43 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+brm_beta_ints_no_educ_male_no_missing_mig</code></pre>
+<pre><code>## Warning: There were 25 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
-<pre><code>##  Family: gaussian 
-##   Links: mu = identity; sigma = log 
-## Formula: cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
-##          sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+<pre><code>##  Family: beta 
+##   Links: mu = logit; phi = log 
+## Formula: cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
+##          phi ~ (1 | mig) + (1 | educ) + male + s(age)
 ##    Data: tl_no_missing_mig (Number of observations: 9484) 
 ##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
 ##          total post-warmup draws = 4000
 ## 
 ## Smoothing Spline Hyperparameters:
 ##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)    16.69      8.85     4.95    37.84 1.00      481     1252
-## sds(sageeducISCED1:Primary_1)                      90.04     32.90    40.00   165.05 1.00      962     1236
-## sds(sageeducISCED2:Lowersecondary_1)               47.83     26.35    13.36   114.65 1.01      357      882
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)        9.99      7.92     0.42    29.75 1.00     1144     2048
-## sds(sageeducISCED4:PostMsecondary_1)                8.45      4.56     2.58    19.51 1.00     2014     2185
-## sds(sageeducISCED5a:Tertiarye.g.college_1)         18.95      8.11     5.69    36.92 1.00      773      646
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     9.33      4.78     3.36    20.85 1.00     1273     2281
-## sds(sageeducISCED6:PhD_1)                          16.88      7.76     7.32    37.06 1.00     2349     2531
-## sds(sageeducST1:Primary_1)                          9.84     10.98     0.30    37.95 1.00     2283     1558
-## sds(sageeducST2:Lowersecondary_1)                  12.01     11.15     0.40    38.70 1.00     1784     1785
-## sds(sageeducST3:Intermediatesecondary_1)           19.49     11.03     6.63    48.46 1.00     2839     2505
-## sds(sageeducST4:Uppersecondary_1)                  25.48     11.08    11.83    54.94 1.00     3124     2473
-## sds(sageeducST5:Comprehensiveschool_1)             28.03     15.75    11.30    71.32 1.00     2915     2195
-## sds(sageeducST6:Otherschool_1)                     24.28     12.80     9.95    56.76 1.00     2827     2470
-## sds(sageeducST7:Nolongeratschool_1)                17.86     20.39     0.45    67.08 1.00     1776     1215
-## sds(sigma_sage_1)                                   0.12      0.12     0.00     0.43 1.00     1429     1736
+## sds(sageeducISCED3b:Uppersecondaryvocational_1)     1.63      0.85     0.47     3.57 1.01      860     1830
+## sds(sageeducISCED1:Primary_1)                       7.12      2.45     3.59    12.96 1.00     1764     2123
+## sds(sageeducISCED2:Lowersecondary_1)                4.18      1.84     1.69     8.61 1.00      896     1930
+## sds(sageeducISCED3a:Uppersecondarygeneral_1)        2.04      1.30     0.19     5.23 1.00      655     1385
+## sds(sageeducISCED4:PostMsecondary_1)                1.14      0.66     0.34     2.82 1.00      931     1755
+## sds(sageeducISCED5a:Tertiarye.g.college_1)          2.57      0.99     1.12     5.00 1.00      993     1549
+## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     0.86      0.46     0.29     2.08 1.00     2145     2906
+## sds(sageeducISCED6:PhD_1)                           2.19      1.04     0.85     4.87 1.00     2063     2890
+## sds(sageeducST1:Primary_1)                          2.28      2.16     0.08     8.05 1.00     2687     1992
+## sds(sageeducST2:Lowersecondary_1)                   2.30      2.02     0.11     7.33 1.00     1404     1118
+## sds(sageeducST3:Intermediatesecondary_1)            2.68      1.77     0.75     7.31 1.00     2113     1587
+## sds(sageeducST4:Uppersecondary_1)                   3.18      1.48     1.32     7.02 1.00     2670     2433
+## sds(sageeducST5:Comprehensiveschool_1)              3.49      2.05     1.17     9.14 1.00     2553     2863
+## sds(sageeducST6:Otherschool_1)                      3.13      1.93     1.04     8.29 1.00     2332     2249
+## sds(sageeducST7:Nolongeratschool_1)                 3.43      2.49     0.27     9.69 1.00     2078     1969
+## sds(phi_sage_1)                                     0.49      0.37     0.05     1.39 1.00     1377     1933
 ## 
 ## Multilevel Hyperparameters:
 ## ~mig (Number of levels: 6) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)           2.91      1.27     1.36     6.16 1.00     1870     2327
-## sd(sigma_Intercept)     0.10      0.06     0.04     0.25 1.00     1419     2083
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.24      0.12     0.11     0.56 1.00     1406     1763
+## sd(phi_Intercept)     0.14      0.08     0.05     0.33 1.00     1157     1605
 ## 
 ## ~mig:educ (Number of levels: 89) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     1.38      0.47     0.63     2.42 1.00      277      676
+## sd(Intercept)     0.09      0.02     0.05     0.14 1.00      727     1801
 ## 
 ## ~mig:male (Number of levels: 12) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.23      0.23     0.01     0.83 1.00     2107     2430
+## sd(Intercept)     0.02      0.02     0.00     0.07 1.00     1622     1580
 ## 
 ## ~educ (Number of levels: 15) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(sigma_Intercept)     0.10      0.02     0.06     0.16 1.00     1384     1935
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(phi_Intercept)     0.12      0.04     0.07     0.20 1.00     1673     2273
 ## 
 ## Regression Coefficients:
 ##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                      36.20      1.42    33.48    39.12 1.00     1050     1369
-## sigma_Intercept                                 1.97      0.06     1.86     2.09 1.00     1300     1447
-## maleTRUE                                        1.49      0.27     0.97     2.05 1.00     3010     2240
-## sigma_maleTRUE                                  0.01      0.02    -0.02     0.04 1.00     6231     1953
-## sage:educISCED3b:Uppersecondaryvocational_1   -85.44     47.45  -194.19   -16.96 1.00      413     1020
-## sage:educISCED1:Primary_1                    -371.56    124.61  -629.77  -142.36 1.00     1447     1792
-## sage:educISCED2:Lowersecondary_1             -252.83    138.24  -569.05   -52.25 1.01      373      979
-## sage:educISCED3a:Uppersecondarygeneral_1       -3.35     27.08   -50.56    61.89 1.00     1655     1394
-## sage:educISCED4:PostMsecondary_1               -7.53     22.32   -48.85    44.52 1.00     1925     1764
-## sage:educISCED5a:Tertiarye.g.college_1         32.14     37.14   -30.06   113.32 1.01      836     1830
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1   -32.99     24.29   -91.42     3.92 1.00      953     1302
-## sage:educISCED6:PhD_1                          34.59     39.24   -37.18   118.72 1.00     1957     1925
-## sage:educST1:Primary_1                         23.26     37.61   -55.27    93.05 1.00     1580      899
-## sage:educST2:Lowersecondary_1                  40.21     43.18   -42.66   124.87 1.00     2053      977
-## sage:educST3:Intermediatesecondary_1           36.39     52.51   -73.77   144.49 1.00     1998     1774
-## sage:educST4:Uppersecondary_1                  31.63     67.02  -103.79   171.79 1.00     2112     2204
-## sage:educST5:Comprehensiveschool_1             25.14     78.02  -145.43   164.38 1.00     2173     1864
-## sage:educST6:Otherschool_1                     44.58     67.64   -89.38   183.71 1.00     2367     2031
-## sage:educST7:Nolongeratschool_1                20.47     67.00   -96.70   184.03 1.00     1140     1066
-## sigma_sage_1                                   -0.02      0.30    -0.59     0.64 1.00     2980     2505
+## Intercept                                       0.57      0.12     0.34     0.82 1.01      939     1736
+## phi_Intercept                                   2.57      0.08     2.41     2.72 1.00     1463     1636
+## maleTRUE                                        0.12      0.02     0.08     0.17 1.00     2474     1805
+## phi_maleTRUE                                   -0.08      0.03    -0.14    -0.03 1.00     6185     2610
+## sage:educISCED3b:Uppersecondaryvocational_1    -7.38      3.72   -15.91    -1.93 1.01      900     1603
+## sage:educISCED1:Primary_1                     -28.71      9.44   -49.06   -11.74 1.00     1747     2437
+## sage:educISCED2:Lowersecondary_1              -19.86      8.45   -38.82    -6.12 1.00      828     1673
+## sage:educISCED3a:Uppersecondarygeneral_1        2.13      4.71    -4.66    13.61 1.00      890     1144
+## sage:educISCED4:PostMsecondary_1                0.43      2.84    -4.16     7.22 1.00     1122     1085
+## sage:educISCED5a:Tertiarye.g.college_1          6.10      4.13    -0.94    15.87 1.00      802     1374
+## sage:educISCED5b:Tertiarye.g.coMopprogram_1    -2.47      1.92    -7.02     0.81 1.00     1837     1714
+## sage:educISCED6:PhD_1                           3.76      4.72    -5.18    13.61 1.00     2202     2221
+## sage:educST1:Primary_1                          1.71      7.51   -13.92    16.53 1.00     2156     1622
+## sage:educST2:Lowersecondary_1                   3.59      7.30   -12.04    19.42 1.00     1879     1392
+## sage:educST3:Intermediatesecondary_1            2.80      7.88   -13.21    18.32 1.00     2342     1809
+## sage:educST4:Uppersecondary_1                   2.13      8.08   -14.37    19.20 1.00     1949     1765
+## sage:educST5:Comprehensiveschool_1              0.58      9.17   -20.39    17.94 1.00     2348     2257
+## sage:educST6:Otherschool_1                      3.21      9.05   -15.94    22.39 1.00     1990     1539
+## sage:educST7:Nolongeratschool_1                 2.85     10.11   -17.60    24.25 1.00     2441     1975
+## phi_sage_1                                     -0.74      1.01    -3.14     0.81 1.00     2120     2506
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -893,12 +899,12 @@ brm_MAIN_nor_ints_no_educ_male_no_missing_mig</code></pre>
 <div id="compare-3" class="section level2" number="4.2">
 <h2><span class="header-section-number">4.2</span> Compare</h2>
 <pre class="r"><code>main_vs_complete_mig &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_missing_mig,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_no_missing_mig,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( &quot;Raw&quot;, &quot;RPP, main&quot;, &quot;RPP, no missing mig&quot;),
+  labels = c( &quot;Raw&quot;, &quot;RPP, full sample&quot;, &quot;RPP, no missing mig&quot;),
   palette = c(
   &quot;#BC3C29FF&quot;,
   &quot;#0072B5FF&quot;,
@@ -914,11 +920,11 @@ ggsave( &quot;figures/S02_main_vs_complete_mig_percentile.jpeg&quot;, main_vs_co
 main_vs_complete_mig[-1]</code></pre>
 <pre><code>## $overall_estimates
 ## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                                            
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                            
-## 1  37.4     NA      8.19  NA      Raw                                              
-## 2  35.7      0.115  8.59   0.0970 RPP_brm_MAIN_nor_ints_no_educ_male               
-## 3  35.8      0.117  8.54   0.0992 RPP_brm_MAIN_nor_ints_no_educ_male_no_missing_mig
+##    Mean SE_of_Mean    SD SE_of_SD Model                                        
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                        
+## 1  37.4     NA      8.19  NA      Raw                                          
+## 2  35.7      0.115  8.60   0.0942 RPP_brm_beta_ints_no_educ_male               
+## 3  35.7      0.115  8.56   0.0913 RPP_brm_beta_ints_no_educ_male_no_missing_mig
 ## 
 ## $means_plot</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-8-1.svg" width="768" /></p>
@@ -932,148 +938,10 @@ main_vs_complete_mig[-1]</code></pre>
 <pre><code>## 
 ## $percentile_plot</code></pre>
 <p><img src="04_supplements_files/figure-html/unnamed-chunk-8-4.svg" width="768" /></p>
-</div>
-</div>
-<div id="model-fit-to-n-1000-random-sample-from-tl"
-class="section level1" number="5">
-<h1><span class="header-section-number">5</span> Model fit to N = 1000
-random sample from TL</h1>
-<div id="fitload-the-prediction-model-4" class="section level2"
-number="5.1">
-<h2><span class="header-section-number">5.1</span> Fit/load the
-prediction model</h2>
-<pre class="r"><code>set.seed(810)
-tl_sample &lt;- tl %&gt;% sample_n(1000)
-
-brm_MAIN_nor_ints_no_educ_male_sample &lt;-
-  brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      chains = 4, 
-      seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_sample&quot;,
-      data = tl_sample) %&gt;% 
-  add_criterion(&quot;loo&quot;)
-
-brm_MAIN_nor_ints_no_educ_male_sample</code></pre>
-<pre><code>## Warning: There were 75 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
-## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
-<pre><code>##  Family: gaussian 
-##   Links: mu = identity; sigma = log 
-## Formula: cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
-##          sigma ~ (1 | mig) + (1 | educ) + male + s(age)
-##    Data: tl_sample (Number of observations: 1000) 
-##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
-##          total post-warmup draws = 4000
-## 
-## Smoothing Spline Hyperparameters:
-##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)     7.34      5.38     0.45    21.30 1.00     1698     2108
-## sds(sageeducISCED1:Primary_1)                      16.14     18.49     0.54    62.86 1.00     1699     1925
-## sds(sageeducISCED2:Lowersecondary_1)                7.96      9.32     0.23    35.29 1.00     1200      961
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)       29.36     20.04     1.73    77.74 1.00     1083     1472
-## sds(sageeducISCED4:PostMsecondary_1)                5.69      5.98     0.23    19.72 1.00     2097     2023
-## sds(sageeducISCED5a:Tertiarye.g.college_1)         10.24      8.64     0.40    32.41 1.00      987     1695
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     8.67      6.26     0.51    23.97 1.00     1729     1769
-## sds(sageeducISCED6:PhD_1)                           6.36      6.17     0.20    22.03 1.00     2169     2190
-## sds(sageeducST1:Primary_1)                          7.70      8.01     0.20    28.10 1.00     2225     1438
-## sds(sageeducST2:Lowersecondary_1)                  10.13     11.41     0.27    39.67 1.00     2201     1997
-## sds(sageeducST3:Intermediatesecondary_1)            8.02      8.17     0.29    27.93 1.00     2374     1951
-## sds(sageeducST4:Uppersecondary_1)                  24.02     11.80     9.91    57.15 1.00     3165     2084
-## sds(sageeducST5:Comprehensiveschool_1)             13.13     10.14     0.72    39.42 1.00     1912     1824
-## sds(sageeducST6:Otherschool_1)                     11.54     11.15     0.41    38.64 1.00     1982     2090
-## sds(sageeducST7:Nolongeratschool_1)                 8.17      9.13     0.28    32.41 1.00     2395     1518
-## sds(sigma_sage_1)                                   0.33      0.39     0.01     1.48 1.00     1411     1874
-## 
-## Multilevel Hyperparameters:
-## ~mig (Number of levels: 6) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)           2.83      1.90     0.19     7.23 1.00     1329     1888
-## sd(sigma_Intercept)     0.18      0.14     0.05     0.50 1.00     1197     1378
-## 
-## ~mig:educ (Number of levels: 67) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     2.97      0.79     1.52     4.57 1.00      865     1136
-## 
-## ~mig:male (Number of levels: 12) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     2.52      1.31     0.31     5.55 1.00      895     1077
-## 
-## ~educ (Number of levels: 15) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(sigma_Intercept)     0.17      0.06     0.09     0.32 1.00     1465     2085
-## 
-## Regression Coefficients:
-##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                      36.21      2.06    32.26    40.26 1.00     2204     2131
-## sigma_Intercept                                 1.97      0.14     1.74     2.22 1.00     1589     1363
-## maleTRUE                                        1.28      1.97    -2.64     5.33 1.00     2508     1985
-## sigma_maleTRUE                                  0.07      0.05    -0.03     0.17 1.00     5268     2972
-## sage:educISCED3b:Uppersecondaryvocational_1   -27.49     27.12   -96.93     6.93 1.00     1944     1497
-## sage:educISCED1:Primary_1                     -10.52     76.87  -155.93   156.64 1.00     2382     1710
-## sage:educISCED2:Lowersecondary_1              -23.75     39.81  -136.81    17.12 1.00     1154      787
-## sage:educISCED3a:Uppersecondarygeneral_1       44.27     80.74   -94.03   220.99 1.00     1920     1664
-## sage:educISCED4:PostMsecondary_1               -0.99     24.37   -39.37    50.81 1.00     1688     1119
-## sage:educISCED5a:Tertiarye.g.college_1         10.78     28.15   -29.28    80.68 1.00     1360     1559
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1   -19.31     27.36   -87.17    20.11 1.00     1979     1746
-## sage:educISCED6:PhD_1                          21.98     26.62   -26.74    77.19 1.00     2430     1693
-## sage:educST1:Primary_1                          7.77     31.05   -55.04    69.48 1.00     1794     1528
-## sage:educST2:Lowersecondary_1                  36.13     39.18   -35.23   127.83 1.00     1804     1354
-## sage:educST3:Intermediatesecondary_1           19.32     30.30   -41.70    80.90 1.01     1668     1276
-## sage:educST4:Uppersecondary_1                  25.88     66.92  -119.86   164.45 1.00     2417     1811
-## sage:educST5:Comprehensiveschool_1             30.81     40.06   -49.20   123.24 1.00     2281     1798
-## sage:educST6:Otherschool_1                     29.43     38.68   -42.65   121.55 1.00     2122     1589
-## sage:educST7:Nolongeratschool_1                -5.78     37.07   -66.38    65.74 1.00     1458      930
-## sigma_sage_1                                   -0.13      0.79    -1.75     1.51 1.00     2244     1968
-## 
-## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-</div>
-<div id="compare-4" class="section level2" number="5.2">
-<h2><span class="header-section-number">5.2</span> Compare</h2>
-<pre class="r"><code>main_vs_n_1000_sample &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_sample,
-  prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
-),
-  labels = c( &quot;Raw&quot;, &quot;RPP, full sample&quot;, &quot;RPP, N=1000 sample&quot;),
-  palette = c(
-  &quot;#BC3C29FF&quot;,
-  &quot;#0072B5FF&quot;,
-  &quot;#7876B1FF&quot;
-), 
-  output_file = &quot;data/results/main_vs_n_1000_sample.rds&quot;
-  )
-
-
-main_vs_n_1000_sample[-1]</code></pre>
-<pre><code>## $overall_estimates
-## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                                    
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                    
-## 1  37.4     NA      8.19  NA      Raw                                      
-## 2  35.7      0.115  8.58   0.0980 RPP_brm_MAIN_nor_ints_no_educ_male       
-## 3  36.1      0.327  8.80   0.263  RPP_brm_MAIN_nor_ints_no_educ_male_sample
-## 
-## $means_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
-<pre><code>## 
-## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-2.svg" width="768" /></p>
-<pre><code>## 
-## $SEs_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-3.svg" width="768" /></p>
-<pre><code>## 
-## $percentile_plot</code></pre>
-<p><img src="04_supplements_files/figure-html/unnamed-chunk-10-4.svg" width="768" /></p>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.4.1 (2024-06-14)
 ## Platform: x86_64-pc-linux-gnu
-## Running under: Rocky Linux 9.5 (Blue Onyx)
+## Running under: Rocky Linux 9.6 (Blue Onyx)
 ## 
 ## Matrix products: default
 ## BLAS/LAPACK: FlexiBLAS OPENBLAS;  LAPACK version 3.11.0

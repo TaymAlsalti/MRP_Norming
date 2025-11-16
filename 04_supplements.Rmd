@@ -75,14 +75,14 @@ Most continuous norming methods do not involve any weighting – relying only on
 ```{r}
 
 
-brm_MAIN_nor_ints_no_educ_male <-
+brm_beta_ints_no_educ_male <-
   brm(bf(
       cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
       sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
       chains = 4, 
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male",
+      file = "../unshareable_data/brms/cft/brm_beta_ints_no_educ_male",
       data = tl) %>% 
   add_criterion("loo")
 
@@ -93,10 +93,10 @@ brm_MAIN_nor_ints_no_educ_male <-
 
 
 RPP_vs_raw_vs_RP <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, 
+  brm_beta_ints_no_educ_male, 
   RP = c("census", "norming_sample"),
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons
+  function(x) round(x*56) # for handling proportion predictons
 ),
   labels = c( "Raw", "RPP", "RP"),
    palette = c(
@@ -134,18 +134,22 @@ tl_1_per_fid <- tl %>%
   group_by(fid) %>%
   sample_n(1)
 
-brm_MAIN_nor_ints_no_educ_male_1_per_fid <-
+
+brm_beta_ints_no_educ_male_1_per_fid <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_1_per_fid",
+      file = "../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_1_per_fid",
       data = tl_1_per_fid) %>% 
   add_criterion("loo")
 
-brm_MAIN_nor_ints_no_educ_male_1_per_fid
+
+
+brm_beta_ints_no_educ_male_1_per_fid
 ```
 
 ## Compare
@@ -153,12 +157,12 @@ brm_MAIN_nor_ints_no_educ_male_1_per_fid
 
 
 main_vs_1_per_fam <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_1_per_fid,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_1_per_fid,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( "Raw", "RPP, main", "RPP, 1/fam"),
+  labels = c( "Raw", "RPP, full sample", "RPP, 1/fam"),
    palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -189,23 +193,23 @@ Some participants were assigned an education category that combines two degrees 
 ## Fit/load the prediction model
 ```{r}
 
-
 tl_no_berufsakad_with_fachhochschule <- tl %>% 
   filter(!(eca0108 == "level 5a" & eca0230 == 8))
 
-brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule <-
+brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule",
+      file = "../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule",
       data = tl_no_berufsakad_with_fachhochschule) %>% 
   add_criterion("loo")
 
 
-brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule
+brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule
 ```
 
 ## Compare
@@ -213,12 +217,12 @@ brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule
 
 
 main_vs_mod_isced <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_berufsakad_with_fachhochschule,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_no_berufsakad_with_fachhochschule,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( "Raw", "RPP, main", "RPP, no BeAk/FHS"),
+  labels = c( "Raw", "RPP, full sample", "RPP, no BeAk/FHS"),
   palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -241,21 +245,23 @@ main_vs_mod_isced[-1]
 ## Fit/load the prediction model
 ```{r}
 
+
 tl_no_missing_mig <- tl %>% 
   filter(complete.cases(mig0520, mig2000, mig3100, mig3200))
 
-brm_MAIN_nor_ints_no_educ_male_no_missing_mig <-
+brm_beta_ints_no_educ_male_no_missing_mig <-
   brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
       ),
-      chains = 4, 
+      family = Beta(),  # Beta family for proportion data
+      chains = 4,
       seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_no_missing_mig",
+      file = "../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_no_missing_mig",
       data = tl_no_missing_mig) %>% 
   add_criterion("loo")
 
-brm_MAIN_nor_ints_no_educ_male_no_missing_mig
+brm_beta_ints_no_educ_male_no_missing_mig
 ```
 
 ## Compare
@@ -263,12 +269,12 @@ brm_MAIN_nor_ints_no_educ_male_no_missing_mig
 ```{r}
 
 main_vs_complete_mig <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_no_missing_mig,
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_no_missing_mig,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
+  function(x) round(x*56), # for handling proportion predictons
+  function(x) round(x*56)  # for handling proportion predictions
 ),
-  labels = c( "Raw", "RPP, main", "RPP, no missing mig"),
+  labels = c( "Raw", "RPP, full sample", "RPP, no missing mig"),
   palette = c(
   "#BC3C29FF",
   "#0072B5FF",
@@ -286,50 +292,7 @@ main_vs_complete_mig[-1]
 
 ```
 
-# Model fit to N = 1000 random sample from TL
-## Fit/load the prediction model
-```{r}
 
-set.seed(810)
-tl_sample <- tl %>% sample_n(1000)
-
-brm_MAIN_nor_ints_no_educ_male_sample <-
-  brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      chains = 4, 
-      seed = 810,
-      file = "../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_sample",
-      data = tl_sample) %>% 
-  add_criterion("loo")
-
-brm_MAIN_nor_ints_no_educ_male_sample
-```
-
-## Compare
-
-```{r}
-
-main_vs_n_1000_sample <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_sample,
-  prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
-),
-  labels = c( "Raw", "RPP, full sample", "RPP, N=1000 sample"),
-  palette = c(
-  "#BC3C29FF",
-  "#0072B5FF",
-  "#7876B1FF"
-), 
-  output_file = "data/results/main_vs_n_1000_sample.rds"
-  )
-
-
-main_vs_n_1000_sample[-1]
-
-```
 
 
 ```{r}

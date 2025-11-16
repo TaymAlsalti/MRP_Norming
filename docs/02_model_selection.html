@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2025-06-07" />
+<meta name="date" content="2025-11-16" />
 
 <title>Model selection</title>
 
@@ -355,7 +355,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Model selection</h1>
-<h4 class="date">2025-06-07</h4>
+<h4 class="date">2025-11-16</h4>
 
 </div>
 
@@ -797,7 +797,7 @@ comparison:</p>
   # &quot;#FFDC91FF&quot;,
   &quot;#EE4C97FF&quot;
 ),  
-  output_file = &quot;data/results/main_educ_vs_not.rds&quot;
+  output_file = &quot;data/results/educ_vs_not.rds&quot;
   )
 
 main_educ_vs_not[-1]</code></pre>
@@ -811,17 +811,17 @@ main_educ_vs_not[-1]</code></pre>
 ## 4  35.6      0.106  8.63   0.0899 RPP_brm_nor_s_by_educ_main_random_educ
 ## 
 ## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_educ_vs_not-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/educ_vs_not-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_educ_vs_not-2.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/educ_vs_not-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_educ_vs_not-3.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/educ_vs_not-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_educ_vs_not-4.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/educ_vs_not-4.svg" width="768" /></p>
 <p>So it seems the term <code>s(age, by = educ)</code> is required
 without additionally including a main effect of educ to get sensible
 estimates for ages 19-22. This is probably due to the change in meaning
@@ -866,8 +866,8 @@ random_slopes_vs_spline[-1]</code></pre>
 ##    Mean SE_of_Mean    SD SE_of_SD Model                    
 ##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                    
 ## 1  37.4    NA       8.19  NA      Raw                      
-## 2  35.9     0.0980  8.50   0.0807 RPP_brm_nor_random_slopes
-## 3  35.8     0.116   8.66   0.104  RPP_brm_nor_s_by_educ    
+## 2  35.9     0.0995  8.50   0.0820 RPP_brm_nor_random_slopes
+## 3  35.7     0.116   8.65   0.102  RPP_brm_nor_s_by_educ    
 ## 
 ## $means_plot</code></pre>
 <p><img src="02_model_selection_files/figure-html/random_slopes_vs_spline-1.svg" width="768" /></p>
@@ -1032,26 +1032,25 @@ rpp_nor_ints[-1]</code></pre>
 <p>Including the educ:male interaction reintroduces the malignant dip at
 age 19, so dropping that term in the next model.</p>
 </div>
-<div id="main-model-no-maleeduc-interaction" class="section level3"
-number="1.1.4">
-<h3><span class="header-section-number">1.1.4</span> MAIN model: No
-male:educ interaction</h3>
-<pre class="r"><code>brm_MAIN_nor_ints_no_educ_male &lt;-
+<div id="no-maleeduc-interaction" class="section level3" number="1.1.4">
+<h3><span class="header-section-number">1.1.4</span> No male:educ
+interaction</h3>
+<pre class="r"><code>brm_nor_ints_no_educ_male &lt;-
   brm(bf(
       cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
       sigma ~ (1 | mig) + (1 | educ) + male + s(age)
       ),
       chains = 4,
       seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male&quot;,
+      file = &quot;../unshareable_data/brms/cft/brm_nor_ints_no_educ_male&quot;,
       data = tl) %&gt;% 
   add_criterion(&quot;loo&quot;)
 
 
 
-pp_check(brm_MAIN_nor_ints_no_educ_male)</code></pre>
+pp_check(brm_nor_ints_no_educ_male)</code></pre>
 <p><img src="02_model_selection_files/figure-html/unnamed-chunk-6-1.svg" width="768" /></p>
-<pre class="r"><code>brm_MAIN_nor_ints_no_educ_male</code></pre>
+<pre class="r"><code>brm_nor_ints_no_educ_male</code></pre>
 <pre><code>## Warning: There were 58 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
 <pre><code>##  Family: gaussian 
@@ -1125,13 +1124,12 @@ pp_check(brm_MAIN_nor_ints_no_educ_male)</code></pre>
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<pre class="r"><code>loo_compare(brm_MAIN_nor_ints_no_educ_male, brm_nor_ints)</code></pre>
-<pre><code>##                                elpd_diff se_diff
-## brm_nor_ints                    0.0       0.0   
-## brm_MAIN_nor_ints_no_educ_male -9.7       7.3</code></pre>
-<pre class="r"><code>ggsave(&quot;figures/S05_pp_check.jpeg&quot;, width = 8, height = 4)</code></pre>
+<pre class="r"><code>loo_compare(brm_nor_ints_no_educ_male, brm_nor_ints)</code></pre>
+<pre><code>##                           elpd_diff se_diff
+## brm_nor_ints               0.0       0.0   
+## brm_nor_ints_no_educ_male -9.7       7.3</code></pre>
 <pre class="r"><code>educXmale_vs_not &lt;- age_norm_comparisons(
-  brm_nor_ints, brm_MAIN_nor_ints_no_educ_male,
+  brm_nor_ints, brm_nor_ints_no_educ_male,
   labels = c(&quot;Raw&quot;, &quot;All ints&quot;, &quot;No Educ*Male Int&quot;),
   prediction_transform = list(
   function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
@@ -1174,158 +1172,21 @@ educXmale_vs_not[-1]</code></pre>
 <p><img src="02_model_selection_files/figure-html/educXmale_vs_not-4.svg" width="768" /></p>
 <p>Looks much better, this prediction constellation seems okay.</p>
 </div>
-<div id="boosted-version-of-the-main-model" class="section level3"
-number="1.1.5">
-<h3><span class="header-section-number">1.1.5</span> Boosted version of
-the main model</h3>
-<p>We test for the results’ robustness to divergent transitions by
-refitting the same MAIN model with more, slower iterations.</p>
-<pre class="r"><code>brm_MAIN_nor_ints_no_educ_male_boosted &lt;-
-  brm(bf(
-      cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      sigma ~ (1 | mig) + (1 | educ) + male + s(age)
-      ),
-      chains = 4,
-      iter = 7000,
-      seed = 810,
-      control = list(adapt_delta = 0.999),
-      file = &quot;../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male_boosted&quot;,
-      data = tl) %&gt;% 
-  add_criterion(&quot;loo&quot;)
-
-
-brm_MAIN_nor_ints_no_educ_male_boosted</code></pre>
-<pre><code>##  Family: gaussian 
-##   Links: mu = identity; sigma = log 
-## Formula: cft ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
-##          sigma ~ (1 | mig) + (1 | educ) + male + s(age)
-##    Data: tl (Number of observations: 9980) 
-##   Draws: 4 chains, each with iter = 7000; warmup = 3500; thin = 1;
-##          total post-warmup draws = 14000
-## 
-## Smoothing Spline Hyperparameters:
-##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)    18.60      7.87     7.07    37.47 1.01      403     1471
-## sds(sageeducISCED1:Primary_1)                      81.94     28.73    39.73   151.62 1.02      604     1641
-## sds(sageeducISCED2:Lowersecondary_1)               47.12     20.55    17.86    97.38 1.01      361      513
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)       13.74      9.12     0.78    35.38 1.01      471      405
-## sds(sageeducISCED4:PostMsecondary_1)                8.76      4.85     2.53    20.74 1.01     1108     1794
-## sds(sageeducISCED5a:Tertiarye.g.college_1)         18.39      7.27     7.12    35.64 1.02      519      621
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     9.54      4.62     3.28    20.84 1.01      764     1256
-## sds(sageeducISCED6:PhD_1)                          15.47      7.01     6.77    33.26 1.01     1057     1943
-## sds(sageeducST1:Primary_1)                         10.05     11.58     0.34    41.58 1.00     1108     1390
-## sds(sageeducST2:Lowersecondary_1)                  13.41     11.27     0.79    43.49 1.00      797      479
-## sds(sageeducST3:Intermediatesecondary_1)           23.97     14.56     9.01    60.32 1.00     1195     1451
-## sds(sageeducST4:Uppersecondary_1)                  27.93     12.93    12.93    59.88 1.01      948     2172
-## sds(sageeducST5:Comprehensiveschool_1)             29.79     17.06    12.00    74.79 1.00      992     1893
-## sds(sageeducST6:Otherschool_1)                     24.13     12.31    10.27    55.45 1.01     1053     1611
-## sds(sageeducST7:Nolongeratschool_1)                15.76     17.15     0.48    57.39 1.01     1062     1996
-## sds(sigma_sage_1)                                   0.13      0.13     0.00     0.47 1.00      983     1268
-## 
-## Multilevel Hyperparameters:
-## ~mig (Number of levels: 6) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)           2.82      1.38     1.34     6.16 1.00      660     1620
-## sd(sigma_Intercept)     0.10      0.06     0.04     0.25 1.00      640      954
-## 
-## ~mig:educ (Number of levels: 89) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     1.07      0.34     0.51     1.85 1.02      250      505
-## 
-## ~mig:male (Number of levels: 12) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.22      0.21     0.01     0.77 1.01     1073     1616
-## 
-## ~educ (Number of levels: 15) 
-##                     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(sigma_Intercept)     0.10      0.03     0.06     0.16 1.00      648     1314
-## 
-## Regression Coefficients:
-##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                      36.46      1.43    33.59    39.32 1.01      214      579
-## sigma_Intercept                                 1.98      0.06     1.86     2.08 1.01      399      510
-## maleTRUE                                        1.45      0.25     0.94     1.96 1.00     1149     1222
-## sigma_maleTRUE                                  0.01      0.01    -0.02     0.04 1.00     2149     3598
-## sage:educISCED3b:Uppersecondaryvocational_1  -100.46     41.47  -193.68   -33.73 1.02      285      788
-## sage:educISCED1:Primary_1                    -352.70    115.37  -602.44  -142.12 1.01      830     1534
-## sage:educISCED2:Lowersecondary_1             -251.17    101.02  -476.14   -84.44 1.01      354     1031
-## sage:educISCED3a:Uppersecondarygeneral_1        3.25     31.34   -50.44    79.91 1.00      687      896
-## sage:educISCED4:PostMsecondary_1               -8.23     23.23   -51.44    43.56 1.01      491      758
-## sage:educISCED5a:Tertiarye.g.college_1         28.42     32.62   -24.82   101.36 1.02      310      980
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1   -38.08     23.58   -94.62     0.37 1.01      405      844
-## sage:educISCED6:PhD_1                          27.60     36.07   -40.05   106.05 1.00      735     1368
-## sage:educST1:Primary_1                         32.26     34.33   -36.14   105.91 1.01      696      804
-## sage:educST2:Lowersecondary_1                  55.09     49.01   -27.99   158.39 1.01      527      358
-## sage:educST3:Intermediatesecondary_1           54.83     72.46   -70.65   211.73 1.00      848     1107
-## sage:educST4:Uppersecondary_1                  41.34     70.86   -96.18   187.02 1.00      944     1533
-## sage:educST5:Comprehensiveschool_1             28.18     79.30  -147.02   174.17 1.00      889     1058
-## sage:educST6:Otherschool_1                     39.12     68.04  -105.78   172.33 1.01      769     1212
-## sage:educST7:Nolongeratschool_1                24.75     66.01   -75.51   173.77 1.01      795      746
-## sigma_sage_1                                   -0.02      0.31    -0.58     0.70 1.00      851      990
-## 
-## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<pre class="r"><code>loo_compare(brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_boosted)</code></pre>
-<pre><code>##                                        elpd_diff se_diff
-## brm_MAIN_nor_ints_no_educ_male          0.0       0.0   
-## brm_MAIN_nor_ints_no_educ_male_boosted -0.1       0.3</code></pre>
-<p>No more divergent transitions.</p>
-<pre class="r"><code>main_vs_boosted &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male_boosted,
-  labels = c(&quot;Raw&quot;, &quot;RPP, main&quot;, &quot;RPP, boosted main&quot;),
-  prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) round(pmax(0, pmin(56, x)))  # for handling normal predictions
-),
-   palette = c(
-  &quot;#BC3C29FF&quot;,
-  &quot;#0072B5FF&quot;,
-  # &quot;#20854EFF&quot;,
-  # &quot;#7876B1FF&quot;,
-  # &quot;#6F99ADFF&quot;,
-  # &quot;#E18727FF&quot;,
-  # &quot;#FFDC91FF&quot;,
-  &quot;#EE4C97FF&quot;
-),  
-  output_file = &quot;data/results/main_vs_boosted.rds&quot;
-  )
-
-main_vs_boosted[-1]</code></pre>
-<pre><code>## $overall_estimates
-## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                                     
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                     
-## 1  37.4     NA      8.19  NA      Raw                                       
-## 2  35.7      0.114  8.59   0.0994 RPP_brm_MAIN_nor_ints_no_educ_male        
-## 3  35.7      0.114  8.59   0.0965 RPP_brm_MAIN_nor_ints_no_educ_male_boosted
-## 
-## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_boosted-1.svg" width="768" /></p>
-<pre><code>## 
-## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_boosted-2.svg" width="768" /></p>
-<pre><code>## 
-## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_boosted-3.svg" width="768" /></p>
-<pre><code>## 
-## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_boosted-4.svg" width="768" /></p>
-<pre class="r"><code>ggsave(&quot;figures/S04_main_vs_boosted.jpeg&quot;, main_vs_boosted$means_plot, width = 8, height = 4)
-ggsave(&quot;figures/S04_main_vs_boosted_percentile.jpeg&quot;, main_vs_boosted$percentile_plot, width = 8, height = 4)</code></pre>
-</div>
 </div>
 <div id="alternative-likelihood-functions" class="section level2"
 number="1.2">
 <h2><span class="header-section-number">1.2</span> Alternative
 likelihood functions</h2>
+<p>The fit of the Gaussian models seems okay, but it seems that there is
+certain degree of left skew that the necessarily symmetrical fails to
+account for. So, here we explore alternative likelihood models that are
+not necessarily symmetric around their means.</p>
 <div id="skew-normal" class="section level3" number="1.2.1">
 <h3><span class="header-section-number">1.2.1</span> Skew normal</h3>
-<p>The previous pp_checks show that the data are more skewed than would
-be expected under a Gaussian data generating mechanism. This is why
-explored a skew normal likelihood next. One of the chains kept breaking,
-so we increased the number of chains to 5 to get 4 chains:</p>
+<p>A skew normal is like a normal, but parameterised by an additional
+skew (alpha) parameter that can incorporate non zero skews. One of the
+chains kept breaking, so we increased the number of chains to 5 to get 4
+chains:</p>
 <pre class="r"><code>brm_skew_ints_no_educ_male &lt;-
   brm(bf(
       cft   ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
@@ -1340,7 +1201,7 @@ so we increased the number of chains to 5 to get 4 chains:</p>
   add_criterion(&quot;loo&quot;)
 
 pp_check(brm_skew_ints_no_educ_male)</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-10-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-7-1.svg" width="768" /></p>
 <pre class="r"><code>brm_skew_ints_no_educ_male</code></pre>
 <pre><code>## Warning: There were 37 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 ## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
@@ -1422,59 +1283,13 @@ pp_check(brm_skew_ints_no_educ_male)</code></pre>
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<pre class="r"><code>loo_compare(brm_skew_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)</code></pre>
-<pre><code>##                                elpd_diff se_diff
-## brm_skew_ints_no_educ_male        0.0       0.0 
-## brm_MAIN_nor_ints_no_educ_male -224.7      21.3</code></pre>
-<p>The skew model has better fit to the data, but we still believe
-normal to be more representative of the data generating mechanism. Skew
-normal also often has chain initialisation issues.</p>
-<pre class="r"><code>main_vs_skew &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_skew_ints_no_educ_male,
-  labels = c( &quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, skew&quot;),
-  prediction_transform = list(
-  function(x) pmax(0, pmin(56, x)), # for handling normal predictons
-  function(x) pmax(0, pmin(56, x))  # for handling skew normal predictions
-),
-   palette = c(
-  &quot;#BC3C29FF&quot;,
-  &quot;#0072B5FF&quot;,
-  # &quot;#20854EFF&quot;,
-  # &quot;#7876B1FF&quot;,
-  # &quot;#6F99ADFF&quot;,
-  # &quot;#E18727FF&quot;,
-  # &quot;#FFDC91FF&quot;,
-  &quot;#EE4C97FF&quot;
-),  
-  output_file = &quot;data/results/main_vs_skew&quot;
-  )
-
-
-main_vs_skew[-1]</code></pre>
-<pre><code>## $overall_estimates
-## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                             
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                             
-## 1  37.4     NA      8.19  NA      Raw                               
-## 2  35.7      0.116  8.58   0.0996 RPP_brm_MAIN_nor_ints_no_educ_male
-## 3  35.7      0.112  8.59   0.0967 RPP_brm_skew_ints_no_educ_male    
-## 
-## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_skew-1.svg" width="768" /></p>
-<pre><code>## 
-## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_skew-2.svg" width="768" /></p>
-<pre><code>## 
-## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_skew-3.svg" width="768" /></p>
-<pre><code>## 
-## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_skew-4.svg" width="768" /></p>
-<p>Negligible differences in means and SDs, the skew model has somewhat
-larger error.</p>
-<pre class="r"><code>ggsave(&quot;figures/S07_main_vs_skew.jpeg&quot;, main_vs_skew$means_plot, width = 8, height = 4)
-ggsave(&quot;figures/S07_main_vs_skew_percentile.jpeg&quot;, main_vs_skew$percentile_plot, width = 8, height = 4)</code></pre>
+<pre class="r"><code>loo_compare(brm_skew_ints_no_educ_male, brm_nor_ints_no_educ_male)</code></pre>
+<pre><code>##                            elpd_diff se_diff
+## brm_skew_ints_no_educ_male    0.0       0.0 
+## brm_nor_ints_no_educ_male  -224.7      21.3</code></pre>
+<p>The skew model has better fit to the data, but skew normal also often
+has chain initialisation issues so we explore other likelihoods
+next.</p>
 </div>
 <div id="binomial" class="section level3" number="1.2.2">
 <h3><span class="header-section-number">1.2.2</span> Binomial</h3>
@@ -1555,203 +1370,18 @@ brm_bin_ints_no_educ_male</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_bin_ints_no_educ_male)</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-12-1.svg" width="768" /></p>
-<pre class="r"><code>loo_compare(brm_bin_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
-<pre><code>##                                elpd_diff se_diff
-## brm_MAIN_nor_ints_no_educ_male     0.0       0.0
-## brm_bin_ints_no_educ_male      -7314.4     195.0</code></pre>
-<p>Fit not great, probably due to the model’s inability to deal with
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-8-1.svg" width="768" /></p>
+<p>Fit pretty bad, probably due to the model’s inability to deal with
 overdispersion.</p>
-<pre class="r"><code>main_vs_bin &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_bin_ints_no_educ_male,
-  labels = c( &quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, binomial&quot;),
-  prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) x                            # leave binomial predictions as is
-),
-  palette = c(
-  &quot;#BC3C29FF&quot;,
-  &quot;#0072B5FF&quot;,
-  # &quot;#20854EFF&quot;,
-  # &quot;#7876B1FF&quot;,
-  # &quot;#6F99ADFF&quot;,
-  # &quot;#E18727FF&quot;,
-  # &quot;#FFDC91FF&quot;,
-  &quot;#EE4C97FF&quot; 
-), 
-  output_file = &quot;data/results/main_vs_bin.rds&quot;
-  )
-
-main_vs_bin[-1]</code></pre>
-<pre><code>## $overall_estimates
-## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                             
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                             
-## 1  37.4    NA       8.19  NA      Raw                               
-## 2  35.7     0.114   8.59   0.0987 RPP_brm_MAIN_nor_ints_no_educ_male
-## 3  35.6     0.0613  6.13   0.0606 RPP_brm_bin_ints_no_educ_male     
-## 
-## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin-1.svg" width="768" /></p>
-<pre><code>## 
-## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin-2.svg" width="768" /></p>
-<pre><code>## 
-## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin-3.svg" width="768" /></p>
-<pre><code>## 
-## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin-4.svg" width="768" /></p>
-<div id="with-pid-as-random-intercept" class="section level4"
-number="1.2.2.1">
-<h4><span class="header-section-number">1.2.2.1</span> With pid as
-random intercept</h4>
-<pre class="r"><code>brm_bin_ints_no_educ_male2 &lt;-
-  brm(bf(
-      cft | trials(56) ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ)  + (1 | pid)
-      ),
-      family = binomial(),  
-      chains = 4,
-      seed = 810,
-      file = &quot;../unshareable_data/brms/cft/brm_bin_ints_no_educ_male2&quot;,
-      data = tl) %&gt;% 
-  add_criterion(&quot;loo&quot;)
-
-brm_bin_ints_no_educ_male2</code></pre>
-<pre><code>## Warning: There were 29 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
-## http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</code></pre>
-<pre><code>##  Family: binomial 
-##   Links: mu = logit 
-## Formula: cft | trials(56) ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) + (1 | pid) 
-##    Data: tl (Number of observations: 9980) 
-##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
-##          total post-warmup draws = 4000
-## 
-## Smoothing Spline Hyperparameters:
-##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sds(sageeducISCED3b:Uppersecondaryvocational_1)     1.52      0.72     0.51     3.28 1.01      369      931
-## sds(sageeducISCED1:Primary_1)                       6.34      2.07     3.23    11.17 1.01      597     1158
-## sds(sageeducISCED2:Lowersecondary_1)                3.65      1.52     1.58     7.33 1.02      402      975
-## sds(sageeducISCED3a:Uppersecondarygeneral_1)        2.63      1.41     0.67     6.24 1.01      389      499
-## sds(sageeducISCED4:PostMsecondary_1)                1.21      0.68     0.31     2.85 1.01      436      886
-## sds(sageeducISCED5a:Tertiarye.g.college_1)          2.38      0.88     1.03     4.53 1.01      433      815
-## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     0.86      0.49     0.28     2.12 1.01      497     1004
-## sds(sageeducISCED6:PhD_1)                           2.19      1.07     0.86     4.90 1.00      811     1410
-## sds(sageeducST1:Primary_1)                          3.21      3.09     0.13    11.17 1.01      691      706
-## sds(sageeducST2:Lowersecondary_1)                   2.33      2.00     0.18     7.55 1.00      804      898
-## sds(sageeducST3:Intermediatesecondary_1)            3.29      2.07     1.01     8.70 1.00      826     1209
-## sds(sageeducST4:Uppersecondary_1)                   3.39      1.57     1.41     7.53 1.00     1257     1933
-## sds(sageeducST5:Comprehensiveschool_1)              4.19      2.60     1.28    11.00 1.00      776     1299
-## sds(sageeducST6:Otherschool_1)                      3.27      1.95     1.17     8.37 1.00     1209     1518
-## sds(sageeducST7:Nolongeratschool_1)                 3.96      2.92     0.44    11.67 1.01      746      860
-## 
-## Multilevel Hyperparameters:
-## ~mig (Number of levels: 6) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.25      0.12     0.11     0.57 1.00      731     1158
-## 
-## ~mig:educ (Number of levels: 89) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.09      0.02     0.05     0.14 1.01      257      493
-## 
-## ~mig:male (Number of levels: 12) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.02      0.02     0.00     0.07 1.00      676     1045
-## 
-## ~pid (Number of levels: 9980) 
-##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.51      0.00     0.50     0.52 1.00     1153     1662
-## 
-## Regression Coefficients:
-##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept                                       0.60      0.13     0.36     0.85 1.02      396      755
-## maleTRUE                                        0.12      0.02     0.08     0.17 1.01      679      773
-## sage:educISCED3b:Uppersecondaryvocational_1    -6.90      3.16   -13.91    -1.92 1.01      320      605
-## sage:educISCED1:Primary_1                     -27.04      8.71   -45.32   -11.28 1.00      582     1209
-## sage:educISCED2:Lowersecondary_1              -17.28      6.76   -32.56    -6.05 1.02      318      836
-## sage:educISCED3a:Uppersecondarygeneral_1        3.51      5.47    -4.84    17.55 1.01      392      399
-## sage:educISCED4:PostMsecondary_1                0.27      2.88    -4.81     7.25 1.01      690      956
-## sage:educISCED5a:Tertiarye.g.college_1          5.09      3.48    -1.01    12.59 1.02      237      559
-## sage:educISCED5b:Tertiarye.g.coMopprogram_1    -2.52      2.05    -6.98     0.85 1.01      469      679
-## sage:educISCED6:PhD_1                           3.51      4.72    -5.69    13.80 1.00      691     1198
-## sage:educST1:Primary_1                          3.06     11.00   -18.56    25.41 1.01      574      474
-## sage:educST2:Lowersecondary_1                   3.72      7.57   -12.51    18.16 1.00      895      959
-## sage:educST3:Intermediatesecondary_1            3.94      9.62   -17.12    22.44 1.00      864      907
-## sage:educST4:Uppersecondary_1                   2.97      8.44   -14.35    20.13 1.01      773     1269
-## sage:educST5:Comprehensiveschool_1              0.32     12.05   -28.46    23.40 1.01      850      741
-## sage:educST6:Otherschool_1                      2.74      8.95   -15.97    21.28 1.01      860     1030
-## sage:educST7:Nolongeratschool_1                 3.60     12.59   -22.18    33.44 1.01      644      646
-## 
-## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<pre class="r"><code>pp_check(brm_bin_ints_no_educ_male2)</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-13-1.svg" width="768" /></p>
-<pre class="r"><code>loo_compare(brm_bin_ints_no_educ_male2, brm_MAIN_nor_ints_no_educ_male)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
-<pre><code>##                                elpd_diff se_diff
-## brm_bin_ints_no_educ_male2         0.0       0.0
-## brm_MAIN_nor_ints_no_educ_male -1921.0      33.6</code></pre>
-<p>Fit much better.</p>
-<pre class="r"><code>main_vs_bin2 &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male,  brm_bin_ints_no_educ_male2,
-  labels = c( &quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, binomial + ID&quot;),
-  prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling normal predictons
-  function(x) x                            # leave binomial predictions as is
-),
-  palette = c(
-  &quot;#BC3C29FF&quot;,
-  &quot;#0072B5FF&quot;,
-  # &quot;#20854EFF&quot;,
-  # &quot;#7876B1FF&quot;,
-  # &quot;#6F99ADFF&quot;,
-  # &quot;#E18727FF&quot;,
-  # &quot;#FFDC91FF&quot;,
-  &quot;#EE4C97FF&quot; 
-), 
-  output_file = &quot;data/results/main_vs_bin2.rds&quot;
-  )
-
-main_vs_bin2[-1]</code></pre>
-<pre><code>## $overall_estimates
-## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                             
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                             
-## 1  37.4    NA       8.19  NA      Raw                               
-## 2  35.7     0.116   8.58   0.0991 RPP_brm_MAIN_nor_ints_no_educ_male
-## 3  35.7     0.0956  8.58   0.0812 RPP_brm_bin_ints_no_educ_male2    
-## 
-## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin2-1.svg" width="768" /></p>
-<pre><code>## 
-## $SDs_plot</code></pre>
-<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin2-2.svg" width="768" /></p>
-<pre><code>## 
-## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin2-3.svg" width="768" /></p>
-<pre><code>## 
-## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_bin2-4.svg" width="768" />
-Smaller error on the binomial model and some differences in the norming
-distribution (mostly in the right tail of the distribution, where the
-normal distribution doesn’t account for the left skew in the data) and
-in SDs.</p>
-</div>
 </div>
 <div id="beta" class="section level3" number="1.2.3">
 <h3><span class="header-section-number">1.2.3</span> Beta</h3>
-<pre class="r"><code>tl &lt;- tl %&gt;% mutate(cft_prop = cft/56)
-
-brm_beta_ints_no_educ_male &lt;-
+<pre class="r"><code>brm_beta_ints_no_educ_male &lt;-
   brm(bf(
-      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
-      phi ~ (1 | mig) + (1 | educ) + male + s(age)  # Model precision parameter
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ), # 
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)  
       ),
-      family = Beta(),  # Beta family for proportion data
+      family = Beta(),  
       chains = 4,
       seed = 810,
       file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male&quot;,
@@ -1833,20 +1463,17 @@ brm_beta_ints_no_educ_male</code></pre>
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <pre class="r"><code>pp_check(brm_beta_ints_no_educ_male)</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-14-1.svg" width="768" /></p>
-<pre class="r"><code>loo_compare(brm_beta_ints_no_educ_male, brm_MAIN_nor_ints_no_educ_male)</code></pre>
-<pre><code>## Warning: Not all models have the same y variable. (&#39;yhash&#39; attributes do not match)</code></pre>
-<pre><code>##                                elpd_diff se_diff 
-## brm_beta_ints_no_educ_male          0.0       0.0
-## brm_MAIN_nor_ints_no_educ_male -40436.0      16.8</code></pre>
-<p>Fit looks good, LOO doesn’t make sense because of different
-scales.</p>
-<pre class="r"><code>main_vs_beta &lt;- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, brm_beta_ints_no_educ_male,
-  labels = c( &quot;Raw&quot;, &quot;RPP, normal&quot;, &quot;RPP, beta&quot;),
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-9-1.svg" width="768" /></p>
+<pre class="r"><code>ggsave(&quot;figures/S05_pp_check.jpeg&quot;, width = 8, height = 4)</code></pre>
+<p>Fit looks good, LOO doesn’t make sense because different scales.
+We’re going with this model, rescaling the variable back to original at
+the poststratification stage.</p>
+<pre class="r"><code>beta_vs_normal &lt;- age_norm_comparisons(
+  brm_beta_ints_no_educ_male, brm_nor_ints_no_educ_male,
+  labels = c( &quot;Raw&quot;, &quot;RPP, beta&quot;, &quot;RPP, normal&quot;),
   prediction_transform  = list(
-  function(x) round(pmax(0, pmin(56, x))), # for handling skew normal predictons
-  function(x) round(pmax(0, pmin(56, x*56)))  # for handling beta proportion predictions
+  function(x) round(x*56),  # for handling beta proportion predictions
+  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons
 ),
   palette = c(
   &quot;#BC3C29FF&quot;,
@@ -1858,31 +1485,163 @@ scales.</p>
   # &quot;#FFDC91FF&quot;,
   &quot;#EE4C97FF&quot; 
 ), 
-  output_file = &quot;data/results/main_vs_beta.rds&quot;
+  output_file = &quot;data/results/beta_vs_normal.rds&quot;
   )
 
 
-main_vs_beta[-1]</code></pre>
+beta_vs_normal[-1]</code></pre>
 <pre><code>## $overall_estimates
 ## # A tibble: 3 × 5
-##    Mean SE_of_Mean    SD SE_of_SD Model                             
-##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                             
-## 1  37.4     NA      8.19  NA      Raw                               
-## 2  35.7      0.115  8.59   0.0983 RPP_brm_MAIN_nor_ints_no_educ_male
-## 3  35.7      0.114  8.60   0.0952 RPP_brm_beta_ints_no_educ_male    
+##    Mean SE_of_Mean    SD SE_of_SD Model                         
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                         
+## 1  37.4     NA      8.19  NA      Raw                           
+## 2  35.7      0.115  8.59   0.0946 RPP_brm_beta_ints_no_educ_male
+## 3  35.7      0.114  8.59   0.0989 RPP_brm_nor_ints_no_educ_male 
 ## 
 ## $means_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_beta-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/beta_vs_normal-1.svg" width="768" /></p>
 <pre><code>## 
 ## $SDs_plot</code></pre>
 <pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_beta-2.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/beta_vs_normal-2.svg" width="768" /></p>
 <pre><code>## 
 ## $SEs_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_beta-3.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/beta_vs_normal-3.svg" width="768" /></p>
 <pre><code>## 
 ## $percentile_plot</code></pre>
-<p><img src="02_model_selection_files/figure-html/main_vs_beta-4.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/beta_vs_normal-4.svg" width="768" /></p>
+<div id="boosted" class="section level4" number="1.2.3.1">
+<h4><span class="header-section-number">1.2.3.1</span> boosted</h4>
+<pre class="r"><code>brm_beta_ints_no_educ_male_boosted &lt;-
+  brm(bf( # cft_prop is cft sum score divided by 56 (total n of items)
+      cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ),
+      phi ~ (1 | mig) + (1 | educ) + male + s(age)
+      ),
+      family = Beta(),
+      chains = 4,
+      iter = 7000,
+      control = list(adapt_delta = 0.999),
+      seed = 810,
+      file = &quot;../unshareable_data/brms/cft/brm_beta_ints_no_educ_male_boosted&quot;,
+      data = tl) %&gt;% 
+  add_criterion(&quot;loo&quot;)
+
+brm_beta_ints_no_educ_male_boosted</code></pre>
+<pre><code>##  Family: beta 
+##   Links: mu = logit; phi = log 
+## Formula: cft_prop ~ (1 | mig) + male + (1 | mig:male) + (1 | mig:educ) + s(age, by = educ) 
+##          phi ~ (1 | mig) + (1 | educ) + male + s(age)
+##    Data: tl (Number of observations: 9980) 
+##   Draws: 4 chains, each with iter = 7000; warmup = 3500; thin = 1;
+##          total post-warmup draws = 14000
+## 
+## Smoothing Spline Hyperparameters:
+##                                                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sds(sageeducISCED3b:Uppersecondaryvocational_1)     1.56      0.76     0.50     3.38 1.03      257      551
+## sds(sageeducISCED1:Primary_1)                       6.30      2.21     3.09    11.49 1.00      658      923
+## sds(sageeducISCED2:Lowersecondary_1)                3.59      1.48     1.55     7.33 1.01      446     1257
+## sds(sageeducISCED3a:Uppersecondarygeneral_1)        2.23      1.26     0.10     5.17 1.05       84       63
+## sds(sageeducISCED4:PostMsecondary_1)                1.12      0.65     0.30     2.77 1.01      415      806
+## sds(sageeducISCED5a:Tertiarye.g.college_1)          2.27      0.87     0.98     4.38 1.01      311      875
+## sds(sageeducISCED5b:Tertiarye.g.coMopprogram_1)     0.89      0.48     0.31     2.12 1.01      565      927
+## sds(sageeducISCED6:PhD_1)                           2.12      1.08     0.81     4.87 1.01      786     1162
+## sds(sageeducST1:Primary_1)                          3.39      3.29     0.12    11.82 1.00     1004     1352
+## sds(sageeducST2:Lowersecondary_1)                   2.24      1.71     0.13     6.68 1.00      799      622
+## sds(sageeducST3:Intermediatesecondary_1)            3.42      2.24     1.01     9.47 1.00     1012     2083
+## sds(sageeducST4:Uppersecondary_1)                   3.33      1.74     1.37     7.68 1.01      900     1871
+## sds(sageeducST5:Comprehensiveschool_1)              3.69      2.34     1.23     9.64 1.00      812     1124
+## sds(sageeducST6:Otherschool_1)                      3.01      1.79     1.00     7.56 1.00      922     1992
+## sds(sageeducST7:Nolongeratschool_1)                 3.35      2.72     0.20     9.95 1.00      843     1107
+## sds(phi_sage_1)                                     0.53      0.40     0.04     1.60 1.00      573      409
+## 
+## Multilevel Hyperparameters:
+## ~mig (Number of levels: 6) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)         0.22      0.11     0.10     0.52 1.01      421      782
+## sd(phi_Intercept)     0.13      0.07     0.05     0.32 1.00      729      900
+## 
+## ~mig:educ (Number of levels: 89) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.08      0.02     0.04     0.13 1.00      518      871
+## 
+## ~mig:male (Number of levels: 12) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.02      0.02     0.00     0.07 1.00      763      927
+## 
+## ~educ (Number of levels: 15) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(phi_Intercept)     0.13      0.04     0.07     0.22 1.00      759     1514
+## 
+## Regression Coefficients:
+##                                             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept                                       0.59      0.12     0.35     0.84 1.04      118      333
+## phi_Intercept                                   2.56      0.08     2.38     2.71 1.01      311      210
+## maleTRUE                                        0.12      0.02     0.07     0.16 1.00      849      980
+## phi_maleTRUE                                   -0.09      0.03    -0.14    -0.03 1.00     1388     3461
+## sage:educISCED3b:Uppersecondaryvocational_1    -7.09      3.24   -14.14    -1.74 1.02      267      634
+## sage:educISCED1:Primary_1                     -26.07      8.48   -44.59   -11.02 1.01      411     1144
+## sage:educISCED2:Lowersecondary_1              -17.24      7.05   -32.72    -5.59 1.02      341      804
+## sage:educISCED3a:Uppersecondarygeneral_1        2.63      4.54    -4.73    13.44 1.02      427      677
+## sage:educISCED4:PostMsecondary_1                0.38      2.75    -4.10     7.22 1.01      438      538
+## sage:educISCED5a:Tertiarye.g.college_1          4.67      3.53    -1.37    12.53 1.02      196      382
+## sage:educISCED5b:Tertiarye.g.coMopprogram_1    -2.58      1.96    -7.22     0.66 1.02      421      745
+## sage:educISCED6:PhD_1                           2.95      4.53    -6.67    12.26 1.01      446      603
+## sage:educST1:Primary_1                          3.77     11.73   -17.14    29.61 1.01      604      639
+## sage:educST2:Lowersecondary_1                   3.78      6.51    -9.53    18.27 1.01      658      929
+## sage:educST3:Intermediatesecondary_1            5.36     10.09   -13.09    29.10 1.01      611      964
+## sage:educST4:Uppersecondary_1                   2.92      9.10   -15.34    21.81 1.01      538     1009
+## sage:educST5:Comprehensiveschool_1              1.41     10.35   -19.77    21.78 1.00      767      964
+## sage:educST6:Otherschool_1                      3.18      7.95   -13.43    19.72 1.00      700     1231
+## sage:educST7:Nolongeratschool_1                 2.51     11.07   -19.75    26.07 1.00      724      620
+## phi_sage_1                                     -0.83      1.07    -3.35     0.69 1.01      609     1204
+## 
+## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>beta_vs_boosted_beta &lt;- age_norm_comparisons(
+  brm_beta_ints_no_educ_male, brm_beta_ints_no_educ_male_boosted,
+  labels = c(&quot;Raw&quot;, &quot;RPP, beta&quot;, &quot;RPP, boosted beta&quot;),
+  prediction_transform = list(
+  function(x) round(x*56),  # for handling beta proportion predictions
+  function(x) round(x*56)  # for handling beta proportion predictions
+),
+   palette = c(
+  &quot;#BC3C29FF&quot;,
+  &quot;#0072B5FF&quot;,
+  # &quot;#20854EFF&quot;,
+  # &quot;#7876B1FF&quot;,
+  # &quot;#6F99ADFF&quot;,
+  # &quot;#E18727FF&quot;,
+  # &quot;#FFDC91FF&quot;,
+  &quot;#EE4C97FF&quot;
+),  
+  output_file = &quot;data/results/beta_vs_boosted_beta.rds&quot;
+  )
+
+beta_vs_boosted_beta[-1]</code></pre>
+<pre><code>## $overall_estimates
+## # A tibble: 3 × 5
+##    Mean SE_of_Mean    SD SE_of_SD Model                                 
+##   &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;                                 
+## 1  37.4     NA      8.19  NA      Raw                                   
+## 2  35.7      0.115  8.58   0.0953 RPP_brm_beta_ints_no_educ_male        
+## 3  35.7      0.110  8.60   0.0898 RPP_brm_beta_ints_no_educ_male_boosted
+## 
+## $means_plot</code></pre>
+<p><img src="02_model_selection_files/figure-html/beta_vs_boosted_beta-1.svg" width="768" /></p>
+<pre><code>## 
+## $SDs_plot</code></pre>
+<pre><code>## Warning: Removed 55 rows containing missing values or values outside the scale range (`geom_segment()`).</code></pre>
+<p><img src="02_model_selection_files/figure-html/beta_vs_boosted_beta-2.svg" width="768" /></p>
+<pre><code>## 
+## $SEs_plot</code></pre>
+<p><img src="02_model_selection_files/figure-html/beta_vs_boosted_beta-3.svg" width="768" /></p>
+<pre><code>## 
+## $percentile_plot</code></pre>
+<p><img src="02_model_selection_files/figure-html/beta_vs_boosted_beta-4.svg" width="768" /></p>
+<pre class="r"><code>ggsave(&quot;figures/S04_beta_vs_boosted_beta.jpeg&quot;, beta_vs_boosted_beta$means_plot, width = 8, height = 4)
+ggsave(&quot;figures/S04_beta_vs_boosted_beta_percentile.jpeg&quot;, beta_vs_boosted_beta$percentile_plot, width = 8, height = 4)</code></pre>
+</div>
 </div>
 <div id="beta-binomial" class="section level3" number="1.2.4">
 <h3><span class="header-section-number">1.2.4</span> Beta binomial</h3>
@@ -1901,38 +1660,41 @@ number="2.1">
 manual age groups</h2>
 <pre class="r"><code>t &lt;- tl %&gt;% filter(!is.na(age_group))
 
-yrep &lt;- posterior_predict(brm_MAIN_nor_ints_no_educ_male, newdata = t, ndraws = 1000)
+yrep &lt;- posterior_predict(brm_beta_ints_no_educ_male, newdata = t, ndraws = 1000)
 
 
-p &lt;- ppc_pit_ecdf_grouped(t$cft, yrep, group = as.factor(t$age_group), prob = 0.99, plot_diff = F)
+p &lt;- ppc_pit_ecdf_grouped(t$cft/56, yrep, group = as.factor(t$age_group), prob = 0.99, plot_diff = F)
 
 p</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-15-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-13-1.svg" width="768" /></p>
 <pre class="r"><code>ggsave(&quot;figures/S06_ppc_grouped.jpeg&quot;, width = 8, height = 8)</code></pre>
+<p>Good fit within age groups too.</p>
 </div>
 <div id="r2" class="section level2" number="2.2">
 <h2><span class="header-section-number">2.2</span> R2</h2>
-<pre class="r"><code>loo_R2(brm_MAIN_nor_ints_no_educ_male)</code></pre>
+<pre class="r"><code>loo_R2(brm_beta_ints_no_educ_male)</code></pre>
+<pre><code>## Warning: Some Pareto k diagnostic values are too high. See help(&#39;pareto-k-diagnostic&#39;) for details.</code></pre>
 <pre><code>##    Estimate Est.Error   Q2.5  Q97.5
-## R2   0.3043  0.007659 0.2894 0.3192</code></pre>
+## R2   0.3045  0.007722 0.2891 0.3194</code></pre>
+<p>The modelled predictors explain about 30% of the variance.</p>
 </div>
 <div id="prediction-plots-for-education-and-migration-background"
 class="section level2" number="2.3">
 <h2><span class="header-section-number">2.3</span> Prediction plots for
 education and migration background</h2>
-<pre class="r"><code>plot_predictions(brm_MAIN_nor_ints_no_educ_male,  condition = c(&quot;educ&quot;), allow_new_levels = T) + 
-  labs(x = &quot;Education&quot;, y = &quot;CFT 20-R Score&quot;) +
+<pre class="r"><code>plot_predictions(brm_beta_ints_no_educ_male,  condition = c(&quot;educ&quot;), allow_new_levels = T) + 
+  labs(x = &quot;Education&quot;, y = &quot;Proportion of correct items&quot;) +
 theme(axis.text.x = element_text(angle = 60, hjust = 1),
     plot.margin = margin(0.8, 2, 0.8, 2, &quot;cm&quot;)) </code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-15-1.svg" width="768" /></p>
 <p>We see that means differ considerably across categories of
 <code>educ</code>. The large 95% CIs are for the school type categories,
 i.e., those which have no observations at ages older than 18.</p>
-<pre class="r"><code>plot_predictions(brm_MAIN_nor_ints_no_educ_male,  condition = c(&quot;mig&quot;), allow_new_levels = T)   + 
-  labs(x = &quot;Migration Background&quot;, y = &quot;CFT 20-R Score&quot;) +
+<pre class="r"><code>plot_predictions(brm_beta_ints_no_educ_male,  condition = c(&quot;mig&quot;), allow_new_levels = T)   + 
+  labs(x = &quot;Migration Background&quot;, y = &quot;Proportion of correct items&quot;) +
 theme(axis.text.x = element_text(angle = 60, hjust = 1),
     plot.margin = margin(0.8, 2, 0.8, 1.4, &quot;cm&quot;))</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-18-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-16-1.svg" width="768" /></p>
 <p>Less variation among migration categories.</p>
 </div>
 <div id="plots-of-the-conditional-age-splines" class="section level2"
@@ -1944,7 +1706,7 @@ conditional age splines</h2>
   mutate(male = FALSE, mig = &quot;Citizen: No mig background&quot;) %&gt;%
   distinct()
 
-fitted_tl &lt;- fitted(brm_MAIN_nor_ints_no_educ_male, newdata = distinct_tl, summary = T, ndraws = 1000, probs = c(0.20, 0.80)) %&gt;% as_tibble() %&gt;%
+fitted_tl &lt;- fitted(brm_beta_ints_no_educ_male, newdata = distinct_tl, summary = T, ndraws = 1000, probs = c(0.20, 0.80)) %&gt;% as_tibble() %&gt;%
   bind_cols(distinct_tl) %&gt;%
   mutate(
     school_type = case_when(
@@ -1985,7 +1747,7 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, colo
                    expand = expansion(add = c(0, 2))) +
   geom_line(linewidth = 1) +
   geom_ribbon(alpha = 0.2, linewidth = .01) + 
-  labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score&quot;, colour = &quot;School Type&quot;) +
+  labs(x = &quot;Age&quot;, y = &quot;Proportion of correct items&quot;, colour = &quot;School Type&quot;) +
   geom_text_repel(data = labels %&gt;% arrange(school_type),
     aes(label = c(school_type[1:5], &quot;&quot;, school_type[7])), family = &quot;Times&quot;, seed = 810, xlim = c(18.3, 20)) +
   geom_text_repel(data = labels %&gt;% arrange(school_type),
@@ -2012,7 +1774,7 @@ ggplot(data = fitted_ST, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, colo
 ## ℹ Please use the `linewidth` argument instead.
 ## This warning is displayed once every 8 hours.
 ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-19-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-17-1.svg" width="768" /></p>
 <pre class="r"><code>ggsave(&quot;figures/03_splines_ST.jpeg&quot;, width = 9, height = 5)</code></pre>
 <pre class="r"><code>max_age_per_isced &lt;- fitted_ISCED %&gt;%
                      group_by(isced) %&gt;%
@@ -2028,10 +1790,10 @@ ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, c
                      expand = expansion(add = c(1, 21)))  +
   geom_line(linewidth = 1) +
   geom_ribbon(alpha = 0.2, linewidth = .01) +
-  labs(x = &quot;Age&quot;, y = &quot;CFT 20-R Score&quot;, colour = &quot;ISCED 1997 Code&quot;)  +
+  labs(x = &quot;Age&quot;, y = &quot;Proportion of correct itemse&quot;, colour = &quot;ISCED 1997 Code&quot;)  +
   geom_text_repel(data = labels %&gt;%
            arrange(isced),
-    aes(label = isced), family = &quot;Times&quot;, seed = 14, xlim = c(65, 100)) + 
+    aes(label = isced), family = &quot;Times&quot;, seed = 14, xlim = c(65, 100), box.padding = 0.1) + 
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),
@@ -2041,7 +1803,7 @@ ggplot(data = fitted_ISCED, aes(x = age, y = Estimate, ymin = Q20, ymax = Q80, c
   ) +
   scale_color_manual(values = c(&quot;#b66dff&quot;,&quot;#6db6ff&quot;,&quot;#009292&quot;, &quot;#920000&quot;,&quot;#924900&quot;,&quot;#490092&quot;,&quot;#24ff24&quot;,&quot;#000000&quot;)) +
   scale_fill_manual(values = c(&quot;#b66dff&quot;,&quot;#6db6ff&quot;,&quot;#009292&quot;, &quot;#920000&quot;,&quot;#924900&quot;,&quot;#490092&quot;,&quot;#24ff24&quot;,&quot;#000000&quot;))</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-20-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-18-1.svg" width="768" /></p>
 <pre class="r"><code>ggsave(&quot;figures/03_splines_ISCED.jpeg&quot;, width = 9, height = 5, scale = 1)</code></pre>
 </div>
 <div id="distribution-of-rpp-predicitons" class="section level2"
@@ -2060,13 +1822,11 @@ sim_pop_sample &lt;- census %&gt;%
            replace = TRUE)
 
 sim_pop_sample_with_draws &lt;- sim_pop_sample %&gt;%
-  add_predicted_draws(brm_MAIN_nor_ints_no_educ_male,
+  add_predicted_draws(brm_beta_ints_no_educ_male,
                       ndraws = 1000,
                       seed = 810,
                       allow_new_levels = TRUE) %&gt;%
-  mutate(.prediction = round(case_when(.prediction &lt; 0 ~ 0,
-                                 .prediction &gt; 56 ~ 56,
-                                 TRUE ~ .prediction)))  %&gt;% 
+  mutate(.prediction = round(.prediction*56))  %&gt;% 
   mutate(age_group = case_when(
                          age == 11 ~ &#39;11&#39;,
                          age == 12 ~ &#39;12&#39;,
@@ -2086,13 +1846,13 @@ sim_pop_sample_with_draws &lt;- sim_pop_sample %&gt;%
                          age &gt;= 60 &amp; age &lt;= 64 ~ &#39;60-64&#39;,
                          TRUE ~ NA_character_))
 
-data.table::fwrite(sim_pop_sample_with_draws, &quot;data/results/sim_pop_sample_with_draws.csv.gz&quot;)</code></pre>
+data.table::fwrite(sim_pop_sample_with_draws, &quot;data/results/sim_pop_sample_with_draws_beta.csv.gz&quot;)</code></pre>
 </div>
 <div id="overall-distribution" class="section level3" number="2.5.2">
 <h3><span class="header-section-number">2.5.2</span> Overall
 distribution</h3>
 <pre class="r"><code># data.table::fread() requires installing the package &quot;R.utils&quot;
-sim_pop_sample_with_draws &lt;- data.table::fread(&quot;data/results/sim_pop_sample_with_draws.csv.gz&quot;)
+sim_pop_sample_with_draws &lt;- data.table::fread(&quot;data/results/sim_pop_sample_with_draws_beta.csv.gz&quot;)
 
 means_sds_and_ses_RPP &lt;- sim_pop_sample_with_draws %&gt;%
   group_by(age, .draw) %&gt;% 
@@ -2112,7 +1872,7 @@ means_sds_and_ses_RPP &lt;- sim_pop_sample_with_draws %&gt;%
                                    by = 4)) +
   theme_minimal() +
   labs(x = &quot;RPP predicted CFT 20-R score&quot;, y = &quot;Count&quot;)</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-22-1.svg" width="768" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-20-1.svg" width="768" /></p>
 </div>
 <div id="distributions-witin-age-groups" class="section level3"
 number="2.5.3">
@@ -2127,11 +1887,11 @@ age groups</h3>
   theme_minimal(base_size = 14) +
   labs(x = &quot;RPP predicted CFT 20-R score&quot;, y = &quot;Count&quot;) +
   facet_wrap(~ age_group, scales = &quot;free_y&quot;)  # Create a separate facet for each level of the variable &quot;age&quot;</code></pre>
-<p><img src="02_model_selection_files/figure-html/unnamed-chunk-23-1.svg" width="1536" /></p>
+<p><img src="02_model_selection_files/figure-html/unnamed-chunk-21-1.svg" width="1536" /></p>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.4.1 (2024-06-14)
 ## Platform: x86_64-pc-linux-gnu
-## Running under: Rocky Linux 9.5 (Blue Onyx)
+## Running under: Rocky Linux 9.6 (Blue Onyx)
 ## 
 ## Matrix products: default
 ## BLAS/LAPACK: FlexiBLAS OPENBLAS;  LAPACK version 3.11.0

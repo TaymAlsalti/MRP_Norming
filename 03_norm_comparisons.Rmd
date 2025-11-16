@@ -208,15 +208,16 @@ census %>%
 
 ```{r, "RPP_vs_raw"}
 
-brm_MAIN_nor_ints_no_educ_male <- readRDS("../unshareable_data/brms/cft/brm_MAIN_nor_ints_no_educ_male.rds", )
+brm_beta_ints_no_educ_male <- readRDS("../unshareable_data/brms/cft/brm_beta_ints_no_educ_male.rds", )
 
 
 
 RPP_vs_raw <- age_norm_comparisons(
-  brm_MAIN_nor_ints_no_educ_male, 
-  labels = c( "Raw", "RPP"),
+  brm_beta_ints_no_educ_male, 
+  labels = c("Raw", "RPP"),
+  disagg_norms   = TRUE,
   prediction_transform = list(
-  function(x) round(pmax(0, pmin(56, x))) # for handling normal predictons (clip/censor/bound and round)
+  function(x) round(x*56) # for handling proportion (beta) predictions
 ),
    palette = c(
   "#BC3C29FF",
@@ -225,7 +226,21 @@ RPP_vs_raw <- age_norm_comparisons(
   output_file = "data/results/RPP_vs_raw.rds"
   )
 
-RPP_vs_raw[-1]
+RPP_vs_raw[-6]
+
+
+RPP_vs_raw$percentile_plot$layers <- RPP_vs_raw$percentile_plot$layers[!vapply(RPP_vs_raw$percentile_plot$layers, function(l) {
+  any(class(l$geom) %in% c("GeomText", "GeomLabel"))
+}, logical(1))]
+
+RPP_vs_raw$percentile_plot  + 
+  geom_text(
+    data = combined_percentiles %>% filter(age == 65, show_text, Source != "Raw"),
+    aes(label = percentile_label),
+    nudge_x = 1,
+    hjust = 0,
+    family = "Times"
+  )
 ```
 
 
@@ -259,7 +274,7 @@ Here we compare the RPP-based norms to the traditionally constructed norms repor
 ## Means
 
 ```{r}
-sim_pop_sample_with_draws <- data.table::fread("data/results/sim_pop_sample_with_draws.csv.gz")
+sim_pop_sample_with_draws <- data.table::fread("data/results/sim_pop_sample_with_draws_beta.csv.gz")
 
 means_sds_and_ses_RPP <- sim_pop_sample_with_draws %>% 
   group_by(age_group, .draw) %>%
@@ -393,6 +408,7 @@ iqs_linear <- tl %>%
   
 ```
 
+Note that calculating linearly transformed IQs doesn't make a lot of sense here since such a calculation assumes a normal distribution.  
 
 ### Normalised (area transformed / normal rank transformed) IQs
 
@@ -431,12 +447,11 @@ iq_table %>% group_by(Manual_kids_sample) %>% summarise(mean(IQ_linear_dif), mea
 t <- tibble("Manual Normalised IQ" = c(62, 92, 135, 70, 97, 134, 76, 100, 130))
 
 iq_table %>% 
-  select(age_group, raw_score, "RPP Normalised IQ" = RPP_IQ_normalised, "RPP Linear IQ" = RPP_IQ_linear, "Manual Linear IQ" = Manual_IQ_linear) %>% 
+  select(age_group, raw_score, "RPP Normalised IQ" = RPP_IQ_normalised) %>% 
   filter((age_group == "16" & raw_score %in% c(22, 37, 53)) |
          (age_group == "30-34" & raw_score %in% c(19, 37, 52)) |
          (age_group == "60-64" & raw_score %in% c(12, 30, 46))) %>% 
   bind_cols(t) %>% 
-  relocate("Manual Normalised IQ", .before = "RPP Linear IQ") %>% 
     kable()
 ```
 
@@ -712,7 +727,7 @@ ggplot(combined, aes(x = source, y = value, fill = at_tails)) +
 
 ```
 
-```{r, }
+```{r, results = 'hide'}
 cnorm_percentiles <- (plotPercentiles(norm.model, percentiles = c(0.01, 0.05, 0.5, 0.95, 0.99)))$data %>% 
   filter(complete.cases(value) & type == "Predicted") %>% 
   rename(age = group,
@@ -746,11 +761,11 @@ cnorm_percentiles <- (plotPercentiles(norm.model, percentiles = c(0.01, 0.05, 0.
 
 #### Percentile plot
 ```{r}
-RPP_percentiles <- RPP_vs_raw$percentile_plot$data
+RPP_percentiles <- RPP_vs_raw$percentile_plot$data %>% filter(Source != "Raw") %>% mutate(line_label = percentile_label, show_text = TRUE) 
 
 
 
-combined_percentiles <- RPP_percentiles %>% bind_rows(cnorm_percentiles)
+combined_percentiles <- RPP_percentiles %>% bind_rows(cnorm_percentiles) 
 
 color_values <- c("RPP" = "#0072B5FF", "cNorm + R" = "#E18727FF")
 
@@ -1026,7 +1041,7 @@ GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
   select(age, Raw_score, Source, percentile_label, show_text, line_label)
 
 
-combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+combined_percentiles <- RPP_percentiles %>% filter(Source != "Raw") %>% mutate(line_label = percentile_label, show_text = TRUE) %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)  
 
 combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "Simple GAMLSS + MRP", "Complex GAMLSS + MRP"))
 
@@ -1333,7 +1348,7 @@ GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
   select(age, Raw_score, Source, percentile_label, show_text, line_label)
 
 
-combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+combined_percentiles <- RPP_percentiles %>% filter(Source != "Raw") %>% mutate(line_label = percentile_label, show_text = TRUE) %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)  
 
 combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "PS with age", "PS without age"))
 
@@ -1675,7 +1690,7 @@ GAMLSS_MRP_percentiles2 <- cdf_long2 %>%
   select(age, Raw_score, Source, percentile_label, show_text, line_label)
 
 
-combined_percentiles <- RPP_percentiles %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)
+combined_percentiles <- RPP_percentiles %>% filter(Source != "Raw") %>% mutate(line_label = percentile_label, show_text = TRUE) %>% bind_rows(GAMLSS_MRP_percentiles) %>% bind_rows(GAMLSS_MRP_percentiles2)  
 
 combined_percentiles$Source <- factor(combined_percentiles$Source, levels = c("RPP", "Without educ", "With educ"))
 

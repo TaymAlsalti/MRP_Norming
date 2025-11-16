@@ -3,7 +3,7 @@
 # =======================
 norm_plots <- function(means_ns_sds_and_ses, labels, palette, ps_table) {
   
-  # We do the same "expand" logic used in the main function’s percentile code
+  # We do the same "expand" logic used in the main function's percentile code
   maxLabelLen <- if (is.null(labels)) 1 else max(nchar(labels))
   myExpandRight <- maxLabelLen/1.7
   
@@ -120,7 +120,8 @@ age_norm_comparisons <- function(...,
                                  labels         = NULL,
                                  palette        = c("#BC3C29FF", "#0072B5FF"),
                                  output_file    = "../02_data/results.rds",
-                                 prediction_transform = NULL  # function or list of functions or NULL
+                                 prediction_transform = NULL,  # function or list of functions or NULL
+                                 disagg_norms   = FALSE  # NEW ARGUMENT: if TRUE, calculate norms from raw data
 ) {
   
   #--------------------------------------------------
@@ -244,23 +245,35 @@ age_norm_comparisons <- function(...,
     prediction_transform <- replicate(nModels, NULL, simplify=FALSE)
   }
   
+  # Get the transformation function for the first model to apply to raw data
+  first_transform <- prediction_transform[[1]]
+  
   #--------------------------------------------------
   # 4) Summarize the "raw" lines from the FIRST brms model
+  #    Apply transformation to raw data if specified
   #--------------------------------------------------
   first_mod_data <- brms_models[[1]]$data
   out_name <- all.vars(brms_models[[1]]$formula$formula)[1]
   if (is.na(out_name)) {
     stop("Could not detect outcome from first brms model (multi-param?).")
   }
-  first_mod_data[[ out_name ]] <- as.numeric(as.character(first_mod_data[[ out_name ]]))
+  
+  # Apply transformation to raw data if specified
+  raw_outcome <- as.numeric(as.character(first_mod_data[[ out_name ]]))
+  if (!is.null(first_transform)) {
+    raw_outcome <- first_transform(raw_outcome)
+  }
   
   means_sds_and_ses_raw <- first_mod_data %>%
-    dplyr::mutate(age = floor(age)) %>%
+    dplyr::mutate(
+      age = floor(age),
+      transformed_outcome = raw_outcome  # Use the (possibly transformed) outcome
+    ) %>%
     dplyr::group_by(age) %>%
     dplyr::summarise(
       Raw_n    = dplyr::n(),
-      Raw_mean = mean(.data[[ out_name ]], na.rm=TRUE),
-      Raw_sd   = sd(.data[[ out_name ]], na.rm=TRUE),
+      Raw_mean = mean(transformed_outcome, na.rm=TRUE),
+      Raw_sd   = sd(transformed_outcome, na.rm=TRUE),
       Raw_seOfmean = Raw_sd / sqrt(Raw_n),
       .groups="drop"
     )
@@ -271,7 +284,7 @@ age_norm_comparisons <- function(...,
     dplyr::mutate(
       age         = floor(age),
       .draw       = 1,
-      .prediction = .data[[ out_name ]]
+      .prediction = raw_outcome  # Use the (possibly transformed) outcome
     )
   
   age_level_list <- list()
@@ -464,6 +477,32 @@ age_norm_comparisons <- function(...,
   target_p <- c(0.01,0.05,0.5,0.95,0.99)
   df_percentile_curves <- list()
   
+  # NEW: Calculate percentile curves from raw data if disagg_norms is TRUE
+  if (disagg_norms) {
+    raw_data <- row_level_draws[["raw"]][[ raw_call_names[1] ]]
+    
+    df_raw_percent <- raw_data %>%
+      dplyr::group_by(age) %>%
+      dplyr::arrange(.prediction, .by_group=TRUE) %>%
+      dplyr::mutate(
+        N = dplyr::n(),
+        percentile = (dplyr::row_number() - 0.5)/N
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(age) %>%
+      dplyr::summarise(
+        pvals = list(target_p),
+        scores= list(stats::approx(x=percentile, y=.prediction,
+                                   xout=target_p, ties="ordered")$y),
+        .groups="drop"
+      ) %>%
+      tidyr::unnest(cols=c(pvals,scores)) %>%
+      dplyr::rename(percentile_value=pvals, Raw_score=scores) %>%
+      dplyr::mutate(Source="Raw")
+    
+    df_percentile_curves[[ length(df_percentile_curves)+1 ]] <- df_raw_percent
+  }
+  
   for (appr_name in approach_set) {
     for (i in seq_along(brms_models)) {
       modn    <- raw_call_names[i]
@@ -511,19 +550,36 @@ age_norm_comparisons <- function(...,
       )
     )
   
-  df_percentile_final$Source <- factor(df_percentile_final$Source, levels=level_order[level_order != "Raw"])
+  # Create the level order for percentile sources
+  percentile_level_order <- if (disagg_norms) {
+    c("Raw", level_order[level_order != "Raw"])
+  } else {
+    level_order[level_order != "Raw"]
+  }
   
-  if (!is.null(labels) && length(labels) == length(level_order)) {
-    adjusted_labels <- labels[-1]
-    level_order_no_raw <- level_order[level_order != "Raw"]
-    
-    if (length(adjusted_labels) != length(level_order_no_raw)) {
-      stop("Number of labels doesn't match number of sources for percentiles.")
+  df_percentile_final$Source <- factor(df_percentile_final$Source, levels=percentile_level_order)
+  
+  # FIXED: Handle labels for percentile data
+  if (!is.null(labels)) {
+    # For percentile data, we need to match the labels to the percentile_level_order
+    # The first label corresponds to "Raw", the rest to the model sources
+    if (disagg_norms) {
+      # When disagg_norms = TRUE, we use all labels
+      if (length(labels) != length(percentile_level_order)) {
+        stop("Number of labels doesn't match number of sources for percentiles.")
+      }
+      label_mapping <- setNames(labels, percentile_level_order)
+    } else {
+      # When disagg_norms = FALSE, we skip the first label (which is for "Raw")
+      if (length(labels) != length(level_order)) {
+        stop("Number of labels doesn't match number of sources.")
+      }
+      label_mapping <- setNames(labels[-1], percentile_level_order)
     }
     
     df_percentile_final$Source <- forcats::fct_relabel(
       df_percentile_final$Source,
-      function(x) adjusted_labels[match(x, level_order_no_raw)]
+      function(x) label_mapping[x]
     )
   }
   
@@ -549,7 +605,13 @@ age_norm_comparisons <- function(...,
   
   # Build percentile plot
   approach_set <- levels(percentile_data$Source)
-  color_values <- palette[-1]
+  
+  # Update color values based on whether disagg_norms is TRUE
+  if (disagg_norms) {
+    color_values <- palette
+  } else {
+    color_values <- palette[-1]
+  }
   
   baseMaxLabelLen <- if (is.null(labels)) 1 else max(nchar(labels))
   maxLabelLen2    <- max(nchar(percentile_data$line_label), na.rm=TRUE)
