@@ -1,4 +1,4 @@
-This is GitHub repository hosting the code and most of the material belonging to the manuscript [A case study on norming an intelligence test using Regularised Prediction and Poststratification from a Total Survey Error perspective](osf.io/preprints/psyarxiv/wnbes). 
+This is GitHub repository hosting the code and most of the material belonging to the manuscript [A case study on norming an intelligence test using Regularised Prediction and Poststratification(https://doi.org/10.31234/osf.io/wnbes_v2). 
 
 
 # Reproducibility
